@@ -44,6 +44,7 @@ verbosity 	= varargin{3};
 n = size(sys.A,1);
 
 % Constraints 
+%------------
 
 l_diag_constr = [];
 robust_constr = [];
@@ -55,7 +56,7 @@ if stochastic_x0
 	sys.x0 = sdpvar(size(sys.A,1),1,'full');
 
 	%Create constraints on x0 (based on performance level)
-	robust_constr = robust_constr + [ -perf_level <= stochastic_x0 <= perf_level , uncertain(sys.x0) ];
+	robust_constr = robust_constr + [ -perf_level <= sys.x0 <= perf_level , uncertain(sys.x0) ];
 end
 
 % Create Constant Matrices Based On Model
@@ -69,6 +70,10 @@ end
 
 % Perform Robust Optimization Using YALMIP "uncertain"
 %-----------------------------------------------------
+if verbosity >= 1
+	disp('YALMIP Robust Optimization: ')
+end
+
 Q = sdpvar(size(H,2),size(Cm,1),'full');
 r = sdpvar(size(H,2),1,'full');
 
@@ -77,7 +82,7 @@ w = sdpvar(n*t_horizon,1,'full');
 v = sdpvar(size(sys.C,1)*t_horizon,1,'full');
 
 if verbosity >= 1
-	disp('Created YALMIP Optimization Variables.')
+	disp('- Created Optimization Variables.')
 end
 
 %Create Expressions Containing Q,r for Optimization
@@ -90,8 +95,7 @@ R = [zeros(n,n*t_horizon) eye(n)]; %Create selection matrix
 objective = norm( R*(x_tilde + Pxw * w + Pxv * v) , Inf );
 
 if verbosity >= 1
-	disp('Created YALMIP Objective.')
-	disp(' ')
+	disp('- Created Objective.')
 end
 
 %Create Constraints
@@ -123,9 +127,9 @@ if verbosity >=2
 end
 
 if verbosity >= 1
-	disp('Created YALMIP Constraints.')
+	disp('- Created Constraints.')
 
-%Solve Optimization
+	%Solve Optimization
 	disp('Solving YALMIP Robust Optimization...')
 end
 

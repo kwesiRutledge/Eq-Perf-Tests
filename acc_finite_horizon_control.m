@@ -17,7 +17,7 @@ addpath('./functions')
 % % Save these structs for future use
 % save('../data/acc_m1_systems.mat','acc_csys','acc_dsys');
 
-load('../data/acc_m1_systems.mat')
+load('data/system_examples/acc_m1_systems.mat')
 
 %% Constants
 
@@ -33,10 +33,12 @@ false;	%4
 false;	%5
 false;	%6
 false;	%7
-true;	%8
+false;	%8
 false;	%9
 false;	%10
-true 	%11
+false; 	%11
+true;	%12
+true
 ];
 
 %% Experiment 1
@@ -1293,7 +1295,7 @@ else
 	disp('User decided to skip this experiment.')
 end
 
-%% Experiment 10: Making x0 a Robust Variable in optimization
+%% Experiment 11: Making x0 a Robust Variable in optimization, varying T
 
 disp('================================================')
 disp('Experiment 11: Robustifying w.r.t. x0, Varying T')
@@ -1427,6 +1429,264 @@ if perform_experiment(experim_num)
 else
 	disp('User decided to skip this experiment.')
 end
+
+%% Experiment 12: Testing Part of 'generate_skaf_controller' function
+
+disp('==================================================================')
+disp('Experiment 12: Testing Part of ''generate_skaf_controller'' function')
+
+experim_num = 12;
+
+if perform_experiment(experim_num)
+	
+	% Prepare Systems
+	%----------------
+
+	r_sys.A = randn(3);
+	r_sys.B = randn(3,1);
+	r_sys.C = [ 1 0 0 ];
+	r_sys.n = size(r_sys.A,1);
+	r_sys.m = 0.05;
+	r_sys.d = 0.1;
+
+	% Load the ACC System If Necessary
+	if exist('acc_dsys')
+		disp('ACC System already loaded.')
+	else
+		load('data/system_examples/acc_m1_systems.mat')
+	end
+
+	% Load the Inverse Pendulum Model
+	load('data/system_examples/mIp1.mat')
+
+	mIp1_error = discr_mIp1;
+	mIp1_error.B = eye(size(discr_mIp1.B,1));
+
+	% Define Experiment Parameters
+	%-----------------------------
+	exp_params{experim_num}.T = 1;
+	exp_params{experim_num}.perf_level = 1;
+
+	% We will operate on multiple systems this time.
+	sys_under_test = { acc_error_dsys , mIp1_error };
+
+	for sys_num = 1 : length(sys_under_test)
+
+		% Clear x0,n
+		%---------
+
+		clear sys_under_test{sys_num}.x0 n
+		sys_under_test{sys_num}.x0 = sdpvar(size(sys_under_test{sys_num}.A,1),1,'full');
+		n = size(sys_under_test{sys_num}.A,1);
+
+		% Create Matrices Necessary for Original Skaf and Boyd Method
+		%------------------------------------------------------------
+		[G{experim_num},H{experim_num},Cm{experim_num},x0m{experim_num}] = create_skaf_n_boyd_matrices(sys_under_test{sys_num},exp_params{experim_num}.T);
+		disp('Created Skaf and Boyd Matrices.')
+
+		% Perform Robust Optimization Using YALMIP "uncertain"
+		%-----------------------------------------------------
+		exp_params{experim_num}.Q = sdpvar(size(H{experim_num},2),size(Cm{experim_num},1),'full');
+		exp_params{experim_num}.r = sdpvar(size(H{experim_num},2),1,'full');
+
+		%Disturbance vectors
+		w{experim_num} = sdpvar(n*exp_params{experim_num}.T,1,'full');
+		v{experim_num} = sdpvar(size(sys_under_test{sys_num}.C,1)*exp_params{experim_num}.T,1,'full');
+		disp('Created YALMIP Optimization Variables.')
+
+		%Create Expressions Containing Q,r for Optimization
+		Pxw = (eye(n*(exp_params{experim_num}.T+1))+H{experim_num}*exp_params{experim_num}.Q*Cm{experim_num})*G{experim_num};
+		Pxv = H{experim_num}*exp_params{experim_num}.Q;
+		x_tilde = (eye(n*(exp_params{experim_num}.T+1)) + H{experim_num}*exp_params{experim_num}.Q*Cm{experim_num})*x0m{experim_num} + H{experim_num}*exp_params{experim_num}.r;
+
+		%Create Objective
+		R = [zeros(n,n*exp_params{experim_num}.T) eye(n)]; %Create selection matrix
+		exp_params{experim_num}.obj_r = norm( R*(x_tilde + Pxw * w{experim_num} + Pxv * v{experim_num}) , Inf );
+		disp('Created YALMIP Objective.')
+		disp(' ')
+
+		%Create Constraints
+
+		%Q is lower diagonal.
+		l_diag_constr = [];
+		for bl_row_num = 1 : exp_params{experim_num}.T-1
+			l_diag_constr = l_diag_constr + [ exp_params{experim_num}.Q(	[(bl_row_num-1)*size(sys_under_test{sys_num}.B,2)+1:bl_row_num*size(sys_under_test{sys_num}.B,2)], ...
+																			[bl_row_num*size(sys_under_test{sys_num}.C,1)+1:end] ) == 0 ];
+	    end
+
+	    % l_diag_constr
+
+	    %Robustifying against w and v
+	    robust_constr = [];
+	    robust_constr = robust_constr + [ -sys_under_test{sys_num}.m 			<= v{experim_num} 	<= sys_under_test{sys_num}.m , uncertain(v{experim_num}) ];
+	    robust_constr = robust_constr + [ -sys_under_test{sys_num}.d 			<= w{experim_num} 	<= sys_under_test{sys_num}.d , uncertain(w{experim_num}) ];
+	    robust_constr = robust_constr + [ -exp_params{experim_num}.perf_level 	<= sys_under_test{sys_num}.x0 <= exp_params{experim_num}.perf_level , uncertain(sys_under_test{sys_num}.x0)];
+
+	    %Epigraph Constraints
+	    exp_params{experim_num}.alpha = sdpvar(1,1,'full');
+	    epi_constr = [];
+	    epi_constr = [ exp_params{experim_num}.obj_r <= exp_params{experim_num}.alpha ];
+
+	    disp('Created YALMIP Constraints.')
+
+	    %Solve Optimization
+	    disp('Solving YALMIP Robust Optimization...')
+	    op_num = 0;
+	    ops = sdpsettings('verbose',op_num);
+	    exp_results{experim_num}.sol_robust{T} = optimize(l_diag_constr+robust_constr+epi_constr,exp_params{experim_num}.alpha,ops);
+
+	    if exp_results{experim_num}.sol_robust{T}.problem == 0
+	    	disp(['YALMIP Robust Optimization Solved'])
+	    else
+	    	%error(['YALMIP Robust Optimization #' num2str(T) ' NOT Solved.'])
+	    	error(['YALMIP Robust Optimization NOT Solved (' yalmiperror(exp_results{experim_num}.sol_robust{T}.problem) ').' ])
+	    end
+
+	    %Save results
+	    exp_results{experim_num}.Q = value(exp_params{experim_num}.Q);
+	    exp_results{experim_num}.r = value(exp_params{experim_num}.r);
+	    exp_results{experim_num}.opt_obj = value(exp_params{experim_num}.alpha);
+
+	    exp_results{experim_num}.F = value( (pinv(value(eye(size(exp_params{experim_num}.Q,1)) + exp_params{experim_num}.Q*Cm{experim_num}*H{experim_num})) ) * exp_params{experim_num}.Q);
+		exp_results{experim_num}.u0 = value((eye(size(exp_results{experim_num}.F,1)) + exp_results{experim_num}.F*Cm{experim_num}*H{experim_num}) * exp_params{experim_num}.r);
+
+		% Compare to function output
+		exp_results{experim_num}.fcn = generate_skaf_controller( sys_under_test{sys_num} , exp_params{experim_num}.T , 0 , exp_params{experim_num}.perf_level );
+		exp_results{experim_num}.fcn_opt_objs = exp_results{experim_num}.fcn.opt_obj;
+
+		disp(' ')
+		disp('Function finished running.')
+		disp(' ')
+		disp('Showing some results:')
+
+		%Results
+		disp([ 'Handwritten Opt. Objective Value: ' num2str(exp_results{experim_num}.opt_obj) ', Function Opt. Objective Value: ' num2str(exp_results{experim_num}.fcn.opt_obj) ])
+
+	end
+else
+	disp('User decided to skip this experiment.')
+end
+
+%% Experiment 13: Adding a New System to Testing, Tracking Optimal Values
+
+experim_num = 13;
+
+disp('===========================================================')
+disp('Experiment 13: Adding a New System + Testing Optimal Values')
+disp('- Adding Systems to test with our current script')
+
+if perform_experiment(experim_num)
+	
+	% Prepare Systems
+	%----------------
+
+	r_sys.A = randn(3);
+	r_sys.B = randn(3,1);
+	r_sys.C = [ 1 0 0 ];
+	r_sys.n = size(r_sys.A,1);
+	r_sys.m = 0.05;
+	r_sys.d = 0.1;
+
+	% Load the ACC System If Necessary
+	if exist('acc_dsys')
+		disp('ACC System already loaded.')
+	else
+		load('data/system_examples/acc_m1_systems.mat')
+	end
+
+	% Load the Inverse Pendulum Model
+	load('data/system_examples/mIp1.mat')
+
+	mIp1_error = discr_mIp1;
+	mIp1_error.B = eye(size(discr_mIp1.B,1));
+
+	% Define Experiment Parameters
+	%-----------------------------
+	exp_params{experim_num}.T = 1;
+	exp_params{experim_num}.perf_level = 1;
+
+	% We will operate on multiple systems this time.
+	sys_under_test = { acc_error_dsys , mIp1_error };
+
+	for sys_num = 1 : length(sys_under_test)
+
+		% Compare Robust Optimization (Skaf's Method)
+		exp_results{experim_num}.skaf(sys_num) = generate_skaf_controller( sys_under_test{sys_num} , exp_params{experim_num}.T , 0 , exp_params{experim_num}.perf_level );
+		
+		% Compute minimum using standard optimization triangle 
+
+		exp_params{experim_num}.L{sys_num} = sdpvar(size(sys_under_test{sys_num}.A,1),size(sys_under_test{sys_num}.C,1),'full');
+	    exp_params{experim_num}.std_obj(sys_num) = ...
+	    		norm( sys_under_test{sys_num}.A + exp_params{experim_num}.L{sys_num}*sys_under_test{sys_num}.C , Inf ) * exp_params{experim_num}.perf_level + ...
+	    		sys_under_test{sys_num}.m *norm(exp_params{experim_num}.L{sys_num},Inf) + sys_under_test{sys_num}.d;
+
+	    exp_results{experim_num}.std_eq_perf.tri_ineq.sol{sys_num} = optimize([],exp_params{experim_num}.std_obj,ops);
+
+	    exp_results{experim_num}.tri_ineq.L{sys_num} = value(exp_params{experim_num}.L{sys_num});
+	    exp_results{experim_num}.tri_ineq.opt_obj(sys_num) = value(exp_params{experim_num}.std_obj(sys_num));
+
+	    %Compute example error
+
+
+	    %Clear old variables
+	    %exp_params{experim_num}.L
+
+	end
+
+	disp(' ')
+	disp('Optimal Values, Format = (ACC) (mIp) ')
+	disp('++++++++++++++++++++++++++++++++++++')
+	disp([ 'Triangle Inequlity: (' num2str(exp_results{experim_num}.tri_ineq.opt_obj(1)) ') (' num2str(exp_results{experim_num}.tri_ineq.opt_obj(2)) ')' ])
+	disp([ 'Skaf: (' num2str(exp_results{experim_num}.skaf(1).opt_obj) ') (' num2str(exp_results{experim_num}.skaf(2).opt_obj) ')' ])
+
+	disp(' ')
+	disp('Compute Example Errors Given an initial condition')
+
+	% Computing error given feedback law and x0
+	load('data/system_examples/acc_m1_systems.mat')
+	load('data/system_examples/mIp1.mat')
+
+	sys_under_test = { acc_error_dsys , mIp1_error };
+
+	for sys_num = 1 : length(sys_under_test)
+		% Shorten expressions
+		
+		A = sys_under_test{sys_num}.A;
+		x0 = sys_under_test{sys_num}.x0;
+		B = sys_under_test{sys_num}.B;
+		C = sys_under_test{sys_num}.C;
+
+		alpha2 = sdpvar(1,1,'full');
+
+		% Create Uncertain variables
+		
+		temp.v = sdpvar(size(C,1),1,'full');
+		temp.w = sdpvar(size(A,1),1,'full');
+
+		robust_constr = [];
+		robust_constr = robust_constr + [ -sys_under_test{sys_num}.m <= temp.v <= sys_under_test{sys_num}.m , uncertain(temp.v) ];
+		robust_constr = robust_constr + [ -sys_under_test{sys_num}.d <= temp.w <= sys_under_test{sys_num}.d , uncertain(temp.w) ];
+
+		%Compute error
+		obj(1) = norm( A*x0 + temp.w + exp_results{experim_num}.skaf(sys_num).F*C*x0 + exp_results{experim_num}.skaf(sys_num).F*temp.v + exp_results{experim_num}.skaf(sys_num).u0 , Inf );
+		obj(2) = norm( A*x0 + temp.w + exp_results{experim_num}.tri_ineq.L{sys_num}*C*x0 + exp_results{experim_num}.tri_ineq.L{sys_num}*temp.v , Inf );
+
+		%Compute different optimizations
+		for opt_num = 1 : length(obj)
+			exp_results{experim_num}.example1{sys_num}.sol(opt_num) = optimize(robust_constr + [ obj(opt_num) <= alpha2 ] , alpha2 , ops);
+			error_on{sys_num}(opt_num) = value(alpha2); 
+		end
+
+		clear A x0 B C temp
+	end
+
+	disp(['Triangle Inequality: (' num2str(error_on{1}(2)) ') (' num2str(error_on{2}(2)) ')' ])
+	disp(['Skaf: (' num2str(error_on{1}(1)) ') (' num2str(error_on{2}(1)) ')' ])
+
+else
+	disp('User decided to skip this experiment.')
+end
+
 
 %% Remove Functions
 rmpath('./functions')

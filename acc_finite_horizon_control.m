@@ -38,7 +38,7 @@ false;	%9
 false;	%10
 false; 	%11
 true;	%12
-true
+true	%13
 ];
 
 %% Experiment 1
@@ -1571,9 +1571,10 @@ end
 
 experim_num = 13;
 
-disp('===========================================================')
-disp('Experiment 13: Adding a New System + Testing Optimal Values')
-disp('- Adding Systems to test with our current script')
+disp('===================================================================================')
+disp('Experiment 13: Comparing the Maximum Allowed Error, for different design strategies')
+disp('- Added System(s) to test with our current script [mIp model]')
+disp('- Comparing designs made using the ')
 
 if perform_experiment(experim_num)
 	
@@ -1607,6 +1608,9 @@ if perform_experiment(experim_num)
 
 	% We will operate on multiple systems this time.
 	sys_under_test = { acc_error_dsys , mIp1_error };
+
+	% Design Using Skaf's Method and Triangle Inequality Based Method
+	%----------------------------------------------------------------
 
 	for sys_num = 1 : length(sys_under_test)
 
@@ -1648,6 +1652,9 @@ if perform_experiment(experim_num)
 
 	sys_under_test = { acc_error_dsys , mIp1_error };
 
+	% Testing Designed Feedback with a given initial condition
+	%---------------------------------------------------------
+
 	for sys_num = 1 : length(sys_under_test)
 		% Shorten expressions
 		
@@ -1680,8 +1687,41 @@ if perform_experiment(experim_num)
 		clear A x0 B C temp
 	end
 
+	%
+
 	disp(['Triangle Inequality: (' num2str(error_on{1}(2)) ') (' num2str(error_on{2}(2)) ')' ])
 	disp(['Skaf: (' num2str(error_on{1}(1)) ') (' num2str(error_on{2}(1)) ')' ])
+
+	% Design using Yong's Method of Dynamic Output Observers
+	%---------------------------------------------------------------- 
+
+	acc_dsys_dyn_out = dyn_obs_ify( acc_error_dsys );
+	acc_dsys_dyn_out.d = 0.1;
+	acc_dsys_dyn_out.m = 0.05;
+
+	mIp2_dyn_obs = dyn_obs_ify( mIp1_error );
+	mIp2_dyn_obs.d = 0.1;
+	mIp2_dyn_obs.m = 0.05;
+
+	sys_under_test = { acc_dsys_dyn_out , mIp2_dyn_obs };
+
+	for sys_num = 1 : length(sys_under_test)
+
+		% Compare Robust Optimization (Skaf's Method)
+		exp_results{experim_num}.yong(sys_num) = generate_skaf_controller( sys_under_test{sys_num} , exp_params{experim_num}.T , 0 , exp_params{experim_num}.perf_level );
+
+	end
+
+	figure;
+	bar([ exp_results{experim_num}.tri_ineq.opt_obj' ...
+		[ exp_results{experim_num}.skaf(1).opt_obj ; exp_results{experim_num}.skaf(2).opt_obj ] ...
+		[ exp_results{experim_num}.yong(1).opt_obj ; exp_results{experim_num}.yong(2).opt_obj ] ])
+	legend('Triangle Inequality','Skaf','Yong')
+	ylabel('Maximum Allowed Error')
+	xlabel('System Number')
+
+	results_e13 = exp_results{experim_num};
+	save('data/afhc_e13.mat','results_e13')
 
 else
 	disp('User decided to skip this experiment.')

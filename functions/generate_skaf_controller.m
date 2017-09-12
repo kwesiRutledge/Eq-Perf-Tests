@@ -9,26 +9,45 @@ function [ results ] = generate_skaf_controller( varargin )
 %     x[k+1] = Ax[k] + Bu[k] + w[k]
 %     y[k]   = Cx[k] + v[k]
 %
+%	Objective Assumed in this Code:
+%
+%		||R*x||_{\infty},	where R can be arbitrarily chosen
+%							
 %	Potential Usage:
 %		- generate_skaf_controller( sys , t_horizon , verbosity )
-%		- generate_skaf_controller( sys , t_horizon , verbosity , perf_level )
+%		- generate_skaf_controller( sys , t_horizon , verbosity , 'PL' , perf_level )
+%		- generate_skaf_controller( sys , t_horizon , verbosity , 'R' , R )
+%
 %   Inputs:
-%		- sys:	This is a struct containing information about the time horizon of the model, as well as
-%				some information on bounds of the process and measurement noises.
-%				Members: .A,.B,.C,.m,.d,
-%		- t_horizon: Time horizon that we are using for our objective/design.
-%		- verbosity: This is a number (currently from 0 to 2), that determines how many messages are
-%					 sent to the user during operation. (The higher the number the more messages sent.)
+%		sys:		- This is a struct containing information about the time horizon of the model, as well as
+%				  	  some information on bounds of the process and measurement noises.
+%					- Members: .A,.B,.C,.m,.d,
+%
+%		t_horizon:	- Time horizon that we are using for our objective/design.
+%
+%		verbosity:	- This is a number (currently from 0 to 2), that determines how many messages are
+%					 	  sent to the user during operation. (The higher the number the more messages sent.)
+%
+%		perf_level:	- Must make the previous input before this the string 'PL'.
+%					- Positive real number
+%
+%		R:			- The selection matrix for the trajectory x
+%
 %	Outputs:
-%		- results: Struct containing the YALMIP results, and important matrix values. (In one variable so that
-%					this can be easily saved.)
+%		results - Struct containing the YALMIP results, and important matrix values. (In one variable so that
+%				  this can be easily saved.)
 
 % Process Inputs
 %---------------
 
-if nargin == 4
+if any( strcmp(varargin,'PL') )
 	%Option for Stochastic x0 is given
-	perf_level = varargin{4};
+
+	%Find Performance Level
+	PL_loc = find( strcmp(varargin,'PL') );
+
+	%Save Performance Level
+	perf_level = varargin{PL_loc+1};
 	stochastic_x0 = true;
 else
 	stochastic_x0 = false;

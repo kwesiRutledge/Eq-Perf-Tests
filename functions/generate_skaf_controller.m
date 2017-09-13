@@ -33,12 +33,30 @@ function [ results ] = generate_skaf_controller( varargin )
 %
 %		R:			- The selection matrix for the trajectory x
 %
+%		(Qualifiers)
+%
 %	Outputs:
 %		results - Struct containing the YALMIP results, and important matrix values. (In one variable so that
 %				  this can be easily saved.)
 
 % Process Inputs
 %---------------
+
+if mod(nargin-3,2) | ( (nargin > 3) & (~any(strcmp(varargin,'PL'))) & (~any(strcmp(varargin,'R'))) )
+	%The first expression (containing mod() ) reflects that we expect to have 3 + 2*n number of arguments (where n=0,1,2,...)
+	%The second condition expresses that if the expression has more than 3 arguments, we expect one of those arguments to be
+	%	one of our qualifiers (e.g. 'PL' or 'R')
+
+	%If the function is improperly called, tell the user.
+	error('Improper number of arguments given or improper qualifiers given.')
+end
+
+%Check for unrecognized input strings
+for ind = (3+1):2:nargin
+	if (~strcmp(varargin{ind},'PL')) & ( ~strcmp(varargin{ind},'R') )
+		error('Unrecognized string in input.')
+	end
+end
 
 if any( strcmp(varargin,'PL') )
 	%Option for Stochastic x0 is given
@@ -110,7 +128,14 @@ Pxv = H*Q;
 x_tilde = (eye(n*(t_horizon+1)) + H*Q*Cm)*x0m + H*r;
 
 %Create Objective
-R = [zeros(n,n*t_horizon) eye(n)]; %Create selection matrix
+if any( strcmp(varargin,'R') )
+	R_string_loc = find( strcmp(varargin,'R') );
+	R = varargin{R_string_loc+1};
+else
+	R = [zeros(n,n*t_horizon) eye(n)]; %Create the standard selection matrix
+end
+
+
 objective = norm( R*(x_tilde + Pxw * w + Pxv * v) , Inf );
 
 if verbosity >= 1
@@ -166,9 +191,12 @@ if verbosity >= 1
 end
 
 %Save results
-results.Q = value(Q);
-results.r = value(r);
-results.opt_obj = value(alpha0);
+results.Q = value(Q)
+value(Q)
+results.r = value(r)
+value(r)
+results.opt_obj = value(alpha0)
+value(alpha0)
 
-results.F = value( (pinv(value(eye(size(Q,1)) + Q*Cm*H)) ) * Q);
+results.F = value( (pinv(value(eye(size(Q,1)) + Q*Cm*H)) ) * Q)
 results.u0 = value((eye(size(results.F,1)) + results.F*Cm*H) * r);

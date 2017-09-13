@@ -37,8 +37,9 @@ false;	%8
 false;	%9
 false;	%10
 false; 	%11
-true;	%12
-true	%13
+false;	%12
+false;	%13
+true	%14
 ];
 
 %% Experiment 1
@@ -1551,7 +1552,7 @@ if perform_experiment(experim_num)
 		exp_results{experim_num}.u0 = value((eye(size(exp_results{experim_num}.F,1)) + exp_results{experim_num}.F*Cm{experim_num}*H{experim_num}) * exp_params{experim_num}.r);
 
 		% Compare to function output
-		exp_results{experim_num}.fcn = generate_skaf_controller( sys_under_test{sys_num} , exp_params{experim_num}.T , 0 , exp_params{experim_num}.perf_level );
+		exp_results{experim_num}.fcn = generate_skaf_controller( sys_under_test{sys_num} , exp_params{experim_num}.T , 0 , 'PL' , exp_params{experim_num}.perf_level );
 		exp_results{experim_num}.fcn_opt_objs = exp_results{experim_num}.fcn.opt_obj;
 
 		disp(' ')
@@ -1615,7 +1616,7 @@ if perform_experiment(experim_num)
 	for sys_num = 1 : length(sys_under_test)
 
 		% Compare Robust Optimization (Skaf's Method)
-		exp_results{experim_num}.skaf(sys_num) = generate_skaf_controller( sys_under_test{sys_num} , exp_params{experim_num}.T , 0 , exp_params{experim_num}.perf_level );
+		exp_results{experim_num}.skaf(sys_num) = generate_skaf_controller( sys_under_test{sys_num} , exp_params{experim_num}.T , 0 , 'PL' , exp_params{experim_num}.perf_level );
 		
 		% Compute minimum using standard optimization triangle 
 
@@ -1623,6 +1624,9 @@ if perform_experiment(experim_num)
 	    exp_params{experim_num}.std_obj(sys_num) = ...
 	    		norm( sys_under_test{sys_num}.A + exp_params{experim_num}.L{sys_num}*sys_under_test{sys_num}.C , Inf ) * exp_params{experim_num}.perf_level + ...
 	    		sys_under_test{sys_num}.m *norm(exp_params{experim_num}.L{sys_num},Inf) + sys_under_test{sys_num}.d;
+
+	    %Save Optimization options
+	    ops = sdpsettings('verbose',1);
 
 	    exp_results{experim_num}.std_eq_perf.tri_ineq.sol{sys_num} = optimize([],exp_params{experim_num}.std_obj,ops);
 
@@ -1703,12 +1707,21 @@ if perform_experiment(experim_num)
 	mIp2_dyn_obs.d = 0.1;
 	mIp2_dyn_obs.m = 0.05;
 
+	disp('Saved Matrices in a form that works with Yong''s Method.')
+
 	sys_under_test = { acc_dsys_dyn_out , mIp2_dyn_obs };
 
-	for sys_num = 1 : length(sys_under_test)
+	for sys_num = 2 : length(sys_under_test)
+
+		n = (size(sys_under_test{sys_num}.A,1))/2;
+
+		sys_under_test{sys_num}.A
 
 		% Compare Robust Optimization (Skaf's Method)
-		exp_results{experim_num}.yong(sys_num) = generate_skaf_controller( sys_under_test{sys_num} , exp_params{experim_num}.T , 0 , exp_params{experim_num}.perf_level );
+		exp_results{experim_num}.yong(sys_num) = generate_skaf_controller( sys_under_test{sys_num} , exp_params{experim_num}.T , 2 , ...
+																			'PL' , exp_params{experim_num}.perf_level , ...
+																			'R' , [ zeros(n,(2*n*exp_params{experim_num}.T)) eye(n) zeros(n)] , ...
+																			'Yong' , n );
 
 	end
 
@@ -1727,6 +1740,28 @@ else
 	disp('User decided to skip this experiment.')
 end
 
+%% Experiment 14: Varying the Horizon of Yong Controller
+
+experim_num = experim_num + 1;
+
+disp('===============================================================')
+disp('Experiment 14: Testing Yong Function, Varying T for Yong Design')
+
+
+if perform_experiment(experim_num)
+
+	%Clear all previous data from here
+	clear all;
+
+	load('data/system_examples/acc_m1_systems.mat')
+
+	%Testing the yong function
+	%rmfield(acc_error_dsys,'x0');
+	generate_yong_controller(rmfield(acc_error_dsys,'x0'),1,0)
+
+else
+	disp('User decided to skip this experiment.')
+end
 
 %% Remove Functions
 rmpath('./functions')

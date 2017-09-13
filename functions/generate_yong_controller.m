@@ -6,8 +6,7 @@ function [ results ] =  generate_yong_controller( varargin )
 %
 %		Potential Usage:
 %			generate_yong_controller( sys , t_horizon , verbosity )
-%			generate_yong_controller( sys , t_horizon , verbosity , 's' , dim_s )
-%			generate_yong_controller( sys , t_horizon , verbosity , 'solver' , solver_name )
+%			generate_yong_controller( ... , 's' , dim_s )
 %
 %		Inputs:
 %			sys			- Struct containing system matrices and other valuable system
@@ -55,23 +54,142 @@ for ind = 1 : length(sys_fields)
 	end
 end
 
-%% Constants
+% Constants
+%----------
 
-if ~any(strcmp(varargin,'solver'))
-	%Default Solver will be Yalmip
-	solver_name = 'yalmip';
+n = size(sys.A,1);
+
+%Set s to default or to user's request
+if ~any(strcmp(varargin,'s'))
+	dim_s = n;
 else
-	solver_name = varargin{ find( strcmp(varargin,'solver')) + 1 };
+	dim_s = varargin{ find(strcmp(varargin,'s')) + 1 };
 end
 
-% CVX Solution
-%-------------
+% Creating Skaf Matrices with Yong's Modifications
+%-------------------------------------------------
 
-if strcmp(solver_name,'yalmip')
-	% Create Modified System
-	%~~~~~~~~~~~~~~~~~~~~~
-	dyn_obs_sys = dyn_obs_ify(sys)
-else
-	
+dyn_obs_sys = dyn_obs_ify(sys,dim_s);
+
+[G,H,Cm,x0m] = create_skaf_n_boyd_matrices(dyn_obs_sys,t_horizon);
+
+if verbosity >= 1
+	disp('Created Skaf Constants')
+end
+
+% Create YALMIP Optimization Variables
+%-------------------------------------
+
+if verbosity >= 1
+	disp('YALMIP Robust Optimization: ')
+end
+
+Q = sdpvar(size(H,2),size(Cm,1),'full');
+r = sdpvar(size(H,2),1,'full');
+
+%Disturbance vectors								LOOK INTO THE SIZE/STRUCTURE OF THIS LATER IF THERE ARE STILL ERRRORS
+% w0 = sdpvar(n*t_horizon,1,'full');
+% v0 = sdpvar(size(sys.C,1)*t_horizon,1,'full');
+
+% w = []; v = [];
+% for t = 1 : t_horizon
+% 	w = [ w ; w0((t-1)*n+1:t*n) ; zeros(dim_s,1)];
+% 	v = [ v ; zeros(dim_s,1) ; v0((t-1)*size(sys.C,1) + 1:t*size(sys.C,1))];
+% end
+
+w = sdpvar((n+dim_s)*t_horizon,1,'full');
+v = sdpvar((size(sys.C,1)+dim_s)*t_horizon,1,'full');
+
+if verbosity >= 1
+	disp('- Variables Created')
+end
+
+% Create Compound Expressions with YALMIP Variables
+%--------------------------------------------------
+
+Pxw = (eye((n+dim_s)*(t_horizon+1))+H*Q*Cm)*G;
+Pxv = H*Q;
+x_tilde = (eye((n+dim_s)*(t_horizon+1)) + H*Q*Cm)*x0m + H*r;
+
+R = [zeros(n,(n+dim_s)*t_horizon) eye(n) zeros(n,dim_s)];
+
+objective = norm( R*(x_tilde + Pxw * w + Pxv * v) , Inf );
+
+if verbosity >= 1
+	disp('- Objective Created')
+end
+
+% Create YALMIP Optimization's Constraints
+%-----------------------------------------
+
+l_diag_constr = []; robust_constr = []; epi_constr = []; disturb_constrs = [];
+
+%Lower Diagonal Constraint
+
+for bl_row_num = 1 : t_horizon-1
+	l_diag_constr = l_diag_constr + [ Q(	[(bl_row_num-1)*size(dyn_obs_sys.B,2)+1:bl_row_num*size(dyn_obs_sys.B,2)], ...
+											[bl_row_num*size(dyn_obs_sys.C,1)+1:end] ) == 0 ];
+end
+
+if verbosity >= 2
+	l_diag_constr
+end
+
+%Robustifying against w0 and v0
+robust_constr = robust_constr + [ -sys.m <= v <= sys.m , uncertain(v) ];
+robust_constr = robust_constr + [ -sys.d <= w <= sys.d , uncertain(w) ];
+
+if verbosity >= 2
+	robust_constr
+end
+
+%Epigraph Constraint
+alpha0 = sdpvar(1,1,'full');
+epi_constr = [ objective <= alpha0 ];
+
+if verbosity >=2 
+	epi_constr
+end
+
+%Disturbance Constraints (Used because the disturbances has some forced zeros)
+for t = 1 : t_horizon
+	disturb_constrs = disturb_constrs + [ w((t-1)*(n+dim_s)+n+1:t*(n+dim_s)) == 0 ];
+	disturb_constrs = disturb_constrs + [ v((t-1)*(size(sys.C,1)+dim_s)+1:(t-1)*((size(sys.C,1)+dim_s))+dim_s ) == 0 ];
+end
+
+if verbosity >= 2
+	disturb_constrs
+end
+
+if verbosity >= 1
+	disp('- Constraints Created')
+end
+
+% YALMIP Optimization
+%--------------------
+
+ops = sdpsettings('verbose',verbosity);
+results.sol_robust = optimize(l_diag_constr+robust_constr+epi_constr+disturb_constrs,alpha0,ops);
+
+if verbosity >= 1
+	if results.sol_robust.problem == 0
+		disp(['YALMIP Robust Optimization Solved'])
+	else
+		%error(['YALMIP Robust Optimization #' num2str(T) ' NOT Solved.'])
+		disp(['YALMIP Robust Optimization NOT Solved.'])
+	end
+end
+
+% Saving Results
+%---------------
+results.Q = value(Q);
+value(Q)
+results.r = value(r);
+value(r)
+results.opt_obj = value(alpha0);
+value(alpha0)
+
+results.F = value( (pinv(value(eye(size(Q,1)) + Q*Cm*H)) ) * Q)
+results.u0 = value((eye(size(results.F,1)) + results.F*Cm*H) * r);
 
 end

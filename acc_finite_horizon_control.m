@@ -1757,7 +1757,7 @@ if perform_experiment(experim_num)
 
 	%Testing the yong function
 	%rmfield(acc_error_dsys,'x0');
-	generate_yong_controller(acc_error_dsys,1,0)
+	generate_yong_controller(acc_error_dsys,1,2)
 
 else
 	disp('User decided to skip this experiment.')

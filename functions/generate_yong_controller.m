@@ -71,7 +71,7 @@ end
 
 dyn_obs_sys = dyn_obs_ify(sys,dim_s);
 
-[G,H,Cm,x0m] = create_skaf_n_boyd_matrices(dyn_obs_sys,t_horizon);
+[G,H,Cm,x0m] = create_skaf_n_boyd_matrices(dyn_obs_sys,t_horizon)
 
 if verbosity >= 1
 	disp('Created Skaf Constants')
@@ -100,13 +100,14 @@ r = sdpvar(size(H,2),1,'full');
 w = sdpvar((n+dim_s)*t_horizon,1,'full');
 v = sdpvar((size(sys.C,1)+dim_s)*t_horizon,1,'full');
 
+whos('Q','r','w','v')
+
 if verbosity >= 1
 	disp('- Variables Created')
 end
 
 % Create Compound Expressions with YALMIP Variables
 %--------------------------------------------------
-
 Pxw = (eye((n+dim_s)*(t_horizon+1))+H*Q*Cm)*G;
 Pxv = H*Q;
 x_tilde = (eye((n+dim_s)*(t_horizon+1)) + H*Q*Cm)*x0m + H*r;
@@ -175,8 +176,7 @@ if verbosity >= 1
 	if results.sol_robust.problem == 0
 		disp(['YALMIP Robust Optimization Solved'])
 	else
-		%error(['YALMIP Robust Optimization #' num2str(T) ' NOT Solved.'])
-		disp(['YALMIP Robust Optimization NOT Solved.'])
+		error(['YALMIP Robust Optimization NOT Solved.'])
 	end
 end
 

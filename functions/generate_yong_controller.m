@@ -1,4 +1,4 @@
-function [ results ] =  generate_yong_controller( sys , t_horizon , verbosity )
+function [ results ] =  generate_yong_controller( varargin )
 %	generate_yong_controller.m
 %		Description:
 %			This function should create the matrices necessary for a dynamic
@@ -7,6 +7,7 @@ function [ results ] =  generate_yong_controller( sys , t_horizon , verbosity )
 %		Potential Usage:
 %			generate_yong_controller( sys , t_horizon , verbosity )
 %			generate_yong_controller( sys , t_horizon , verbosity , 's' , dim_s )
+%			generate_yong_controller( sys , t_horizon , verbosity , 'solver' , solver_name )
 %
 %		Inputs:
 %			sys			- Struct containing system matrices and other valuable system
@@ -25,7 +26,11 @@ function [ results ] =  generate_yong_controller( sys , t_horizon , verbosity )
 % Input Processing
 %-----------------
 
-feasible_strs = {'s'};
+sys = varargin{1};
+t_horizon = varargin{2};
+verbosity = varargin{3};
+
+feasible_strs = {'s','solver'};
 
 %The first expression (containing mod() ) reflects that we expect to have 3 + 2*n number of arguments (where n=0,1,2,...)
 if mod(nargin-3,2) 
@@ -48,4 +53,25 @@ for ind = 1 : length(sys_fields)
 	if (~isfield(sys,sys_fields{ind}))
 		error(['Missing the ' sys_fields{ind} ' field of input system.'])
 	end
+end
+
+%% Constants
+
+if ~any(strcmp(varargin,'solver'))
+	%Default Solver will be Yalmip
+	solver_name = 'yalmip';
+else
+	solver_name = varargin{ find( strcmp(varargin,'solver')) + 1 };
+end
+
+% CVX Solution
+%-------------
+
+if strcmp(solver_name,'yalmip')
+	% Create Modified System
+	%~~~~~~~~~~~~~~~~~~~~~
+	dyn_obs_sys = dyn_obs_ify(sys)
+else
+	
+
 end

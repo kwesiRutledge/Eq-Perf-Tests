@@ -39,8 +39,11 @@ false;	%10
 false; 	%11
 false;	%12
 false;	%13
-true	%14
+false;	%14
+true
 ];
+
+perform_experiment(11) = true;
 
 %% Experiment 1
 disp('============================================')
@@ -1161,6 +1164,8 @@ if perform_experiment(9)
 
 	acc_error_dsys.B = eye(size(acc_dsys.B,1));
 
+	load('data/system_examples/mIp1.mat')
+
 	e9_params.n = n;
 	e9_params.d = acc_dsys.d;
 	e9_params.m = acc_dsys.m;
@@ -1170,7 +1175,7 @@ if perform_experiment(9)
 
 	for T = 1 : e9_params.T
 		%Design Controller
-		e9_results.skaf_results(T) = generate_skaf_controller(acc_error_dsys,T,0);
+		e9_results.skaf_results(T) = generate_skaf_controller(discr_mIp1,T,0);
 	
 		e9_results.obj_vals(T) = e9_results.skaf_results(T).opt_obj;
 		if mod(T,e9_params.T/20) == 0
@@ -1319,6 +1324,8 @@ if perform_experiment(experim_num)
 
 	acc_error_dsys.B = eye(size(acc_dsys.B,1));
 
+
+
 	exp_params{experim_num}.n = n;
 	exp_params{experim_num}.d = acc_dsys.d;
 	exp_params{experim_num}.m = acc_dsys.m;
@@ -1403,7 +1410,7 @@ if perform_experiment(experim_num)
 
 
 		% Compare to function output
-		exp_results{experim_num}.fcn{T} = generate_skaf_controller( acc_error_dsys , T , 0 , exp_params{experim_num}.perf_level );
+		exp_results{experim_num}.fcn{T} = generate_skaf_controller( acc_error_dsys , T , 0 , 'PL' , exp_params{experim_num}.perf_level );
 		exp_results{experim_num}.fcn_opt_objs(T) = exp_results{experim_num}.fcn{T}.opt_obj;
 	end
 
@@ -1585,9 +1592,17 @@ if perform_experiment(experim_num)
 	r_sys.A = randn(3);
 	r_sys.B = randn(3,1);
 	r_sys.C = [ 1 0 0 ];
+	r_sys.x0 = randn(3,1);
 	r_sys.n = size(r_sys.A,1);
 	r_sys.m = 0.05;
 	r_sys.d = 0.1;
+
+	uncontr_sys.A = [ 1 zeros(1,2) ; zeros(2,1) randn(2) ];
+	uncontr_sys.B = [1;0;0];
+	uncontr_sys.C = [1 0 0 ; 0 1 0 ];
+	uncontr_sys.x0 = randn(3,1);
+	uncontr_sys.m = 0.05;
+	uncontr_sys.d = 0.1;
 
 	% Load the ACC System If Necessary
 	if exist('acc_dsys')
@@ -1608,7 +1623,7 @@ if perform_experiment(experim_num)
 	exp_params{experim_num}.perf_level = 1;
 
 	% We will operate on multiple systems this time.
-	sys_under_test = { acc_error_dsys , mIp1_error };
+	sys_under_test = { acc_error_dsys , mIp1_error , r_sys , uncontr_sys };
 
 	% Design Using Skaf's Method and Triangle Inequality Based Method
 	%----------------------------------------------------------------
@@ -1617,7 +1632,8 @@ if perform_experiment(experim_num)
 
 		% Compare Robust Optimization (Skaf's Method)
 		exp_results{experim_num}.skaf(sys_num) = generate_skaf_controller( sys_under_test{sys_num} , exp_params{experim_num}.T , 0 , 'PL' , exp_params{experim_num}.perf_level );
-		
+		exp_results{experim_num}.skaf_objs(sys_num) = exp_results{experim_num}.skaf(sys_num).opt_obj;
+
 		% Compute minimum using standard optimization triangle 
 
 		exp_params{experim_num}.L{sys_num} = sdpvar(size(sys_under_test{sys_num}.A,1),size(sys_under_test{sys_num}.C,1),'full');
@@ -1628,7 +1644,7 @@ if perform_experiment(experim_num)
 	    %Save Optimization options
 	    ops = sdpsettings('verbose',1);
 
-	    exp_results{experim_num}.std_eq_perf.tri_ineq.sol{sys_num} = optimize([],exp_params{experim_num}.std_obj,ops);
+	    exp_results{experim_num}.std_eq_perf.tri_ineq.sol{sys_num} = optimize([],exp_params{experim_num}.std_obj(sys_num),ops);
 
 	    exp_results{experim_num}.tri_ineq.L{sys_num} = value(exp_params{experim_num}.L{sys_num});
 	    exp_results{experim_num}.tri_ineq.opt_obj(sys_num) = value(exp_params{experim_num}.std_obj(sys_num));
@@ -1654,7 +1670,7 @@ if perform_experiment(experim_num)
 	load('data/system_examples/acc_m1_systems.mat')
 	load('data/system_examples/mIp1.mat')
 
-	sys_under_test = { acc_error_dsys , mIp1_error };
+	%sys_under_test = { acc_error_dsys , mIp1_error };
 
 	% Testing Designed Feedback with a given initial condition
 	%---------------------------------------------------------
@@ -1709,32 +1725,35 @@ if perform_experiment(experim_num)
 
 	disp('Saved Matrices in a form that works with Yong''s Method.')
 
-	sys_under_test = { acc_dsys_dyn_out , mIp2_dyn_obs };
-
-	for sys_num = 2 : length(sys_under_test)
+	for sys_num = 1 : length(sys_under_test)
 
 		n = (size(sys_under_test{sys_num}.A,1))/2;
 
 		sys_under_test{sys_num}.A
 
 		% Compare Robust Optimization (Skaf's Method)
-		exp_results{experim_num}.yong(sys_num) = generate_skaf_controller( sys_under_test{sys_num} , exp_params{experim_num}.T , 2 , ...
-																			'PL' , exp_params{experim_num}.perf_level , ...
-																			'R' , [ zeros(n,(2*n*exp_params{experim_num}.T)) eye(n) zeros(n)] , ...
-																			'Yong' , n );
+		exp_results{experim_num}.yong(sys_num) = generate_yong_controller( sys_under_test{sys_num} , exp_params{experim_num}.T , 2 , ...
+																			'PL' , exp_params{experim_num}.perf_level );
+		exp_results{experim_num}.yong_objs(sys_num) = exp_results{experim_num}.yong(sys_num).opt_obj;
 
 	end
 
+	%Compile Skaf and Yong Results into
+	%---------------------------------
+	skaf_results_e13 = [];
+	yong_results_e13 = [];
+
 	figure;
 	bar([ exp_results{experim_num}.tri_ineq.opt_obj' ...
-		[ exp_results{experim_num}.skaf(1).opt_obj ; exp_results{experim_num}.skaf(2).opt_obj ] ...
-		[ exp_results{experim_num}.yong(1).opt_obj ; exp_results{experim_num}.yong(2).opt_obj ] ])
+		  exp_results{experim_num}.skaf_objs'  ...
+		  exp_results{experim_num}.yong_objs' ])
 	legend('Triangle Inequality','Skaf','Yong')
 	ylabel('Maximum Allowed Error')
 	xlabel('System Number')
+	title('Optimal Error achieved by Different Controller Design methods')
 
 	results_e13 = exp_results{experim_num};
-	save('data/afhc_e13.mat','results_e13')
+	save('data/afhc_e13.mat','results_e13','r_sys','uncontr_sys')
 
 else
 	disp('User decided to skip this experiment.')
@@ -1757,7 +1776,122 @@ if perform_experiment(experim_num)
 
 	%Testing the yong function
 	%rmfield(acc_error_dsys,'x0');
-	generate_yong_controller(acc_error_dsys,1,2)
+	yong_1 = generate_yong_controller(acc_error_dsys,1,2,'PL',0.4);
+	skaf_1 = generate_skaf_controller(acc_error_dsys,1,2,'PL',0.4);
+
+	controllers = { yong_1 , skaf_1 };
+
+	for i = 1: length(controllers)
+
+		n = size(acc_error_dsys.A,1);
+		t_horizon = 1;
+		[G,H,Cm,x0m] = create_skaf_n_boyd_matrices(acc_error_dsys,t_horizon);
+
+		if i == 1
+			Q = controllers{i}.Q([4:6],[4:5]);
+			r = controllers{i}.r([4:6],1);
+		else
+			Q = controllers{i}.Q;
+			r = controllers{i}.r;
+		end
+
+		Pxw = (eye(n*(t_horizon+1))+H*Q*Cm)*G;
+		Pxv = H*Q;
+		x_tilde = (eye(n*(t_horizon+1)) + H*Q*Cm)*x0m + H*r;
+
+
+		%Create noise
+		% if i == 1
+		% 	w = sdpvar(size(acc_error_dsys.A,1)*2,1,'full');
+		% 	v = sdpvar(size(acc_error_dsys.A,1)+size(acc_error_dsys.C,1),1,'full')
+
+		% 	disturb_constrs = [ w([size(acc_error_dsys.A,1)+1:size(acc_error_dsys.A,1)*2],1) == 0 ];
+		% 	disturb_constrs = disturb_constrs + [ v([1:size(acc_error_dsys.A,1)]) == 0 ];
+
+		% 	disturb_constrs = disturb_constrs + [ -acc_error_dsys.d <= w <= acc_error_dsys.d , uncertain(w) ];
+		% 	disturb_constrs = disturb_constrs + [ -acc_error_dsys.m <= v <= acc_error_dsys.m , uncertain(v) ];
+		% else
+			w = sdpvar(size(acc_error_dsys.A,1),1,'full');
+			v = sdpvar(size(acc_error_dsys.C,1),1,'full');
+
+			disturb_constrs = [ -acc_error_dsys.d <= w <= acc_error_dsys.d , uncertain(w) ];
+			disturb_constrs = disturb_constrs + [ -acc_error_dsys.m <= v <= acc_error_dsys.m , uncertain(v) ];
+		% end
+
+		% Find Objective
+		T = t_horizon;
+		R = [ zeros(n,n*T) eye(n) ];
+
+		alpha13 = sdpvar(1,1,'full');
+
+		sol{i} = optimize(disturb_constrs + [ norm( R*(Pxw*w + Pxv*v + x_tilde) , Inf) <= alpha13 ], ...
+						alpha13, ...
+						sdpsettings('verbose',1));
+		sol{i}.alpha = value(alpha13);
+
+	end
+
+else
+	disp('User decided to skip this experiment.')
+end
+
+%% Experiment 15
+
+experim_num = experim_num + 1;
+
+disp('=============================================')
+disp('Experiment 15: Comparing Advantage (?) of ROO')
+
+if perform_experiment(experim_num)
+	clear all
+	%Grab ACC System
+
+	load('data/system_examples/acc_m1_systems.mat')
+
+	n = size(acc_dsys.A,1);
+	A = acc_dsys.A;
+
+	perf_level = 1;
+
+	% Transform into ROO form
+	L_roo = sdpvar(n - size(acc_dsys.C,1),size(acc_dsys.C,1),'full');
+	e0 = sdpvar(n-size(acc_dsys.C,1),1);
+	w_u = sdpvar(1,1,'full');
+	w_a = sdpvar(2,1,'full');
+	v0 = sdpvar(size(acc_dsys.C,1),1,'full');
+	v1 = sdpvar(size(acc_dsys.C,1),1,'full');
+
+	alpha15 = sdpvar(1,1,'full');
+
+	roo_obj = norm((A(3,3) - L_roo*A([1 2],3))*e0  + w_u + (A(3,[1 2])-L_roo*A([1 2],[1 2])) * (- v0) - L_roo*w_a - L_roo * v1,Inf);
+
+	%Constraints
+	constrs = [];
+	constrs = constrs + [ -perf_level <= e0 <= perf_level , uncertain(e0) ];
+	constrs = constrs + [ -acc_dsys.d <= [ w_u ; w_a ] <= acc_dsys.d , uncertain(w_u) , uncertain(w_a) ];
+	constrs = constrs + [ -acc_dsys.m <= [ v0 ; v1 ] <= acc_dsys.m , uncertain(v0) , uncertain(v1) ];
+	constrs = constrs + [ roo_obj <= alpha15 ];
+
+
+	sol_complete = optimize(constrs,alpha15,sdpsettings('verbose',0));
+
+	disp(value(alpha15))
+
+	alpha15_2 = sdpvar(1,1,'full');
+
+	F_roo = sdpvar(n - size(acc_dsys.C,1),size(acc_dsys.C,1),'full');
+	r_roo = sdpvar(1,1,'full')
+
+	roo_obj2 = norm((A(3,3) - F_roo*A([1 2],3))*e0  + w_u + (A(3,[1 2])-F_roo*A([1 2],[1 2])) * (- v0) - F_roo*w_a - F_roo * v1 - r_roo,Inf);
+
+	constrs = [];
+	constrs = constrs + [ -perf_level <= e0 <= perf_level , uncertain(e0) ];
+	constrs = constrs + [ -acc_dsys.d <= [ w_u ; w_a ] <= acc_dsys.d , uncertain(w_u) , uncertain(w_a) ];
+	constrs = constrs + [ -acc_dsys.m <= [ v0 ; v1 ] <= acc_dsys.m , uncertain(v0) , uncertain(v1) ];
+	constrs = constrs + [ roo_obj2 <= alpha15_2 ];
+
+	sol_complete2 = optimize(constrs,alpha15_2,sdpsettings('verbose',0));
+	disp(value(alpha15_2))
 
 else
 	disp('User decided to skip this experiment.')

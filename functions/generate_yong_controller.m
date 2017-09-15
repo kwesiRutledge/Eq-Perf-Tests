@@ -7,6 +7,7 @@ function [ results ] =  generate_yong_controller( varargin )
 %		Potential Usage:
 %			generate_yong_controller( sys , t_horizon , verbosity )
 %			generate_yong_controller( ... , 's' , dim_s )
+% 			generate_yong_controller( ... , 'PL' , perf_level)
 %
 %		Inputs:
 %			sys			- Struct containing system matrices and other valuable system
@@ -29,7 +30,7 @@ sys = varargin{1};
 t_horizon = varargin{2};
 verbosity = varargin{3};
 
-feasible_strs = {'s','solver'};
+feasible_strs = {'s','PL'};
 
 %The first expression (containing mod() ) reflects that we expect to have 3 + 2*n number of arguments (where n=0,1,2,...)
 if mod(nargin-3,2) 
@@ -41,7 +42,7 @@ end
 %The second condition expresses that if the expression has more than 3 arguments, we expect one of those arguments to be
 %	one of our qualifiers (e.g. 'PL' or 'R')
 for ind = (3+1):2:nargin
-	if (~strcmp(varargin{ind},'PL')) & ( ~strcmp(varargin{ind},'R') )
+	if (~any(strcmp(feasible_strs,varargin{ind})) )
 		error('Unrecognized string in input.')
 	end
 end
@@ -64,6 +65,13 @@ if ~any(strcmp(varargin,'s'))
 	dim_s = n;
 else
 	dim_s = varargin{ find(strcmp(varargin,'s')) + 1 };
+end
+
+if any(strcmp(varargin,'PL'))
+	%Remove x0 field from system.
+	rmfield(sys,'x0')
+	sys.x0 = sdpvar(n,1,'full');
+	perf_level = varargin{ find(strcmp(varargin,'PL')) + 1 };
 end
 
 % Creating Skaf Matrices with Yong's Modifications
@@ -140,6 +148,10 @@ end
 robust_constr = robust_constr + [ -sys.m <= v <= sys.m , uncertain(v) ];
 robust_constr = robust_constr + [ -sys.d <= w <= sys.d , uncertain(w) ];
 
+if any(strcmp(varargin,'PL'))
+	robust_constr = robust_constr + [ -perf_level <= sys.x0 <= perf_level , uncertain(sys.x0) ];
+end
+
 if verbosity >= 2
 	robust_constr
 end
@@ -183,13 +195,18 @@ end
 % Saving Results
 %---------------
 results.Q = value(Q);
-value(Q)
+results.Q( isnan(value(Q)) ) = 0;
 results.r = value(r);
-value(r)
+results.r( isnan(value(r)) ) = 0;
 results.opt_obj = value(alpha0);
-value(alpha0)
+value(alpha0);
 
-results.F = value( (pinv(value(eye(size(Q,1)) + Q*Cm*H)) ) * Q)
-results.u0 = value((eye(size(results.F,1)) + results.F*Cm*H) * r);
+if any(isnan(value(Q))) | any(isnan(value(r))) | any(isnan(value(alpha0)))
+	%Warn the user
+	warning('There are NaNs in Q,r,or opt_obj. This can be because of bad inputs or because some part of the optimization variables are unused. Setting NaNs to zero.')
+end
+
+results.F = value( (pinv(value(eye(size(results.Q,1)) + results.Q*Cm*H)) ) * results.Q)
+results.u0 = value((eye(size(results.F,1)) + results.F*Cm*H) * results.r);
 
 end

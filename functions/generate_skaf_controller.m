@@ -191,12 +191,12 @@ if verbosity >= 1
 end
 
 %Save results
-results.Q = value(Q)
+results.Q = value(Q);
 value(Q)
-results.r = value(r)
+results.r = value(r);
 value(r)
-results.opt_obj = value(alpha0)
+results.opt_obj = value(alpha0);
 value(alpha0)
 
-results.F = value( (pinv(value(eye(size(Q,1)) + Q*Cm*H)) ) * Q)
+results.F = value( (pinv(value(eye(size(Q,1)) + Q*Cm*H)) ) * Q);
 results.u0 = value((eye(size(results.F,1)) + results.F*Cm*H) * r);

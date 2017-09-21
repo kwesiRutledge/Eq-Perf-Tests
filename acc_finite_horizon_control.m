@@ -1324,7 +1324,11 @@ if perform_experiment(experim_num)
 
 	acc_error_dsys.B = eye(size(acc_dsys.B,1));
 
+	%Replace acc_error_sys
+	load('data/system_examples/random1.mat');
+	acc_error_dsys = r_sys;
 
+	%acc_error_dsys.x0 = randn(size(acc_error_dsys.A,1),1);
 
 	exp_params{experim_num}.n = n;
 	exp_params{experim_num}.d = acc_dsys.d;
@@ -1339,6 +1343,7 @@ if perform_experiment(experim_num)
 
 		% Create Matrices Necessary for Original Skaf and Boyd Method
 		%------------------------------------------------------------
+		acc_error_dsys.x0 = sdpvar(size(acc_error_dsys.A,1),1,'full');
 		[G{experim_num},H{experim_num},Cm{experim_num},x0m{experim_num}] = create_skaf_n_boyd_matrices(acc_error_dsys,exp_params{experim_num}.T);
 		disp('Created Skaf and Boyd Matrices.')
 
@@ -1389,9 +1394,11 @@ if perform_experiment(experim_num)
 
 	    %Solve Optimization
 	    disp('Solving YALMIP Robust Optimization...')
-	    op_num = 2;
-	    ops = sdpsettings('verbose',op_num);
+	    op_num = 3;
+	    ops = sdpsettings('verbose',op_num,'linprog.MaxIter',1000);
 	    exp_results{experim_num}.sol_robust{T} = optimize(l_diag_constr+robust_constr+epi_constr,exp_params{experim_num}.alpha,ops);
+
+	    disp(ops.solver)
 
 	    if exp_results{experim_num}.sol_robust{T}.problem == 0
 	    	disp(['YALMIP Robust Optimization Solved'])

@@ -5,12 +5,14 @@ clear all;
 close all;
 clc;
 
+%% Constants
+
 ki = 0.2890; % already divided by m
 f_0 = 0.6558; % already divided by m
 f_1 = 0.0058; % already divided by m
 T = 1/25; % controller period
 
-%% continuous matrices
+%% Continuous matrices
 A = [-f_1, 0, 0;
      -1, 0, 1;
       0, 0, 0;];

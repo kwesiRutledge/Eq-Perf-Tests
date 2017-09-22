@@ -45,6 +45,7 @@ true
 
 perform_experiment(11) = true;
 
+
 %% Experiment 1
 disp('============================================')
 disp('Experiment 1: Basics of Skaf and Boyd Method')
@@ -1313,6 +1314,9 @@ experim_num = 11;
 
 if perform_experiment(experim_num)
 
+	load('data/system_examples/acc2.mat')
+	acc_error_dsys = acc_d2;
+
 	%Defining Constants
 	acc_dsys.x0 = sdpvar(3,1,'full');
 	acc_dsys.d = 0.1;
@@ -1325,8 +1329,8 @@ if perform_experiment(experim_num)
 	acc_error_dsys.B = eye(size(acc_dsys.B,1));
 
 	%Replace acc_error_sys
-	load('data/system_examples/random1.mat');
-	acc_error_dsys = r_sys;
+	% load('data/system_examples/random1.mat');
+	% acc_error_dsys = r_sys;
 
 	%acc_error_dsys.x0 = randn(size(acc_error_dsys.A,1),1);
 

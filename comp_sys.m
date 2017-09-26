@@ -105,12 +105,14 @@ disp('A Matrices')
 method_names = { 'Tiancheng''s' , 'Mine' , 'Petter''s Constants' };
 A_cell = { Ad , acc_dsys.A , s3.Ad };
 B_cell = { Bd , acc_dsys.B , s3.Bd };
+E_cell = { Ed , acc_dsys.E , s3.Ed };
+F_cell = { Fd , acc_dsys.F , s3.Kd };
 
-comparing = {'A','B'};
+comparing = {'A','B','E','F'};
 
 for mat_num = 1:length(comparing)
 	disp('======================')
-	disp([comparing(mat_num) ' Matrices'])
+	disp([comparing{mat_num} ' Matrices'])
 
 	for method_num = 1 : length(method_names)
 		disp(method_names{method_num})
@@ -120,6 +122,14 @@ for mat_num = 1:length(comparing)
 
 		if strcmp(comparing{mat_num},'B')
 			disp(B_cell{method_num})
+		end
+
+		if strcmp(comparing{mat_num},'E')
+			disp(E_cell{method_num})
+		end
+
+		if strcmp(comparing{mat_num},'F')
+			disp(F_cell{method_num})
 		end
 
 	end

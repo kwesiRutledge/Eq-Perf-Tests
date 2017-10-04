@@ -69,7 +69,7 @@ end
 
 if any(strcmp(varargin,'PL'))
 	%Remove x0 field from system.
-	rmfield(sys,'x0')
+	rmfield(sys,'x0');
 	sys.x0 = sdpvar(n,1,'full');
 	perf_level = varargin{ find(strcmp(varargin,'PL')) + 1 };
 end
@@ -79,7 +79,7 @@ end
 
 dyn_obs_sys = dyn_obs_ify(sys,dim_s);
 
-[G,H,Cm,x0m] = create_skaf_n_boyd_matrices(dyn_obs_sys,t_horizon)
+[G,H,Cm,x0m] = create_skaf_n_boyd_matrices(dyn_obs_sys,t_horizon);
 
 if verbosity >= 1
 	disp('Created Skaf Constants')
@@ -105,10 +105,18 @@ r = sdpvar(size(H,2),1,'full');
 % 	v = [ v ; zeros(dim_s,1) ; v0((t-1)*size(sys.C,1) + 1:t*size(sys.C,1))];
 % end
 
-w = sdpvar((n+dim_s)*t_horizon,1,'full');
-v = sdpvar((size(sys.C,1)+dim_s)*t_horizon,1,'full');
+w_y = sdpvar(n,t_horizon,'full');
+v_y = sdpvar(size(sys.C,1),t_horizon,'full');
 
-whos('Q','r','w','v')
+%Make w and v into vectors
+w = []; v = [];
+for t = 1 : t_horizon
+	w = [ w ; w_y(:,t) ; zeros(dim_s,1) ];
+	v = [ v ; zeros(dim_s,1) ; v_y(:,t) ];
+end
+
+
+%whos('Q','r','w','v');
 
 if verbosity >= 1
 	disp('- Variables Created')
@@ -145,8 +153,10 @@ if verbosity >= 2
 end
 
 %Robustifying against w0 and v0
-robust_constr = robust_constr + [ -sys.m <= v <= sys.m , uncertain(v) ];
-robust_constr = robust_constr + [ -sys.d <= w <= sys.d , uncertain(w) ];
+for t = 1 : t_horizon
+	robust_constr = robust_constr + [ -sys.m <= v_y(:,t) <= sys.m , uncertain(v_y(:,t)) ];
+	robust_constr = robust_constr + [ -sys.d <= w_y(:,t) <= sys.d , uncertain(w_y(:,t)) ];
+end
 
 if any(strcmp(varargin,'PL'))
 	robust_constr = robust_constr + [ -perf_level <= sys.x0 <= perf_level , uncertain(sys.x0) ];
@@ -165,14 +175,14 @@ if verbosity >=2
 end
 
 %Disturbance Constraints (Used because the disturbances has some forced zeros)
-for t = 1 : t_horizon
-	disturb_constrs = disturb_constrs + [ w((t-1)*(n+dim_s)+n+1:t*(n+dim_s)) == 0 ];
-	disturb_constrs = disturb_constrs + [ v((t-1)*(size(sys.C,1)+dim_s)+1:(t-1)*((size(sys.C,1)+dim_s))+dim_s ) == 0 ];
-end
+% for t = 1 : t_horizon
+% 	disturb_constrs = disturb_constrs + [ w((t-1)*(n+dim_s)+n+1:t*(n+dim_s)) == 0 ];
+% 	disturb_constrs = disturb_constrs + [ v((t-1)*(size(sys.C,1)+dim_s)+1:(t-1)*((size(sys.C,1)+dim_s))+dim_s ) == 0 ];
+% end
 
-if verbosity >= 2
-	disturb_constrs
-end
+% if verbosity >= 2
+% 	disturb_constrs
+% end
 
 if verbosity >= 1
 	disp('- Constraints Created')
@@ -182,7 +192,7 @@ end
 %--------------------
 
 ops = sdpsettings('verbose',verbosity);
-results.sol_robust = optimize(l_diag_constr+robust_constr+epi_constr+disturb_constrs,alpha0,ops);
+results.sol_robust = optimize(l_diag_constr+robust_constr+epi_constr,alpha0,ops);
 
 if verbosity >= 1
 	if results.sol_robust.problem == 0
@@ -206,7 +216,7 @@ if any(isnan(value(Q))) | any(isnan(value(r))) | any(isnan(value(alpha0)))
 	warning('There are NaNs in Q,r,or opt_obj. This can be because of bad inputs or because some part of the optimization variables are unused. Setting NaNs to zero.')
 end
 
-results.F = value( (pinv(value(eye(size(results.Q,1)) + results.Q*Cm*H)) ) * results.Q)
+results.F = value( (pinv(value(eye(size(results.Q,1)) + results.Q*Cm*H)) ) * results.Q);
 results.u0 = value((eye(size(results.F,1)) + results.F*Cm*H) * results.r);
 
 end

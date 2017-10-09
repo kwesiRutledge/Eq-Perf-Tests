@@ -89,6 +89,22 @@ for t =  1 : 10
 	skaf_opt(t) = sol_skaf.opt_obj;
 	yong_opt(t) = sol_yong.opt_obj;
 
+	%Triangle Inequality
+	L 		= sdpvar(size(acc.A,1),size(acc.C,1),'full');
+	alpha_0 = sdpvar(1,1,'full');
+
+	%Create optimization objective.
+	e_t = norm( (acc.A-L*acc.C)^t , Inf );
+	for k = 1:t
+		e_t = e_t + norm( ( (acc.A-L*acc.C)^k ) * L , Inf ) * (acc.m/pl) + norm( ( (acc.A-L*acc.C)^k ) * acc.E , Inf )*(acc.d/pl) ;
+	end
+	ti_sol2(t) = optimize([],e_t,sdpsettings('verbose',verbosity));
+
+	tri_ineq_solved(t) = (sol_ti.problem==0);
+	tri_ineq_opt(t) = value(e_t);
+
+	disp( [ num2str(t) ' iterations finished.' ])
+
 end
 
 figure;

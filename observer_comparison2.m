@@ -79,22 +79,22 @@ clear L alpha_0 e1_t
 t_lim = 10;
 
 %Looping
-for t =  1 : 10
+for t =  1 : t_lim
 
 	%Calculate Skaf and Yong Solutions at this time step
 	sol_skaf = generate_skaf_controller(acc_e,t,verbosity,'PL',pl);
-	sol_yong = generate_yong_controller(acc_e,t,verbosity,'PL',pl);
+	%sol_yong = generate_yong_controller(acc_e,t,verbosity,'PL',pl);
 
 	%Save data to vector
 	skaf_opt(t) = sol_skaf.opt_obj;
-	yong_opt(t) = sol_yong.opt_obj;
+	%yong_opt(t) = sol_yong.opt_obj;
 
 	%Triangle Inequality
 	L 		= sdpvar(size(acc.A,1),size(acc.C,1),'full');
 	alpha_0 = sdpvar(1,1,'full');
 
 	%Create optimization objective.
-	e_t = norm( (acc.A-L*acc.C)^t , Inf );
+	e_t = norm( (acc.A-L*acc.C) , Inf )^t;
 	for k = 1:t
 		e_t = e_t + norm( ( (acc.A-L*acc.C)^k ) * L , Inf ) * (acc.m/pl) + norm( ( (acc.A-L*acc.C)^k ) * acc.E , Inf )*(acc.d/pl) ;
 	end
@@ -110,6 +110,10 @@ end
 figure;
 hold on;
 plot(skaf_opt)
-plot(yong_opt)
+plot(tri_ineq_opt(1)*ones(size(skaf_opt)))
+plot(ones(size(tri_ineq_opt))*pl)
 
-legend('Skaf','Yong')
+legend('Proposed Method','Triangle Ineq.','Desired Performance')
+xlabel('T')
+ylabel('Magnitude of the Error $||e(T)||_{\infty}$','Interpreter','latex')
+title('Guaranteed Error at time step T')

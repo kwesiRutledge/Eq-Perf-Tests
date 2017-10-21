@@ -71,6 +71,8 @@ for c_num = 1:3
 
 	end
 
+	exp_results{c_num} = skaf_opt;
+
 	% Plot results
 
 	figure;
@@ -87,3 +89,17 @@ for c_num = 1:3
 	%legend('Skaf','Yong','Triangle Inequality','Desired Error')
 		
 end
+
+%Plot all 3 together
+symb_list = {'o','b','x'};
+figure;
+hold on;
+for c_num = 1:length(exp_results)
+	plot(exp_results{c_num},symb_list{c_num})
+end
+plot(ones(1,10),':')
+
+title('Effect of Different Measurement Matrices on Guarunteed Error')
+xlabel('Time Horizon (T)')
+ylabel('Error Magnitude $||e(t)||_{\infty}$','Interpreter','latex')
+legend('C1','C2','C3','Desired Error')

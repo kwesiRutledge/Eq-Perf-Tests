@@ -1,4 +1,6 @@
 % observer_comparison4.m
+%	This script does the tests to see if Skaf's method for optimal controller design
+%	for Yunus's problem of coordinating agents using cLTL.
 
 clear all;
 close all;

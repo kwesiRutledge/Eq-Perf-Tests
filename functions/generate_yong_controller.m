@@ -115,7 +115,6 @@ for t = 1 : t_horizon
 	v = [ v ; zeros(dim_s,1) ; v_y(:,t) ];
 end
 
-
 %whos('Q','r','w','v');
 
 if verbosity >= 1
@@ -194,6 +193,8 @@ end
 ops = sdpsettings('verbose',verbosity);
 results.sol_robust = optimize(l_diag_constr+robust_constr+epi_constr,alpha0,ops);
 
+disp(value(dyn_obs_sys.x0))
+
 if verbosity >= 1
 	if results.sol_robust.problem == 0
 		disp(['YALMIP Robust Optimization Solved'])
@@ -218,5 +219,11 @@ end
 
 results.F = value( (pinv(value(eye(size(results.Q,1)) + results.Q*Cm*H)) ) * results.Q);
 results.u0 = value((eye(size(results.F,1)) + results.F*Cm*H) * results.r);
+
+results.G = G;
+results.H = H;
+results.Cm = Cm;
+results.x0m = x0m;
+
 
 end

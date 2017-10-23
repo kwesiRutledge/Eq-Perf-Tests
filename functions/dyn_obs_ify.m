@@ -58,10 +58,8 @@ function [ sys_w_dyn_obs ] = dyn_obs_ify( varargin )
 	if nargin == 2
 		%the size of the hidden state is given
 		s = varargin{2};
-	elseif nargin == 1
-		s = n;
 	else
-		error('Unexpected number of arguments.')
+		s = n;
 	end
 		
 	% Creating Matrices

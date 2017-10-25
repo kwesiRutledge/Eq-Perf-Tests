@@ -193,8 +193,6 @@ end
 ops = sdpsettings('verbose',verbosity);
 results.sol_robust = optimize(l_diag_constr+robust_constr+epi_constr,alpha0,ops);
 
-disp(value(dyn_obs_sys.x0))
-
 if verbosity >= 1
 	if results.sol_robust.problem == 0
 		disp(['YALMIP Robust Optimization Solved'])
@@ -202,6 +200,9 @@ if verbosity >= 1
 		error(['YALMIP Robust Optimization NOT Solved.'])
 	end
 end
+
+w
+v
 
 % Saving Results
 %---------------

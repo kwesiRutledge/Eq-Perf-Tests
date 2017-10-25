@@ -21,7 +21,7 @@ function [ results ] = observer_comparison5( varargin )
 	%% Constants %%
 	%%%%%%%%%%%%%%%
 
-	t_horizon = 4;
+	t_horizon = 7;
 	
 	perf_level = 1;
 
@@ -50,10 +50,13 @@ function [ results ] = observer_comparison5( varargin )
 
 	acc_e.x0 = sdpvar(n,1,'full');
 
+	global acc_e
+
 	%Construct Optimization Matrices
 	%-------------------------------
 
 	s0 = sdpvar(dim_s,1,'full');
+	global s0
 	dyn_obs_sys = dyn_obs_ify(acc_e,dim_s,s0);
 
 	[G,H,Cm,x0m] = create_skaf_n_boyd_matrices(dyn_obs_sys,t_horizon);
@@ -120,7 +123,7 @@ function [ results ] = observer_comparison5( varargin )
 		robust_constr = robust_constr + [ -acc_e.d <= w_y(:,t) <= acc_e.d , uncertain(w_y(:,t)) ];
 	end
 
-	robust_constr = robust_constr + [ -perf_level <= acc_e.x0 <= perf_level , uncertain(acc_e.x0) ];
+	robust_constr = robust_constr + [ -perf_level <= dyn_obs_sys.x0 <= perf_level , uncertain(dyn_obs_sys.x0) ];
 
 	if verbosity >= 2
 		disp('Robust Constraints:')

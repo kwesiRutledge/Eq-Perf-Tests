@@ -34,17 +34,107 @@ function [ results ] = observer_comparison6( varargin )
 		dim_s = n;
 	end
 
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	%% Set Up Loops for Different Time Horizons %%
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+	acc_e = acc;
+	acc_e.B = eye(size(acc.A,1));	%For error system, the input we are interested in
+									% isn't modified by a B matrix
+	%acc_e.x0 = zeros(n,1);		%The initial condition needs to be set due to my rigid,
+								% old way of doing things. It will not be used when pl is given.
+
+	acc_e.x0 = sdpvar(n,1,'full');
+
 	for t_horizon = 1 : T_max
 
 		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 		%% Perform Similar Optimization with Standard Yong Controller %%
 		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-		results.curr_fcn = generate_yong_controller( acc_e , t_horizon , verbosity , 'PL' , perf_level );
+		results.curr_fcn(t_horizon) = generate_skaf_controller( acc_e , t_horizon , verbosity , 'PL' , perf_level );
 
-		
+		results.std_obsv_guarantees(t_horizon) = results.curr_fcn(t_horizon).opt_obj;
+
+		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+		%% Applying ROO Requires A Slightly Modified Optimization %%
+		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+		%Create Reduced Order Observer's Error Dynamics
+		acc_roo.A = acc.A(3,3);
+		acc_roo.B = eye(1);
+		acc_roo.C = acc.A([1:2],3);
+		acc_roo.G = acc.E([1:2],1);
+		% acc_roo.m = acc.m;
+		acc_roo.d = acc.d; 
+		acc_roo.x0 = sdpvar(1,1,'full');
+
+		n_roo = size(acc_roo.A,1);
+
+		%Create Skaf Matrices
+		[G,H,Cm,x0m] = create_skaf_n_boyd_matrices(acc_roo,t_horizon);
+
+		Q = sdpvar(size(H,2),size(Cm,1),'full');
+		r = sdpvar(size(H,2),1,'full');
+
+		w = sdpvar(n_roo*t_horizon,1,'full');
+
+		% Create Compound Expressions with YALMIP Variables
+		%--------------------------------------------------
+
+		%Calculate Big C Matrix
+		G_at_each_n = {};
+		for i = 1:t_horizon
+			G_at_each_n{i} = acc_roo.G; 
+		end
+
+		G_big = [ blkdiag(G_at_each_n{:}) ];
+
+		Pxw = (eye(n_roo*(t_horizon+1))+H*Q*Cm)*G + H*Q*G_big;
+		%Pxv = H*Q;
+		x_tilde = (eye(n_roo*(t_horizon+1)) + H*Q*Cm)*x0m + H*r;
+
+		R = [ zeros(n_roo,n_roo*t_horizon) eye(n_roo) ];
+
+		objective = norm( R*(x_tilde + Pxw * w) , Inf );
+
+		% Create YALMIP Optimization's Constraints
+		%-----------------------------------------
+
+		l_diag_constr = []; robust_constr = []; epi_constr = [];
+
+		%Lower Diagonal Constraint
+
+		for bl_row_num = 1 : t_horizon-1
+			l_diag_constr = l_diag_constr + [ Q(	[(bl_row_num-1)*size(acc_roo.B,2)+1:bl_row_num*size(acc_roo.B,2)], ...
+													[bl_row_num*size(acc_roo.C,1)+1:end] ) == 0 ];
+		end
+
+		%Robustifying against w0 and v0
+		robust_constr = robust_constr + [ -acc_roo.d <= w <= acc_roo.d , uncertain(w) ];
+		robust_constr = robust_constr + [ -perf_level <= acc_roo.x0 <= perf_level , uncertain(acc_roo.x0) ];
+
+		%Epigraph Constraint
+		alpha0 = sdpvar(1,1,'full');
+		epi_constr = [ objective <= alpha0 ];
+
+		ops = sdpsettings('verbose',verbosity);
+		results.roo(t_horizon) = optimize(l_diag_constr+robust_constr+epi_constr,alpha0,ops);
+		results.roo_guarantees(t_horizon) = value(alpha0);
+		if verbosity >= 1
+			if results.roo.problem == 0
+				disp(['YALMIP Optimization Solved'])
+			else
+				error(['YALMIP Optimization NOT Solved.'])
+			end
+		end
 
 	end
+
+	figure;
+	hold on;
+	plot(results.roo_guarantees)
+	plot(results.std_obsv_guarantees)
 
 	% %%%%%%%%%%%%%%%%%%%%%
 	% %% Compare Results %%

@@ -50,13 +50,10 @@ function [ results ] = observer_comparison5( varargin )
 
 	acc_e.x0 = sdpvar(n,1,'full');
 
-	global acc_e
-
 	%Construct Optimization Matrices
 	%-------------------------------
 
 	s0 = sdpvar(dim_s,1,'full');
-	global s0
 	dyn_obs_sys = dyn_obs_ify(acc_e,dim_s,s0);
 
 	[G,H,Cm,x0m] = create_skaf_n_boyd_matrices(dyn_obs_sys,t_horizon);

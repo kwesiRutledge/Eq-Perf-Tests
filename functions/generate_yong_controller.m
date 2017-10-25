@@ -158,7 +158,7 @@ for t = 1 : t_horizon
 end
 
 if any(strcmp(varargin,'PL'))
-	robust_constr = robust_constr + [ -perf_level <= sys.x0 <= perf_level , uncertain(sys.x0) ];
+	robust_constr = robust_constr + [ -perf_level <= dyn_obs_sys.x0 <= perf_level , uncertain(dyn_obs_sys.x0) ];
 end
 
 if verbosity >= 2
@@ -200,9 +200,6 @@ if verbosity >= 1
 		error(['YALMIP Robust Optimization NOT Solved.'])
 	end
 end
-
-w
-v
 
 % Saving Results
 %---------------

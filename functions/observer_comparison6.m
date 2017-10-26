@@ -14,14 +14,15 @@ function [ results ] = observer_comparison6( varargin )
 		verbosity	= varargin{1};
 	elseif nargin == 2
 		verbosity	= varargin{1};
-		dim_s		= varargin{2};
+		T_max		= varargin{2};
 	end
 
 	%%%%%%%%%%%%%%%
 	%% Constants %%
 	%%%%%%%%%%%%%%%
-
-	T_max = 10;
+	if ~exist('T_max')
+		T_max = 10;
+	end
 	
 	perf_level = 1;
 
@@ -77,12 +78,12 @@ function [ results ] = observer_comparison6( varargin )
 		%Create Skaf Matrices
 		[S,H,Cm,x0m] = create_skaf_n_boyd_matrices(acc_roo,t_horizon);
 
-		Q = sdpvar(size(H,2),size(Cm,1),'full');
+		Q = sdpvar(size(H,2),size(Cm,1),'full')
 		r = sdpvar(size(H,2),1,'full');
 
 		% b_dim = size(acc_roo.E,2);
 		b_dim = 3;
-		b = sdpvar(b_dim*(t_horizon+1),1,'full')
+		b = sdpvar(b_dim*(t_horizon+1),1,'full');
 
 		% Create Compound Expressions with YALMIP Variables
 		%--------------------------------------------------

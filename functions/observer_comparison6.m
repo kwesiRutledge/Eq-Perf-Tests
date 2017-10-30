@@ -68,7 +68,7 @@ function [ results ] = observer_comparison6( varargin )
 		acc_roo.E = [acc.E(3,1) acc.A(3,[1:2]) zeros(1,3) ];
 		% acc_roo.G1 = [acc.E([1:2],1) acc.A([1:2],[1:2])];
 		% acc_roo.G2 = [acc.E([1:2],1) zeros(2) ];
-		acc_roo.G = [acc.E([1:2],1) acc.A([1:2],[1:2]) acc.E([1:2],1) zeros(2) ];
+		acc_roo.G = [acc.E([1:2],1) acc.A([1:2],[1:2]) zeros(2,1) eye(2) ];
 		acc_roo.m = acc.m;
 		acc_roo.d = acc.d; 
 		acc_roo.x0 = sdpvar(1,1,'full');
@@ -95,9 +95,9 @@ function [ results ] = observer_comparison6( varargin )
 		for i = 1:t_horizon
 			% G1_at_each_n{i} = acc_roo.G1;
 			% G2_at_each_n{i} = acc_roo.G2;
-			G_big( [(i-1)*size(acc_roo.G,1) + 1 : i*size(acc_roo.G,1) ] , : ) = [ zeros(size(acc_roo.G,1),(i-1)*b_dim) acc_roo.G zeros(size(acc_roo.G,1),(t_horizon-i)*b_dim )]
+			G_big( [(i-1)*size(acc_roo.G,1) + 1 : i*size(acc_roo.G,1) ] , : ) = [ zeros(size(acc_roo.G,1),(i-1)*b_dim) acc_roo.G zeros(size(acc_roo.G,1),(t_horizon-i)*b_dim )];
 			E_at_each_n{i} = acc_roo.E; 
-			E_big( [(i-1)*size(acc_roo.E,1) + 1 : i*size(acc_roo.E,1) ] , : ) = [ zeros(size(acc_roo.E,1),(i-1)*b_dim) acc_roo.E zeros(size(acc_roo.E,1),(t_horizon-i)*b_dim ) ]
+			E_big( [(i-1)*size(acc_roo.E,1) + 1 : i*size(acc_roo.E,1) ] , : ) = [ zeros(size(acc_roo.E,1),(i-1)*b_dim) acc_roo.E zeros(size(acc_roo.E,1),(t_horizon-i)*b_dim )];
 		end
 		E_bar = [ blkdiag(E_at_each_n{:}) ];
 		% G1_big = [ blkdiag(G1_at_each_n{:}) ];
@@ -170,6 +170,13 @@ function [ results ] = observer_comparison6( varargin )
 	hold on;
 	plot(results.roo_guarantees)
 	plot(results.std_obsv_guarantees)
+	plot(ones(size(results.roo_guarantees))*perf_level,'m:')
+
+	xlabel('Time Horizon T')
+	ylabel('Magnitude of Error $||e(T)||_{\infty}$','Interpreter','latex')
+	title('Guaranteed Error at time step T')
+	legend('Optimal Reduced Order Observer','Optimal Affine Observer','Desired Performance Level')
+
 
 	% %%%%%%%%%%%%%%%%%%%%%
 	% %% Compare Results %%

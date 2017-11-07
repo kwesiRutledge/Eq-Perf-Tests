@@ -1,5 +1,5 @@
 function [ results ] = observer_comparison6( varargin )
-	%	observer_comparison5.m
+	%	observer_comparison6.m
 	%		The goal of this test is to observe the effect of using the
 	%		dynamic output feedback controller's initial condition as an
 	%		optimization variable in yong's method.

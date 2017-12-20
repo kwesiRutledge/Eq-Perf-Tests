@@ -50,7 +50,7 @@ function [ results ] = observer_comparison6( varargin )
 	for t_horizon = 1 : T_max
 
 		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-		%% Perform Similar Optimization with Standard Yong Controller %%
+		%% Perform Similar Optimization with Standard Skaf Controller %%
 		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 		results.curr_fcn(t_horizon) = generate_skaf_controller( acc_e , t_horizon , verbosity , 'PL' , perf_level );
@@ -78,7 +78,7 @@ function [ results ] = observer_comparison6( varargin )
 		%Create Skaf Matrices
 		[S,H,Cm,x0m] = create_skaf_n_boyd_matrices(acc_roo,t_horizon);
 
-		Q = sdpvar(size(H,2),size(Cm,1),'full')
+		Q = sdpvar(size(H,2),size(Cm,1),'full');
 		r = sdpvar(size(H,2),1,'full');
 
 		% b_dim = size(acc_roo.E,2);
@@ -173,7 +173,7 @@ function [ results ] = observer_comparison6( varargin )
 	plot(ones(size(results.roo_guarantees))*perf_level,'m:')
 
 	xlabel('Time Horizon T')
-	ylabel('Magnitude of Error $||e(T)||_{\infty}$','Interpreter','latex')
+	ylabel('Magnitude of Error $||\xi(T)||_{\infty}$','Interpreter','latex')
 	title('Guaranteed Error at time step T')
 	legend('Optimal Reduced Order Observer','Optimal Affine Observer','Desired Performance Level')
 

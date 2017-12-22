@@ -3,8 +3,13 @@ function [results] = observer_tests( varargin )
 	%		How to run the observer_comparisonX.m scriipts programmatically
 	%
 
-	if ~any(strcmp(path,'./functions'))
+	% Add experiments and functions to the path
+	if isempty(strfind(path,'./functions/'))
 		addpath('./functions/')
+	end
+
+	if isempty(strfind(path,'./experiments/'))
+		addpath('./experiments/')
 	end
 
 	%% Constants

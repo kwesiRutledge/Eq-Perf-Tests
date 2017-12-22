@@ -29,7 +29,7 @@ function [ results ] = observer_comparison13( varargin )
 		T 			= varargin{2};
 	elseif nargin == 4
 		verbosity	= varargin{1};
-		T_missing	= varargin{2};
+		T	= varargin{2};
 		M1 = varargin{3};
 		M2 	= varargin{4};
 	else

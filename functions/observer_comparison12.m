@@ -174,7 +174,10 @@ function [ results ] = observer_comparison12( varargin )
 					 0 		0		1;
 					 -0.5	-3.5	-0.25];
 	tricky_sys1.B = [1;0;0];
-	tricky_sys1.C = [1 0 0; 0 1 0];
+	tricky_sys1.C = [0 1 0; 0 0 1];
+
+	tricky_sys1.m = 0;
+	tricky_sys1.d = 0.4;
 
 	curr_sys = tricky_sys1;
 
@@ -189,10 +192,6 @@ function [ results ] = observer_comparison12( varargin )
 	deltaM = M_L/2;
 	finish_flag_L = false;
 	while ~finish_flag_L
-
-		%
-		curr_sys.m = 0;
-		curr_sys.d = 0.4;
 
 		%Attempt to do the Luenberger Test
 		clear delta mu
@@ -247,10 +246,6 @@ function [ results ] = observer_comparison12( varargin )
 	finish_flag_A = false;
 
 	while ~finish_flag_A
-
-		%
-		curr_sys.m = 0;
-		curr_sys.d = 0.4*M_A;
 
 		%Attempt to do the FHAE Synthesis
 		[~,sol_attempt] = achieve_eq_recovery_for(curr_sys,T0,M_A,M_A,verbosity);

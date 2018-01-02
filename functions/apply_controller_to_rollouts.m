@@ -16,7 +16,8 @@ function [ varargout ] = apply_controller_to_rollouts(varargin)
 %
 %	Usage:
 %		apply_controller_to_rollouts(sys , controller , T , num_rollouts , M1)
-%		apply_controller_to_rollouts(sys , controller , T , num_rollouts , M1 ,'missing' , missing_t )
+%		apply_controller_to_rollouts(sys , controller , T , num_rollouts , M1 , 'missing' , missing_t )
+%		apply_controller_to_rollouts(sys , controller , T , num_rollouts , M1 , 'missing' , missing_t , 'rollout_length' , rollout_length )
 %
 %	Inputs:
 %		sys - 			This is a struct containing information about the time horizon of the model, as well as
@@ -30,9 +31,18 @@ function [ varargout ] = apply_controller_to_rollouts(varargin)
 %		
 %		num_rollouts - 	The number of rollouts considered.
 %
-%		bound_list - 	Contains the important bounds for each of these controllers
+%		M1 - 			Contains the important bounds for each of these controllers
 %						Members: .M1
 %						Optional Members: .M2
+%
+%		string_comm - 	A string indicating that the user would like to use a "special" option.
+%						Options: 'missing','rollout_length'
+%
+%
+%		missing_t - 	The locations of missing observations (in time) i.e. if missing_t = [1 2],
+%						then the observation (or y(t)) will be not available at t = 1 and t = 2.
+%
+%		rollout_len -	Defines the length of each rollout. When this is not defined, the rollout length is T.
 %
 %	Outputs:
 %		xi - 		Matrix containing every one of the 'num_rollouts' of rollouts
@@ -46,7 +56,7 @@ function [ varargout ] = apply_controller_to_rollouts(varargin)
 %% Input Processing %%
 %%%%%%%%%%%%%%%%%%%%%%
 
-if (nargin < 5)
+if (nargin < 5) or ( (nargin > 5) & (mod(nargin-5,2) == 1) )
 	error(['Improper number of arguments given. (Received ' num2str(nargin) ')'])
 end
 
@@ -57,8 +67,17 @@ num_rollouts= varargin{4};
 M1 			= varargin{5};
 
 if nargin > 5
-	if strcmp(varargin{6},'missing')
-		missing_t = varargin{7};
+	for str_ind = 1 : mod(nargin-5,2)
+		%Missing Data
+		%If we assume that some points are "periodically" missing
+		if strcmp(varargin{5 + 1 + (str_ind-1)*2},'missing')
+			missing_t = varargin{5+str_ind*2};
+		end
+		%Changed Rollout Length
+		%IF we assume that the rollout length IS NOT just T
+		if strcmp(varargin{5+1+(str_ind-1)*2},'rollout_length')
+			rollout_length = varargin{5+str_ind*2};
+		end
 	end
 end
 
@@ -88,6 +107,8 @@ d_u = size(sys.B,2);
 
 F = controller.F;
 u0 = controller.u0;
+
+%If rollout_length is defined, then use
 
 % disp(['size(F) = ' num2str(size(F)) ])
 % disp(['size(u0) = ' num2str(size(u0)) ])

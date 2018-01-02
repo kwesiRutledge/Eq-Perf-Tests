@@ -19,5 +19,6 @@ results = observer_tests(13,{'verbosity,time_horizon,M1,M2'})
 15. The objective of this set of experiments are:
 	* Consider the effect of changing the constant M1 on the minimal M2 that can be found for Equalized Recovery (assumes that the time horizon T is 6, by default). Note: A line search could be implemented to find minimal M1 AND minimial M2 using this method, but it is not considered here.
 	* Simulate when an estimator is defined for one time horizon, T, but the controller is run for an arbirary time horizon, T2.
-	
+
+16. The objective of this set of experiments was to duplicate the results of Experiment 14, when the proper 'E' matrix was used. Started before experiment 15 was completed because an error (no consideration of the E matrix) was observed in the design of experiments 14 and 15.
 

@@ -22,7 +22,7 @@ function [ varargout ] = apply_controller_to_rollouts(varargin)
 %	Inputs:
 %		sys - 			This is a struct containing information about the time horizon of the model, as well as
 %				  		some information on bounds of the process and measurement noises.
-%						Members: .A,.B,.C,.m,.d,
+%						Members: .A,.B,.C,.E,.m,.d,
 %
 %		controller -	This struct contains the (F,u0) matrices that fully define the controller.
 %						Members: .F,.u0
@@ -103,10 +103,20 @@ select_m = @(t,T_r) [zeros(n,t*n) eye(n) zeros(n,(T_r-t)*n) ];
 %Save important dimensions
 n = size(sys.A,1);
 p = size(sys.C,1);
-d_u = size(sys.B,2);
+m = size(sys.B,2);
 
 F = controller.F;
 u0 = controller.u0;
+
+if ~isfield(sys,'E')
+	sys.E = eye(n);	%If E is not explicitly defined, assume that it is identity.
+end
+
+E_bar = [];
+for i = 1:T
+	E_bar = blkdiag(E_bar,sys.E);
+end
+wd = size(sys.E,2);
 
 %If rollout_length is defined, then use
 
@@ -121,7 +131,7 @@ Pxm = H*F*inv(eye(p*T)-Cm*H*F);
 xi_factor = H*F*inv(eye(p*T)-Cm*H*F )*Cm;
 
 % Create Disturbances
-delta 	= unifrnd(-sys.d,sys.d,n*T,num_rollouts);
+delta 	= unifrnd(-sys.d,sys.d,wd*T,num_rollouts);
 mu 		= unifrnd(-sys.m,sys.m,p*T,num_rollouts);
 xi_0 	= unifrnd(-M1,M1,n,num_rollouts);
 
@@ -138,7 +148,7 @@ end
 
 xi =  A_col*xi_0 + H*repmat(u0,1,num_rollouts) + ...
         xi_factor*(A_col*xi_0 + H*repmat(u0,1,num_rollouts)) + ...
-        Pxd * delta + Pxm * mu;
+        Pxd * E_bar * delta + Pxm * mu;
 
 xi_mag = [];
 if nargout == 2

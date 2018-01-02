@@ -58,7 +58,7 @@ M1 			= varargin{5};
 
 if nargin > 5
 	if strcmp(varargin{6},'missing')
-		missing_t = varargin{7}
+		missing_t = varargin{7};
 	end
 end
 
@@ -76,6 +76,11 @@ for  i = 0:T
 	A_col = [ A_col ; sys.A^i ];
 end 
 
+n = size(sys.A,1);
+
+%Select matrix
+select_m = @(t,T_r) [zeros(n,t*n) eye(n) zeros(n,(T_r-t)*n) ];
+
 %Save important dimensions
 n = size(sys.A,1);
 p = size(sys.C,1);
@@ -89,29 +94,34 @@ u0 = controller.u0;
 % disp(['size(H) = ' num2str(size(H))])
 % disp(['size(Cm) = ' num2str(size(Cm)) ])
 
-% Create some trajectory
-Pxd = (eye(n*(T+1))+H*F*inv(eye(p*T)-Cm*H*F)*Cm)*S ;
+% Create some trajectory matrices
+Pxd = (eye(n*(T+1))+H*F*inv(eye(p*T)-Cm*H*F)*Cm)*S;
 Pxm = H*F*inv(eye(p*T)-Cm*H*F);
-xi_factor = (eye(n*(T+1)) +  H*F*inv(eye(p*T)-Cm*H*F )*Cm);
-
-% 
+xi_factor = H*F*inv(eye(p*T)-Cm*H*F )*Cm;
 
 % Create Disturbances
 delta 	= unifrnd(-sys.d,sys.d,n*T,num_rollouts);
 mu 		= unifrnd(-sys.m,sys.m,p*T,num_rollouts);
 xi_0 	= unifrnd(-M1,M1,n,num_rollouts);
 
+if exist('missing_t')
+	for missing_ob_num = missing_t
+		%Remove mu for the missing times (set mu to zero)
+		mu([missing_ob_num*p+1:(missing_ob_num+1)*p],:) = 0;
+	end
+end
+
 %%%%%%%%%%%%%%%%%%%%%
 %% Create Rollouts %%
 %%%%%%%%%%%%%%%%%%%%%
 
-xi =   xi_factor*(A_col*xi_0 + H*u0) + Pxd * delta + Pxm * mu;
+xi =  A_col*xi_0 + H*u0 + xi_factor*(A_col*xi_0 + H*u0) + Pxd * delta + Pxm * mu;
 
 xi_mag = [];
 if nargout == 2
 	for rollout_i = 1 : num_rollouts
 		for t = 0:T
-			xi_mag(t+1,rollout_i) = norm(xi(n*t+1:n*(t+1),rollout_i),Inf);
+			xi_mag(t+1,rollout_i) = norm(select_m(t,T)*xi(:,rollout_i),Inf);
 		end
 	end
 end

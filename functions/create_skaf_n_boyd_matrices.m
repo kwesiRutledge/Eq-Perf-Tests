@@ -52,7 +52,7 @@ function [G,H,C_big,x0_mat] = create_skaf_n_boyd_matrices(varargin)
 	%Calculate Big C Matrix
 	C_at_each_n = {};
 	for i = 1:T
-		if sum(m_locs == i-1)
+		if any(m_locs == (i-1))
 			C_at_each_n{i} = zeros(size(sys.C));
 		else
 			C_at_each_n{i} = sys.C;

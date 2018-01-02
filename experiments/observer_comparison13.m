@@ -88,42 +88,92 @@ function [ results ] = observer_comparison13( varargin )
 	r = sdpvar(d_u*T,1,'full');
 
 	% Creating Constraints assuming that 1 piece of data is missing
-	epi_constrs = [];
+	% +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	epi_constrs = []; graph_constrs = [];
+
+	Pxd = []; Pxm = []; xi_tilde = [];
+
 	for missing_loc = 0:(T-1)-1
 		% Create Trajectory Matrices
 		[S,H,Cm,xi0m] = create_skaf_n_boyd_matrices(acc_e,T,'missing',missing_loc);
 
-		Pxd{missing_loc+1} = (eye(n*(T+1))+S*Q*Cm)*S ;%E_bar*[ eye(b_dim*t_horizon) zeros(b_dim*t_horizon,b_dim) ];
-		Pxm{missing_loc+1} = S*Q;
-		xi_tilde{missing_loc+1} = (eye(n*(T+1)) + S*Q*Cm)*xi0m + S*r;
-
+		%Create Special selection matrices for selecting the proper variables
 		R = [ zeros(n,n*T) eye(n) ];
+		mu_select = [];
+		for i = 1:T
+			if any(missing_loc == (i-1))
+				mu_select = [ mu_select ; zeros(p,p*T) ];
+			else
+				mu_select = [ mu_select ; [ zeros(p,p*(i-1)) eye(p) zeros(p,p*(T-i)) ] ];
+			end
+		end
 
-		objective = norm( R*(xi_tilde{missing_loc+1} + Pxd{missing_loc+1} * delta + Pxm{missing_loc+1} * mu) , Inf );
-		interm_norms = norm([ eye(n*T) zeros(n*T,n) ]*( xi_tilde{missing_loc+1} + Pxd{missing_loc+1} * delta + Pxm{missing_loc+1} * mu ) , Inf);
+		Pxd = [ Pxd ; (eye(n*(T+1))+S*Q*Cm)*S ];%E_bar*[ eye(b_dim*t_horizon) zeros(b_dim*t_horizon,b_dim) ];
+		Pxm = [ Pxm ; S*Q*mu_select ];
+		xi_tilde = [ xi_tilde ; (eye(n*(T+1)) + S*Q*Cm)*xi0m + S*r];
+
+		% Formalize Trajectories for objective/intermediate level
+		% objective_term = [ objective_term ; R*(xi_tilde{missing_loc+1} + Pxd{missing_loc+1} * delta + Pxm{missing_loc+1} * mu_select * mu) ];
+		% interm_norms{missing_loc+1} = norm([ eye(n*T) zeros(n*T,n) ]*( xi_tilde{missing_loc+1} + Pxd{missing_loc+1} * delta + Pxm{missing_loc+1} * mu_select * mu ) , Inf);
 		% interm_vals = [ eye(n*T_available) zeros(n*T_available,n) ]*( xi_tilde + Pxd * delta(n*T_missing+1:end,1) + Pxm * mu(p*T_missing+1:end,1) );
 
-		epi_constrs = epi_constrs + [ objective <= M1 , interm_norms <= M2 ];
+		% epi_constrs = epi_constrs + [ objective{missing_loc+1} <= M1 , interm_norms{missing_loc+1} <= M2 ];
 
+		% When considering the 
+		% for t = 0 : T
+		% 	graph_constrs = graph_constrs + [ norm(select_m(t,T)*( xi_tilde{missing_loc+1} + Pxd{missing_loc+1} * delta + Pxm{missing_loc+1} * mu_select * mu ) , Inf) <= alpha_l(t+1,missing_loc+1) ];
+		% 	% disp(t)
+		% end
 	end
 
 	% Create Trajectory Matrices
-	[S,H,Cm,xi0m] = create_skaf_n_boyd_matrices(acc_e,T);
+	[S0,H0,Cm0,xi0m] = create_skaf_n_boyd_matrices(acc_e,T);
 
-	Pxd0 = (eye(n*(T+1))+S*Q*Cm)*S ;%E_bar*[ eye(b_dim*t_horizon) zeros(b_dim*t_horizon,b_dim) ];
-	Pxm0 = S*Q;
-	xi_tilde0 = (eye(n*(T+1)) + S*Q*Cm)*xi0m + S*r;
+	Pxd0 = (eye(n*(T+1))+S0*Q*Cm0)*S0 ;%E_bar*[ eye(b_dim*t_horizon) zeros(b_dim*t_horizon,b_dim) ];
+	Pxm0 = S0*Q;
+	xi_tilde0 = (eye(n*(T+1)) + S0*Q*Cm0)*xi0m + S0*r;
 
-	objective = norm( R*(xi_tilde{missing_loc+1} + Pxd{missing_loc+1} * delta + Pxm{missing_loc+1} * mu) , Inf );
-	interm_norms = norm([ eye(n*T) zeros(n*T,n) ]*( xi_tilde{missing_loc+1} + Pxd{missing_loc+1} * delta + Pxm{missing_loc+1} * mu ) , Inf);
+	%
+	Pxd = [ Pxd ; Pxd0 ];
+	Pxm = [ Pxm ; Pxm0 ];
+	xi_tilde = [xi_tilde ; xi_tilde0];
+
+	%Create selection matrices
+	R = [];
+	R2 = [];
+	for s_ind = 1:T
+		R = [ R ; [ zeros(n,n*(T+1)*(s_ind-1)) select_m(T,T) zeros(n,n*(T+1)*(T-s_ind)) ] ];
+		R2 = [R2 ; [ zeros(n*(T-1),n*(T+1)*(s_ind-1)) zeros(n*(T-1),n) eye(n*(T-1)) zeros(n*(T-1),n) zeros(n*(T-1),n*(T+1)*(T-s_ind)) ] ];
+	end
+
+	objective = norm( R*(xi_tilde + Pxd * delta + Pxm * mu) , Inf );
+	interm_norms = norm(R2*( xi_tilde + Pxd * delta + Pxm * mu ) , Inf);
 
 	epi_constrs = epi_constrs + [objective <= M1 , interm_norms <= M2];
 
+	% Create Graph Constraints
+	% graph_constrs = [];
+	comm_time_ind = {};
+	for time_ind = 0:T
+		temp_select_mat = [];
+		for s_ind = 1:T
+			temp_select_mat = [ temp_select_mat ; [ zeros(n,n*(T+1)*(s_ind-1)) select_m(time_ind,T) zeros(n,n*(T+1)*(T-s_ind)) ] ];
+			comm_time_ind{time_ind+1} = temp_select_mat;
+		end
+	end
+
+	for i = 0:T
+		graph_constrs = graph_constrs + [ norm(comm_time_ind{i+1}*( xi_tilde + Pxd * delta + Pxm * mu ) , Inf) <= alpha_l(i+1) ];
+	end
+
 	% Feasibility Constraints
+	% +++++++++++++++++++++++
+
 	feasib_constrs = [];
-	feasib_constrs = feasib_constrs + [-M2 <= alpha_l <= M2];
+	feasib_constrs = feasib_constrs + [alpha_l <= M2];
 
 	% Create Robustification Constraints
+	% ++++++++++++++++++++++++++++++++++
 
 	robust_constrs = [];
 	robust_constrs = robust_constrs + [ -acc_e.d <= delta <= acc_e.d , uncertain(delta) ];
@@ -131,28 +181,28 @@ function [ results ] = observer_comparison13( varargin )
 	robust_constrs = robust_constrs + [ -M1 <= acc_e.x0 <= M1 , uncertain(acc_e.x0) ];
 
 	% Create Causality (Lower Diagonal) Constraint
+	% ++++++++++++++++++++++++++++++++++++++++++++
+
 	l_diag_constr = [];
 	for bl_row_num = 1 : T-1
 		l_diag_constr = l_diag_constr + [ Q(	[(bl_row_num-1)*size(acc_e.B,2)+1:bl_row_num*size(acc_e.B,2)], ...
 												[bl_row_num*size(acc_e.C,1)+1:end] ) == 0 ];
 	end
 
-	% Create Graph Constraints
-	graph_constrs = [];
-	for i = 0:T
-		graph_constrs = graph_constrs + [ norm(select_m(i,T)*( xi_tilde0 + Pxd0 * delta + Pxm0 * mu ) , Inf) <= alpha_l(i+1) ];
-	end
-
 	% Optimize!
 	ops = sdpsettings('verbose',verbosity);
 	optim1 = optimize(epi_constrs+robust_constrs+l_diag_constr+feasib_constrs+graph_constrs ,sum(alpha_l),ops);
+
+	if optim1.problem ~= 0
+		warning('The design problem was not completely solved.')
+	end
 
 	% Save Results
 	Q_cl = value(Q);
 	r_cl = value(r);
 
-	F_cl = value( (inv(value(eye(size(Q,1)) + Q*Cm*S)) ) * Q);
-	u0_cl = value( inv( value(eye(size(Q,1)) + Q*Cm*S)) * r );
+	F_cl 	= value( (inv(value(eye(size(Q,1)) + Q*Cm*S)) ) * Q);
+	u0_cl 	= value( inv(value(eye(size(Q,1)) + Q*Cm*S)) * r );
 
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	%% Apply Controller to Synthesized Data %%
@@ -163,264 +213,65 @@ function [ results ] = observer_comparison13( varargin )
 
 	num_rollouts = 10^4;
 
-	[xi_t,xi_mag_t] = apply_rollouts_to_controller(acc_e,contr1,T,num_rollouts,M1);
-	[xi_t2,xi_mag_t2] = apply_rollouts_to_controller(acc_e,contr1,T,num_rollouts,M1,'missing',3);
-	[xi_t3,xi_mag_t3] = apply_rollouts_to_controller(acc_e,contr1,T,num_rollouts,M1,'missing',5);
-
+	[xi_t,xi_mag_t] 	= apply_controller_to_rollouts(acc_e,contr1,T,num_rollouts,M1);
+	[xi_t2,xi_mag_t2] 	= apply_controller_to_rollouts(acc_e,contr1,T,num_rollouts,M1,'missing',3);
+	[xi_t3,xi_mag_t3] 	= apply_controller_to_rollouts(acc_e,contr1,T,num_rollouts,M1,'missing',4);
 
 	%%%%%%%%%%%
 	%% Plots %%
 	%%%%%%%%%%%
 
 	rollouts_per_plot = 1000;
+	m_bounds = [M1 ones(1,T-1)*M2 M1];
+
+	num_plots = 4;
+
+	xi_mag{1} = xi_mag_t; 
 
 	figure;
-	subplot(1,3,1)
-	hold on;
-	
-	errorbar([0:T],alpha_l/2,alpha_l/2)
-	for i = 1:rollouts_per_plot
-		plot([0:T],xi_mag_t(:,i))
+	for i = 1 : num_plots
+		if i > 1
+			[xi{i},xi_mag{i}] = apply_controller_to_rollouts(acc_e,contr1,T,num_rollouts,M1,'missing',i-1);
+		end
+
+		subplot(2,2,i)
+		hold on;
+
+		errorbar([0:T],m_bounds/2,m_bounds/2)
+		for r_num = 1:rollouts_per_plot
+			plot([0:T],xi_mag{i}(:,r_num))
+		end
+		xlabel('Time Step t')
+		ylabel('$||\xi(t)||\infty$, Norm of Estimation Error','Interpreter','latex')
+		if i > 1
+			title(['Norm of the Estimation Error (Missing Data Occurs at t=' num2str(i-1) ')'])
+		else
+			title(['Norm of the Estimation Error (Data Always Available)'])
+		end
+		legend('Guarantees')
 	end
 
-	subplot(1,3,2)
-	hold on;
-	errorbar([0:T],alpha_l/2,alpha_l/2)
-	for i = 1:rollouts_per_plot
-		plot([0:T],xi_mag_t2(:,i))
-	end	
-
-	subplot(1,3,3)
-	hold on;
-	errorbar([0:T],alpha_l/2,alpha_l/2)
-	for i = 1:rollouts_per_plot
-		plot([0:T],xi_mag_t2(:,i))
-	end		
-
-
-	% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-	% %% Compare Results to Function %%
-	% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-	% disp('Experiment 1')
-	% disp('Do the control matrices synthesized by each method look alike?')
-
-	% if sum(sum(value(Q) == optim2.Q)) == prod(size(value(Q)))
-	% 	disp('Q matrices: IDENTICAL')
-	% else
-	% 	disp('Q matrices: DIFFERENT')
-	% end
-
-	% if sum(value(r) == optim2.r) == prod(size(value(r)))
-	% 	disp('r matrices: IDENTICAL')
-	% else
-	% 	disp('r matrices: DIFFERENT')
-	% end
-
-	% disp(' ')
-	% disp('I currently believe that the function is performing correctly.')
-	% disp('Now, we will do the comparison with Eqaulized Performance to find whether or not a line search')
-	% disp('over M1 will yield M1(affine) < M1(Luenberger) ')
-	% disp(' ')
-	% disp('Experiment 2')
-
-	% %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-	% %% Luenberger Line Search %%
-	% %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-	% clear n p d_u
-
-	% %Load a new system that CAN achieve Equalized Performance
-	% %load('data/system_examples/random1.mat')
-	% % load('data/system_examples/mIp1.mat')
-
-	% tricky_sys1.A = [0		1		0;
-	% 				 0 		0		1;
-	% 				 -0.5	-3.5	-0.25];
-	% tricky_sys1.B = [1;0;0];
-	% tricky_sys1.C = [1 0 0; 0 1 0];
-
-	% curr_sys = tricky_sys1;
-
-	% curr_sys.B = eye(size(curr_sys.A,1));
-
-	% %Create Constants for new system
-	% n = size(curr_sys.A,1);
-	% p = size(curr_sys.C,1);
-	% d_u = size(curr_sys.B,2);
-
-	% M_L = 1000;
-	% deltaM = M_L/2;
-	% finish_flag_L = false;
-	% while ~finish_flag_L
-
-	% 	%
-	% 	curr_sys.m = 0;
-	% 	curr_sys.d = 0.4;
-
-	% 	%Attempt to do the Luenberger Test
-	% 	clear delta mu
-	% 	delta 		= sdpvar(n,1,'full');
-	% 	mu 			= sdpvar(p,1,'full');
-	% 	curr_sys.x0 = sdpvar(n,1,'full');
-	% 	L 			= sdpvar(n,p,'full');
-
-	% 	%Create robust optimization Constraints
-	% 	robust_constrs = [];
-	% 	robust_constrs = robust_constrs + [-curr_sys.m <= mu <= curr_sys.m , uncertain(mu)];
-	% 	robust_constrs = robust_constrs + [-curr_sys.d <= delta <= curr_sys.d , uncertain(delta)];
-	% 	robust_constrs = robust_constrs + [ -M_L<= curr_sys.x0 <= M_L, uncertain(curr_sys.x0) ];
-
-	% 	%Define objective
-	% 	objective = [];
-	% 	objective = norm((curr_sys.A+L*curr_sys.C)*curr_sys.x0 + L*mu + delta,Inf);
-
-	% 	%Define Objective
-	% 	sol_attempt = optimize(robust_constrs+[objective <= M_L],objective , ops );
-
-	% 	% Check Termination Condition
-	% 	% +++++++++++++++++++++++++++
-	% 	if verbosity >= 0
-	% 		disp(['deltaM = ' num2str(deltaM) ])
-	% 	end
-
-	% 	if deltaM <= 0.01
-	% 		finish_flag_L = true;
-	% 	end
-
-	% 	% Adjust M_L
-	% 	% ++++++++++
-	% 	if sol_attempt.problem == 0		%If the problem was successfully solved, then decrease the proposed performance level.
-	% 		M_L = M_L - deltaM;
-	% 		deltaM = deltaM/2;
-	% 	else
-	% 		M_L = M_L + deltaM;
-	% 	end
-
-	% end
-
-	% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-	% %% Finite Horizon Affine Estimator Line Search %%
-	% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-	% % Define Constants
-	% T0 = T;
-
-	% M_A = 1000;
-	% deltaA = M_A/2;
-	% finish_flag_A = false;
-
-	% while ~finish_flag_A
-
-	% 	%
-	% 	curr_sys.m = 0;
-	% 	curr_sys.d = 0.4*M_A;
-
-	% 	%Attempt to do the FHAE Synthesis
-	% 	[~,sol_attempt] = achieve_eq_recovery_for(curr_sys,T0,M_A,M_A,verbosity);
-		
-	% 	disp(sol_attempt.sol.info)
-
-	% 	% Check Termination Condition
-	% 	% +++++++++++++++++++++++++++
-	% 	if verbosity >= 0
-	% 		disp(['deltaA = ' num2str(deltaA) ])
-	% 	end
-
-	% 	if deltaA <= 0.01
-	% 		finish_flag_A = true;
-	% 	end
-
-	% 	% Adjust M_L
-	% 	% ++++++++++
-	% 	if sol_attempt.sol.problem == 0		%If the problem was successfully solved, then decrease the proposed performance level.
-	% 		M_A = M_A - deltaA;
-	% 		deltaA = deltaA/2;
-	% 	else
-	% 		M_A = M_A + deltaA;
-	% 	end
-
-	% end
-
-
-	% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-	% %% Run Controller with Synthesized Noise %%
-	% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-	% num_rollouts = 10^5;
-
-	% %Save Results of Previous Optimizations
-	% u_ol = value(u_open); 	%Open Loop Input during missing data period
+	% subplot(1,3,1)
+	% hold on;
 	
-	% Q_cl = value(Q);
-	% r_cl = value(r);
-	% F_cl = value( (inv(value(eye(size(Q,1)) + Q*Cm*S)) ) * Q);
-	% %u0_cl = value((eye(size(F_cl,1)) + F_cl*Cm*S) * r);
-	% u0_cl = value( inv( value(eye(size(Q,1)) + Q*Cm*S)) * r );
-
-	% %Create noise
-	% mu_t = unifrnd(-acc_e.m,acc_e.m,p*(T_missing+T_available),num_rollouts);
-	% delta_t = unifrnd(-acc_e.d,acc_e.d,n*(T_missing+T_available),num_rollouts);
-	% x0_t = unifrnd(-perf_level,perf_level,n,num_rollouts);
-
-	% %Create Constants
-	% [S1,~,~,~] = create_skaf_n_boyd_matrices(acc_e,T_missing);
-	% [S2,H2,Cm2,~] = create_skaf_n_boyd_matrices(acc_e,T_available);
-
-	% %Create Trajectories
-	% diagA_str = '[';
-	% for i = 0:T_missing
-	% 	diagA_str = [diagA_str 'acc_e.A^' num2str(i) ];
-	% 	if i ~= (T_missing)
-	% 		diagA_str = [diagA_str ';'];
-	% 	end
-	% end
-	% diagA_str = [ diagA_str ']'];
-	% A_col = eval(diagA_str);
-	% xi1 = A_col*x0_t + S1*(u_ol+delta_t(1:n*T_missing,1));
-
-	% % Available data part
-	% xi2(1:n,:) = xi1(end-n+1:end,:);
-	% for t = T_missing:(T_missing+T_available-1)
-
-	% 	%Create C diag, matrix
-	% 	diagC_str = [];
-	% 	diagC_str = '(';
-	% 	for i = 1:t-T_missing+1
-	% 		diagC_str = [ diagC_str 'acc_e.C' ];
-	% 		if i ~= (t-T_missing+1)
-	% 			diagC_str = [ diagC_str ',' ];
-	% 		end
-	% 	end
-	% 	diagC_str = [ diagC_str ')' ];
-	% 	diagC = eval(['blkdiag' diagC_str ]);
-
-	% 	%Create Feedback Matrices
-	% 	xi2_m1 		= xi2((t-T_missing)*n+1:(t-T_missing+1)*n,:);
-	% 	F_cl_temp 	= F_cl((t-T_missing)*d_u+1:(t-T_missing+1)*d_u,1:(t-T_missing+1)*p);
-	% 	mu_t_m1		= mu_t(T_missing*p+1:(t+1)*p,:);
-	% 	u0_temp 	= u0_cl( (t-T_missing)*d_u+1:(t-T_missing+1)*d_u,1);
-
-	% 	xi2((t-T_missing+1)*n+1:(t-T_missing+2)*n,:) = acc_e.A*xi2_m1 + F_cl_temp*( diagC * xi2(1:(t-T_missing+1)*n,:) + mu_t_m1) + repmat(u0_temp,1,num_rollouts) + delta_t( t*n+1:(t+1)*n,:);
-
-	% 	% xi1_temp(t*)
+	% errorbar([0:T],alpha_l/2,alpha_l/2)
+	% for i = 1:rollouts_per_plot
+	% 	plot([0:T],xi_mag_t(:,i))
 	% end
 
-	% % Find Norms
-	% % ++++++++++
+	% subplot(1,3,2)
+	% hold on;
+	% errorbar([0:T],alpha_l/2,alpha_l/2)
+	% for i = 1:rollouts_per_plot
+	% 	plot([0:T],xi_mag_t2(:,i))
+	% end	
 
-	% xi_t = [ xi1 ; xi2(n+1:end,:) ];
-
-	% if (size(xi_t,1)/n) ~= (T_missing+T_available+1)
-	% 	error('xi_t appears to be incorrectly sized.')
-	% end
-
-	% for test_num = 1:num_rollouts
-	% 	for t = 0:T_missing+T_available
-
-	% 		exp_norms(t+1,test_num) = norm( xi_t(t*n+1:(t+1)*n,test_num) , Inf );
-
-	% 	end
-	% end
+	% subplot(1,3,3)
+	% hold on;
+	% errorbar([0:T],alpha_l/2,alpha_l/2)
+	% for i = 1:rollouts_per_plot
+	% 	plot([0:T],xi_mag_t3(:,i))
+	% end		
 
 	%%%%%%%%%%%%%%
 	%% PLOTTING %%
@@ -455,5 +306,7 @@ function [ results ] = observer_comparison13( varargin )
 
 	results.rollouts.xi1 = xi_t;
 	results.rollouts.xi1_mag = xi_mag_t;
+	results.rollouts.xi2 = xi_t2;
+	results.rollouts.xi2_mag = xi_mag_t2;
 
 end

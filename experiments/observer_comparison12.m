@@ -238,41 +238,56 @@ function [ results ] = observer_comparison12( varargin )
 	%% Finite Horizon Affine Estimator Line Search %%
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+	disp('Finite Horizon Affine Estimator!')
+	disp(' ')
+
 	% Define Constants
-	T0 = T;
+	%T0 = T;
+	T1 = T;
 
-	M_A = 1000;
-	deltaA = M_A/2;
-	finish_flag_A = false;
+	min_fhae_m1 = [];
 
-	while ~finish_flag_A
+	%Sweep through time horizons T
+	for T0 = 2 : T1
+		disp(' ')
+		disp(['T0 = ' num2str(T0) ])
+		disp('+++++++')
 
-		%Attempt to do the FHAE Synthesis
-		[~,sol_attempt] = achieve_eq_recovery_for(curr_sys,T0,M_A,M_A,verbosity);
-		
-		disp(sol_attempt.sol.info)
+		M_A = 1000;
+		deltaA = M_A/2;
+		finish_flag_A = false;
 
-		% Check Termination Condition
-		% +++++++++++++++++++++++++++
-		if verbosity >= 0
-			disp(['deltaA = ' num2str(deltaA) ])
+		while ~finish_flag_A
+
+			%Attempt to do the FHAE Synthesis
+			[~,sol_attempt] = achieve_eq_recovery_for(curr_sys,T0,M_A,M_A,verbosity);
+			
+			disp(sol_attempt.sol.info)
+
+			% Check Termination Condition
+			% +++++++++++++++++++++++++++
+			if verbosity >= 0
+				disp(['deltaA = ' num2str(deltaA) ])
+			end
+
+			if deltaA <= 0.01
+				finish_flag_A = true;
+			end
+
+			% Adjust M_L
+			% ++++++++++
+			if sol_attempt.sol.problem == 0		%If the problem was successfully solved, then decrease the proposed performance level.
+				M_A = M_A - deltaA;
+				deltaA = deltaA/2;
+			else
+				M_A = M_A + deltaA;
+			end
+
 		end
 
-		if deltaA <= 0.01
-			finish_flag_A = true;
-		end
+		min_fhae_m1(T0) = M_A;
 
-		% Adjust M_L
-		% ++++++++++
-		if sol_attempt.sol.problem == 0		%If the problem was successfully solved, then decrease the proposed performance level.
-			M_A = M_A - deltaA;
-			deltaA = deltaA/2;
-		else
-			M_A = M_A + deltaA;
-		end
-
-	end
-
+ 	end
 
 	% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	% %% Run Controller with Synthesized Noise %%
@@ -386,5 +401,6 @@ function [ results ] = observer_comparison12( varargin )
 
 	results.line_search.sys 			 = curr_sys;
 	results.line_search.luenberger_min_M = M_L;
+	results.line_search.fhae_min_Ms 	 = min_fhae_m1;
 
 end

@@ -136,7 +136,9 @@ end
 %% Create Rollouts %%
 %%%%%%%%%%%%%%%%%%%%%
 
-xi =  A_col*xi_0 + H*u0 + xi_factor*(A_col*xi_0 + H*u0) + Pxd * delta + Pxm * mu;
+xi =  A_col*xi_0 + H*repmat(u0,1,num_rollouts) + ...
+        xi_factor*(A_col*xi_0 + H*repmat(u0,1,num_rollouts)) + ...
+        Pxd * delta + Pxm * mu;
 
 xi_mag = [];
 if nargout == 2

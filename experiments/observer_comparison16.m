@@ -185,6 +185,7 @@ function [ results ] = observer_comparison16( varargin )
 
 	xlabel('Time')
 	ylabel('\infty Norm of the Estimation Error')
+	legend('Guarantees')
 	title('Estimator''s Error when ALL Data is available')
 
 	% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

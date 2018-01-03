@@ -76,7 +76,7 @@ if nargin > 5
 		%Changed Rollout Length
 		%IF we assume that the rollout length IS NOT just T
 		if strcmp(varargin{5+1+(str_ind-1)*2},'rollout_length')
-			rollout_length = varargin{5+str_ind*2};
+			rollout_len = varargin{5+str_ind*2};
 		end
 	end
 end
@@ -84,12 +84,6 @@ end
 %%%%%%%%%%%%%%%
 %% Constants %%
 %%%%%%%%%%%%%%%
-if ~exist('missing_t')
-	[S,H,Cm,~] = create_skaf_n_boyd_matrices(sys,T);
-else
-	[S,H,Cm,~] = create_skaf_n_boyd_matrices(sys,T,'missing',missing_t);
-end
-
 A_col = [];
 for  i = 0:T
 	A_col = [ A_col ; sys.A^i ];
@@ -117,6 +111,18 @@ for i = 1:T
 	E_bar = blkdiag(E_bar,sys.E);
 end
 wd = size(sys.E,2);
+
+% Rollout Length
+if ~exist('rollout_len')
+	rollout_len = T;
+end
+
+%If rollout length is defined, then use it to create these matrices.
+if ~exist('missing_t')
+	[S,H,Cm,~] = create_skaf_n_boyd_matrices(sys,T);
+else
+	[S,H,Cm,~] = create_skaf_n_boyd_matrices(sys,T,'missing',missing_t);
+end
 
 %If rollout_length is defined, then use
 

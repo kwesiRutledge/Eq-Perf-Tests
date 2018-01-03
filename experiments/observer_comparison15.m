@@ -62,7 +62,7 @@ function [ results ] = observer_comparison15( varargin )
 	acc_e = acc;
 	acc_e.B = eye(n);
 
-	d_u = size(acc_e.B,2);
+	wd = size(acc_e.B,2);
 
 	%Select matrix
 	select_m = @(t,T_r) [zeros(n,t*n) eye(n) zeros(n,(T_r-t)*n) ];
@@ -91,8 +91,8 @@ function [ results ] = observer_comparison15( varargin )
 	alpha_l 	= sdpvar(T+1,1,'full');
 
 	% Feedback Variables
-	Q = sdpvar(d_u*T,p*T,'full');
-	r = sdpvar(d_u*T,1,'full');
+	Q = sdpvar(wd*T,p*T,'full');
+	r = sdpvar(wd*T,1,'full');
 
 	% Dual Variables
 	Pi_1 = sdpvar(2*n*T,2*(n+p)*T+2*n,'full');
@@ -318,33 +318,82 @@ function [ results ] = observer_comparison15( varargin )
 
 	num_plots = 4;
 
+	A_col = [];
+	for  i = 0:T
+		A_col = [ A_col ; acc_e.A^i ];
+	end 
+
+	E_bar = [];
+	for i = 1:T
+		E_bar = blkdiag(E_bar,acc_e.E);
+	end
+
 	%Plot Constants
-	[xi_t0,xi_mag_t0] = apply_controller_to_rollouts(acc_e,contr2,T,num_rollouts,M1);
-	xi{1} = xi_t0;
-	xi_mag{1} = xi_mag_t0;
+	[xi_t0,xi_mag_t0] = apply_controller_to_rollouts(acc_e,contr2,T,1,M1);
+	xi = xi_t0;
+	xi_mag = xi_mag_t0;
+
+	for missing_ob_num = 1:3
+		[S,H,Cm,~] = create_skaf_n_boyd_matrices(acc_e,T,'missing',missing_ob_num);
+
+		% Create some trajectory matrices
+		Pxd = (eye(n*(T+1))+H*contr2.F*inv(eye(p*T)-Cm*H*contr2.F)*Cm)*S;
+		Pxm = H*contr2.F*inv(eye(p*T)-Cm*H*contr2.F);
+		xi_factor = H*contr2.F*inv(eye(p*T)-Cm*H*contr2.F )*Cm;
+
+		delta 	= unifrnd(-acc_e.d,acc_e.d,wd*T,1);
+		mu 		= unifrnd(-acc_e.m,acc_e.m,p*T,1);
+		xi_0 	= xi(end-n+1:end,1)
+
+		mu([missing_ob_num*p+1:(missing_ob_num+1)*p],:) = 0;
+
+		xi_temp =  A_col*xi_0 + H*repmat(contr2.u0,1,1) + ...
+	        xi_factor*(A_col*xi_0 + H*repmat(contr2.u0,1,1)) + ...
+	        Pxd * delta + Pxm * mu;
+
+	    size(xi_temp)
+
+	    xi = [xi;xi_temp];
+
+		for t = 1:T
+			xi_mag(1+missing_ob_num*T+t,1) = norm(select_m(t,T)*xi_temp,Inf);
+		end
+
+	end
 
 	figure;
-	for i = 1 : num_plots
-		if i > 1
-			[xi{i},xi_mag{i}] = apply_controller_to_rollouts(acc_e,contr2,T,num_rollouts,M1,'missing',i-1);
-		end
+	hold on;
+	bar([0:T*(3+1)],[ M1 opt_obj2*ones(1,T-1) M1 opt_obj2*ones(1,T-1) M1 opt_obj2*ones(1,T-1) M1 opt_obj2*ones(1,T-1) M1 ],'w')
+	plot([0:T*(3+1)],xi_mag)
 
-		subplot(2,2,i)
-		hold on;
+	legend('Guarantees')
 
-		bar([0:T],[ M1 value(alpha_2)*ones(1,T-1) M1 ],'w')
-		for r_num = 1:rollouts_per_plot
-			plot([0:T],xi_mag{i}(:,r_num))
-		end
-		xlabel('Time Step t')
-		ylabel('$||\xi(t)||\infty$, Norm of Estimation Error','Interpreter','latex')
-		if i > 1
-			title(['Norm of the Estimation Error (Missing Data Occurs at t=' num2str(i-1) ')'])
-		else
-			title(['Norm of the Estimation Error (Data Always Available)'])
-		end
-		legend('Guarantees')
-	end
+	xlabel('Time')
+	ylabel('\infty Norm of the Estimation Error')
+	title(['Estimator Performance when $M_1$=' num2str(M1_list(controller_num))],'Interpreter','latex')
+
+	% figure;
+	% for i = 1 : num_plots
+	% 	if i > 1
+	% 		[xi{i},xi_mag{i}] = apply_controller_to_rollouts(acc_e,contr2,T,num_rollouts,M1,'missing',i-1,'rollout_length',20);
+	% 	end
+
+	% 	subplot(2,2,i)
+	% 	hold on;
+
+	% 	bar([0:T],[ M1 value(alpha_2)*ones(1,T-1) M1 ],'w')
+	% 	for r_num = 1:rollouts_per_plot
+	% 		plot([0:T],xi_mag{i}(:,r_num))
+	% 	end
+	% 	xlabel('Time Step t')
+	% 	ylabel('$||\xi(t)||\infty$, Norm of Estimation Error','Interpreter','latex')
+	% 	if i > 1
+	% 		title(['Norm of the Estimation Error (Missing Data Occurs at t=' num2str(i-1) ')'])
+	% 	else
+	% 		title(['Norm of the Estimation Error (Data Always Available)'])
+	% 	end
+	% 	legend('Guarantees')
+	% end
 
 	%%%%%%%%%%%%%%%%%%%%
 	%% Saving Results %%

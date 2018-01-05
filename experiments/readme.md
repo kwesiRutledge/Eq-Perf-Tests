@@ -14,6 +14,13 @@ results = observer_tests(13,{'verbosity,time_horizon,M1,M2'})
 
 6. The objective of this experiment was to observe how small the norm ||xi(T)||{\infty} could become for the worst case process and measurement noise for various choices of time horizon T. In this case, we considered the choice of using a full state or reduced order observer/estimator and compared the results in a plot.
 
+7.
+8.
+9.
+10.
+11.
+12.
+
 13. The objective of this experiment is to design a finite horizon, affine estimator (fhae) that is robust against the possibility of 1 observation missing in the entire sequence of length T.
 
 14. The objective of this set of experiments was to attempt to use the new robust optimization method to synthesize a finite horizon, affine estimator (assuming that all data is available or at most 1 piece of data missing during the time horizon). Unfortunately, for the default experiment set, a feasible estimator exists ONLY if we exclude the possibility of missing observations at t=4 and t=5.
@@ -31,4 +38,8 @@ results = observer_tests(13,{'verbosity,time_horizon,M1,M2'})
 
 18. Created a system that could achieve equalized recovery with a condition of "any 1 observation in the time horizon T" can be missing.
 
-19. 
+19. Tests a function that generates fhae.
+	* Repeats the tests from 13,14,16
+	* function should be robust enough to allow for E/B_w and G/C_v matrices
+
+20. Tests the ROO solution to the ACC problem to see if it can achieve equalized performance as well as plot how it might achieve equalized recovery. 

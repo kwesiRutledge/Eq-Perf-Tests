@@ -12,6 +12,8 @@ results = observer_tests(13,{'verbosity,time_horizon,M1,M2'})
 
 ## Experiment List
 
+6. The objective of this experiment was to observe how small the norm ||xi(T)||{\infty} could become for the worst case process and measurement noise for various choices of time horizon T. In this case, we considered the choice of using a full state or reduced order observer/estimator and compared the results in a plot.
+
 13. The objective of this experiment is to design a finite horizon, affine estimator (fhae) that is robust against the possibility of 1 observation missing in the entire sequence of length T.
 
 14. The objective of this set of experiments was to attempt to use the new robust optimization method to synthesize a finite horizon, affine estimator (assuming that all data is available or at most 1 piece of data missing during the time horizon). Unfortunately, for the default experiment set, a feasible estimator exists ONLY if we exclude the possibility of missing observations at t=4 and t=5.
@@ -23,7 +25,10 @@ results = observer_tests(13,{'verbosity,time_horizon,M1,M2'})
 16. The objective of this set of experiments was to duplicate the results of Experiment 14, when the proper 'E' matrix was used. Started before experiment 15 was completed because an error (no consideration of the E matrix) was observed in the design of experiments 14 and 15.
 
 17. Reran the counterexample provided in the paper. Here we compare the correctness of multiple synthesis methods, where the goal is to correctly identify when an estimator (aka gains L or (F,u0)) is feasible. We defined feasibility as "feasible" if an optimal objective was less than M and "infeasible" otherwise. The 3 objectives considered were:
-	* ||A+LC||_{\infty} M + ||L||_{\infty} \eta_v + ||E||_{\infty} \eta_w
-	* ||(A+LC)\xi(0)||_{\infty} + ||Lv(0)||_{\infty} + ||Ew(0)||_{\infty}
-	* ||(A+FC)\xi(0) + Fv(0) + u_0 + Ew(0)||_{\infty}
+	* ||A+LC||{infty} M + ||L||{\infty} \eta_v + ||E||{\infty} \eta_w
+	* ||(A+LC)\xi(0)||{\infty} + ||Lv(0)||{\infty} + ||Ew(0)||{\infty}
+	* ||(A+FC)\xi(0) + Fv(0) + u_0 + Ew(0)||{\infty}
 
+18. Created a system that could achieve equalized recovery with a condition of "any 1 observation in the time horizon T" can be missing.
+
+19. 

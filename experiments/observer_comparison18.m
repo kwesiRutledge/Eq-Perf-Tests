@@ -5,9 +5,10 @@ function [ results ] = observer_comparison18( varargin )
 %			estimator (fhae) that is robust against the possibility of 1 observation
 %			missing in the entire sequence of length T.
 %
-%			What makes this experiment different from 13 and 14 is that:
+%			What makes this experiment different from 13, 14, and 16 is that:
 %				- It uses the recent optimization presented by Prof. Yong.
-%				- We make explicit use of the "E" matrix in the ACC example.
+%				- We make explicit use of an "E" matrix.
+%				- The system chosen here is NOT ACC.
 %
 %			This Equalized Recovery Problem:
 %				Let M1 T
@@ -68,7 +69,7 @@ function [ results ] = observer_comparison18( varargin )
 	example_sys.G = eye(size(example_sys.C,1));
 
 	example_sys.m = 0; %0.5*perf_level;
-	example_sys.d = 0.1*M1;
+	example_sys.d = 0.75*M1;
 
 	test_sys = example_sys;
 

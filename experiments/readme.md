@@ -28,8 +28,10 @@ results = observer_tests(13,{'verbosity,time_horizon,M1,M2'})
 15. The objective of this set of experiments are:
 	* Consider the effect of changing the constant M1 on the minimal M2 that can be found for Equalized Recovery (assumes that the time horizon T is 6, by default). Note: A line search could be implemented to find minimal M1 AND minimial M2 using this method, but it is not considered here.
 	* Simulate when an estimator is defined for one time horizon, T, but the controller is run for an arbirary time horizon, T2.
+	* Figure 2 is used in the paper.
 
 16. The objective of this set of experiments was to duplicate the results of Experiment 14, when the proper 'E' matrix was used. Started before experiment 15 was completed because an error (no consideration of the E matrix) was observed in the design of experiments 14 and 15.
+	* Figure 1 used in the paper.
 
 17. Reran the counterexample provided in the paper. Here we compare the correctness of multiple synthesis methods, where the goal is to correctly identify when an estimator (aka gains L or (F,u0)) is feasible. We defined feasibility as "feasible" if an optimal objective was less than M and "infeasible" otherwise. The 3 objectives considered were:
 	* ||A+LC||{infty} M + ||L||{\infty} \eta_v + ||E||{\infty} \eta_w
@@ -43,3 +45,4 @@ results = observer_tests(13,{'verbosity,time_horizon,M1,M2'})
 	* function should be robust enough to allow for E/B_w and G/C_v matrices
 
 20. Tests the ROO solution to the ACC problem to see if it can achieve equalized performance as well as plot how it might achieve equalized recovery. 
+	* Figure 1 used in the paper.

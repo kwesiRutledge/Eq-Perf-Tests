@@ -45,6 +45,7 @@ function [ results ] = observer_comparison16( varargin )
 	%%%%%%%%%%%%%%%
 	%% Constants %%
 	%%%%%%%%%%%%%%%
+	T_s = 0.5;
 
 	%Default Values for observer_comparison
 	if nargin < 2
@@ -178,15 +179,16 @@ function [ results ] = observer_comparison16( varargin )
 
 	figure;
 	hold on;
-	bar([0:T],[ M1 value(alpha_2)*ones(1,T-1) M1 ],'w')
+	bar([0:T]*T_s,[ M1 value(alpha_2)*ones(1,T-1) M1 ],'w')
 	for i = 1:rollouts_per_plot
-		plot([0:T],xi_mag_t(:,i))
+		plot([0:T]*T_s,xi_mag_t(:,i))
 	end
 
-	xlabel('Time')
-	ylabel('\infty Norm of the Estimation Error')
+	xlabel('Time [sec]')
+	ylabel('$||x(t)-\hat{x}(t)||_{\infty}$','Interpreter','latex')
 	legend('Guarantees')
-	title('Estimator''s Error when ALL Data is available')
+	% title('Estimator''s Error when ALL Data is available')
+	axis([-0.5*T_s (T+0.5)*T_s 0 1.2])
 	xt = get(gca, 'XTick');
 	set(gca, 'FontSize', 16)
 
@@ -267,7 +269,7 @@ function [ results ] = observer_comparison16( varargin )
 	xi{1} = xi_t0;
 	xi_mag{1} = xi_mag_t0;
 
-	figure;
+	figure('units','normalized','outerposition',[0 0 0.5 0.5]);
 	for i = 1 : num_plots
 		if i > 1
 			[xi{i},xi_mag{i}] = apply_controller_to_rollouts(acc_e,contr2,T,num_rollouts,M1,'missing',i-1);
@@ -276,17 +278,17 @@ function [ results ] = observer_comparison16( varargin )
 		subplot(2,2,i)
 		hold on;
 
-		bar([0:T],[ M1 value(alpha_2)*ones(1,T-1) M1 ],'w')
+		bar([0:T]*T_s,[ M1 value(alpha_2)*ones(1,T-1) M1 ],'w')
 		for r_num = 1:rollouts_per_plot
-			plot([0:T],xi_mag{i}(:,r_num))
+			plot([0:T]*T_s,xi_mag{i}(:,r_num))
 		end
-		xlabel('Time Step t')
-		ylabel('$||\xi(t)||\infty$, Norm of Estimation Error','Interpreter','latex')
-		if i > 1
-			title(['Norm of the Estimation Error (Missing Data Occurs at t=' num2str(i-1) ')'])
-		else
-			title(['Norm of the Estimation Error (Data Always Available)'])
-		end
+		xlabel('Time [sec]')
+		ylabel('$||x(t)-\hat{x}(t)||_{\infty}$','Interpreter','latex')
+		% if i > 1
+		% 	title(['Norm of the Estimation Error (Missing Data Occurs at t=' num2str(i-1) ')'])
+		% else
+		% 	title(['Norm of the Estimation Error (Data Always Available)'])
+		% end
 		legend('Guarantees')
 		xt = get(gca, 'XTick');
 		set(gca, 'FontSize', 16)

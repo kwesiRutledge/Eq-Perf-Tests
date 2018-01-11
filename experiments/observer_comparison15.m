@@ -62,7 +62,8 @@ function [ results ] = observer_comparison15( varargin )
 	acc_e = acc;
 	acc_e.B = eye(n);
 
-	wd = size(acc_e.B,2);
+	wd = size(acc_e.E,2);
+	vd = size(acc.C,1);
 
 	%Select matrix
 	select_m = @(t,T_r) [zeros(n,t*n) eye(n) zeros(n,(T_r-t)*n) ];
@@ -81,8 +82,8 @@ function [ results ] = observer_comparison15( varargin )
 
 	% Optimization Variables
 	% ++++++++++++++++++++++
-	delta 		= sdpvar(n*T,1,'full');
-	mu 			= sdpvar(p*T,1,'full');
+	w 			= sdpvar(wd*T,1,'full');
+	v 			= sdpvar(vd*T,1,'full');
 	acc_e.x0 	= sdpvar(n,1,'full');
 
 	alpha_2 	= sdpvar(1,1,'full');
@@ -91,19 +92,19 @@ function [ results ] = observer_comparison15( varargin )
 	alpha_l 	= sdpvar(T+1,1,'full');
 
 	% Feedback Variables
-	Q = sdpvar(wd*T,p*T,'full');
-	r = sdpvar(wd*T,1,'full');
+	Q = sdpvar(n*T,p*T,'full');
+	r = sdpvar(n*T,1,'full');
 
 	% Dual Variables
-	Pi_1 = sdpvar(2*n*T,2*(n+p)*T+2*n,'full');
-	Pi_2 = sdpvar(2*n,2*(n+p)*T+2*n,'full');
+	Pi_1 = sdpvar(2*n*T,2*(wd+vd)*T+2*n,'full');
+	Pi_2 = sdpvar(2*n,2*(wd+vd)*T+2*n,'full');
 
 	for M1_ind = 1 : length(M1_list)
 
 		% Creating Constraints
 		% ++++++++++++++++++++
 
-		[S0,H0,Cm0,xi0m] = create_skaf_n_boyd_matrices(acc_e,T);
+		[S0,H0,Cm0,xi0m,E_big] = create_skaf_n_boyd_matrices(acc_e,T);
 
 		positive_constr = [ Pi_1 >= 0, Pi_2 >= 0 ];
 
@@ -113,8 +114,8 @@ function [ results ] = observer_comparison15( varargin )
 			sel_influenced_states = [ sel_influenced_states ; select_m(i,T) ];
 		end
 
-		noise_constrs = [ Pi_1 * [ acc_e.d * ones(2*n*T,1) ; acc_e.m * ones(2*p*T,1) ; M1_list(M1_ind) * ones(2*n,1) ] <= alpha_2 * ones(2*n*T,1) - [eye(n*T);-eye(n*T)]*sel_influenced_states*S0*r ];
-		noise_constrs = noise_constrs + [ Pi_2 * [ acc_e.d * ones(2*n*T,1) ; acc_e.m * ones(2*p*T,1) ; M1_list(M1_ind) * ones(2*n,1) ] <= M1_list(M1_ind) * ones(2*n,1) - [eye(n);-eye(n)]*select_m(T,T)*S0*r ];
+		noise_constrs = [ Pi_1 * [ acc_e.d * ones(2*wd*T,1) ; acc_e.m * ones(2*p*T,1) ; M1_list(M1_ind) * ones(2*n,1) ] <= alpha_2 * ones(2*n*T,1) - [eye(n*T);-eye(n*T)]*sel_influenced_states*S0*r ];
+		noise_constrs = noise_constrs + [ Pi_2 * [ acc_e.d * ones(2*wd*T,1) ; acc_e.m * ones(2*p*T,1) ; M1_list(M1_ind) * ones(2*n,1) ] <= M1_list(M1_ind) * ones(2*n,1) - [eye(n);-eye(n)]*select_m(T,T)*S0*r ];
 
 		%Dual relationship to design variables
 		pre_xi = [];
@@ -122,11 +123,11 @@ function [ results ] = observer_comparison15( varargin )
 			pre_xi = [ pre_xi ; acc_e.A^i];
 		end
 
-		G = [ (eye(n*(T+1))+S0*Q*Cm0)*S0 S0*Q (eye(n*(T+1))+S0*Q*Cm0)*pre_xi ];
+		G = [ (eye(n*(T+1))+S0*Q*Cm0)*S0*E_big S0*Q (eye(n*(T+1))+S0*Q*Cm0)*pre_xi ];
 
-		bounded_disturb_matrix = [ [ eye(n*T) ; -eye(n*T) ] zeros(2*n*T,p*T+n) ;
-									zeros(2*p*T,n*T) [ eye(p*T) ; -eye(p*T) ] zeros(2*p*T,n) ;
-									zeros(2*n,(p+n)*T) [ eye(n) ; -eye(n) ] ];
+		bounded_disturb_matrix = [ [ eye(wd*T) ; -eye(wd*T) ] zeros(2*wd*T,vd*T+n) ;
+									zeros(2*vd*T,wd*T) [ eye(vd*T) ; -eye(vd*T) ] zeros(2*vd*T,n) ;
+									zeros(2*n,(vd+wd)*T) [ eye(n) ; -eye(n) ] ];
 
 		dual_equal_constrs = [ Pi_1 * bounded_disturb_matrix == [eye(n*T); -eye(n*T)]*sel_influenced_states*G ];
 		dual_equal_constrs = dual_equal_constrs + [Pi_2 * bounded_disturb_matrix == [eye(n);-eye(n)]*select_m(T,T)*G];
@@ -204,8 +205,8 @@ function [ results ] = observer_comparison15( varargin )
 	clear mu
 	clear alpha_l
 
-	clear M1_list
-	clear M1_ind
+	% clear M1_list
+	% clear M1_ind
 
 	%Announce new experiment
 	disp('====================================================')
@@ -222,7 +223,7 @@ function [ results ] = observer_comparison15( varargin )
 	% Creating Constraints
 	% ++++++++++++++++++++
 
-	[S0,H0,Cm0,xi0m] = create_skaf_n_boyd_matrices(acc_e,T);
+	[S0,H0,Cm0,xi0m,E_big] = create_skaf_n_boyd_matrices(acc_e,T);
 
 	positive_constr = [ Pi_1 >= 0, Pi_2 >= 0 ];
 
@@ -232,8 +233,8 @@ function [ results ] = observer_comparison15( varargin )
 		sel_influenced_states = [ sel_influenced_states ; select_m(i,T) ];
 	end
 
-	noise_constrs = [ Pi_1 * [ acc_e.d * ones(2*n*T,1) ; acc_e.m * ones(2*p*T,1) ; perf_level * ones(2*n,1) ] <= alpha_2 * ones(2*n*T,1) - [eye(n*T);-eye(n*T)]*sel_influenced_states*S0*r ];
-	noise_constrs = noise_constrs + [ Pi_2 * [ acc_e.d * ones(2*n*T,1) ; acc_e.m * ones(2*p*T,1) ; perf_level * ones(2*n,1) ] <= M1 * ones(2*n,1) - [eye(n);-eye(n)]*select_m(T,T)*S0*r ];
+	noise_constrs = [ Pi_1 * [ acc_e.d * ones(2*wd*T,1) ; acc_e.m * ones(2*p*T,1) ; perf_level * ones(2*n,1) ] <= alpha_2 * ones(2*n*T,1) - [eye(n*T);-eye(n*T)]*sel_influenced_states*S0*r ];
+	noise_constrs = noise_constrs + [ Pi_2 * [ acc_e.d * ones(2*wd*T,1) ; acc_e.m * ones(2*p*T,1) ; perf_level * ones(2*n,1) ] <= M1 * ones(2*n,1) - [eye(n);-eye(n)]*select_m(T,T)*S0*r ];
 
 	%Dual relationship to design variables
 	pre_xi = [];
@@ -241,11 +242,11 @@ function [ results ] = observer_comparison15( varargin )
 		pre_xi = [ pre_xi ; acc_e.A^i];
 	end
 
-	G = [ (eye(n*(T+1))+S0*Q*Cm0)*S0 S0*Q (eye(n*(T+1))+S0*Q*Cm0)*pre_xi ];
+	G = [ (eye(n*(T+1))+S0*Q*Cm0)*S0*E_big S0*Q (eye(n*(T+1))+S0*Q*Cm0)*pre_xi ];
 
-	bounded_disturb_matrix = [ [ eye(n*T) ; -eye(n*T) ] zeros(2*n*T,p*T+n) ;
-								zeros(2*p*T,n*T) [ eye(p*T) ; -eye(p*T) ] zeros(2*p*T,n) ;
-								zeros(2*n,(p+n)*T) [ eye(n) ; -eye(n) ] ];
+	bounded_disturb_matrix = [ [ eye(wd*T) ; -eye(wd*T) ] zeros(2*wd*T,vd*T+n) ;
+								zeros(2*vd*T,wd*T) [ eye(vd*T) ; -eye(vd*T) ] zeros(2*vd*T,n) ;
+								zeros(2*n,(vd+wd)*T) [ eye(n) ; -eye(n) ] ];
 
 	dual_equal_constrs = [ Pi_1 * bounded_disturb_matrix == [eye(n*T); -eye(n*T)]*sel_influenced_states*G ];
 	dual_equal_constrs = dual_equal_constrs + [Pi_2 * bounded_disturb_matrix == [eye(n);-eye(n)]*select_m(T,T)*G];
@@ -260,7 +261,7 @@ function [ results ] = observer_comparison15( varargin )
 	% Can we simply try to add further constraints?
 	% +++++++++++++++++++++++++++++++++++++++++++++
 
-	for missing_loc = 0:(T-1)-2
+	for missing_loc = 1:(T-1)-1
 		% Create Trajectory Matrices
 		[~,~,Cm,~] = create_skaf_n_boyd_matrices(acc_e,T,'missing',missing_loc);
 
@@ -279,7 +280,7 @@ function [ results ] = observer_comparison15( varargin )
 		% Pxm = [ Pxm ; S*Q*mu_select ];
 		% xi_tilde = [ xi_tilde ; (eye(n*(T+1)) + S*Q*Cm)*xi0m + S*r];
 
-		G = [ (eye(n*(T+1))+S0*Q*Cm)*S0 S0*Q*mu_select (eye(n*(T+1))+S0*Q*Cm)*pre_xi ];
+		G = [ (eye(n*(T+1))+S0*Q*Cm)*S0*E_big S0*Q*mu_select (eye(n*(T+1))+S0*Q*Cm)*pre_xi ];
 
 		%Add to the constraint set
 		dual_equal_constrs = dual_equal_constrs + [Pi_1 * bounded_disturb_matrix == [eye(n*T); -eye(n*T)]*sel_influenced_states*G];
@@ -312,24 +313,28 @@ function [ results ] = observer_comparison15( varargin )
 	%% Plot the Performance of this Designed Controller %%
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+	%Constants
+	T_s = 0.5;
+
 	%Controller Definition
 	contr2.F = F2;
 	contr2.u0 = u0_2;
 
 	num_plots = 4;
+	num_rollouts = 10;
 
 	A_col = [];
-	for  i = 0:T
-		A_col = [ A_col ; acc_e.A^i ];
+	for  temp_ind = 0:T
+		A_col = [ A_col ; acc_e.A^temp_ind ];
 	end 
 
 	E_bar = [];
-	for i = 1:T
+	for temp_ind = 1:T
 		E_bar = blkdiag(E_bar,acc_e.E);
 	end
 
 	%Plot Constants
-	[xi_t0,xi_mag_t0] = apply_controller_to_rollouts(acc_e,contr2,T,1,M1);
+	[xi_t0,xi_mag_t0] = apply_controller_to_rollouts(acc_e,contr2,T,num_rollouts,M1);
 	xi = xi_t0;
 	xi_mag = xi_mag_t0;
 
@@ -337,63 +342,44 @@ function [ results ] = observer_comparison15( varargin )
 		[S,H,Cm,~] = create_skaf_n_boyd_matrices(acc_e,T,'missing',missing_ob_num);
 
 		% Create some trajectory matrices
-		Pxd = (eye(n*(T+1))+H*contr2.F*inv(eye(p*T)-Cm*H*contr2.F)*Cm)*S;
+		Pxd = (eye(n*(T+1))+H*contr2.F*inv(eye(p*T)-Cm*H*contr2.F)*Cm)*S*E_big;
 		Pxm = H*contr2.F*inv(eye(p*T)-Cm*H*contr2.F);
 		xi_factor = H*contr2.F*inv(eye(p*T)-Cm*H*contr2.F )*Cm;
 
-		delta 	= unifrnd(-acc_e.d,acc_e.d,wd*T,1);
-		mu 		= unifrnd(-acc_e.m,acc_e.m,p*T,1);
-		xi_0 	= xi(end-n+1:end,1)
+		delta 	= unifrnd(-acc_e.d,acc_e.d,wd*T,num_rollouts);
+		mu 		= unifrnd(-acc_e.m,acc_e.m,vd*T,num_rollouts);
+		xi_0 	= xi(end-n+1:end,:);
 
 		mu([missing_ob_num*p+1:(missing_ob_num+1)*p],:) = 0;
 
-		xi_temp =  A_col*xi_0 + H*repmat(contr2.u0,1,1) + ...
-	        xi_factor*(A_col*xi_0 + H*repmat(contr2.u0,1,1)) + ...
+		xi_temp =  A_col*xi_0 + H*repmat(contr2.u0,1,num_rollouts) + ...
+	        xi_factor*(A_col*xi_0 + H*repmat(contr2.u0,1,num_rollouts)) + ...
 	        Pxd * delta + Pxm * mu;
 
-	    size(xi_temp)
-
-	    xi = [xi;xi_temp];
-
-		for t = 1:T
-			xi_mag(1+missing_ob_num*T+t,1) = norm(select_m(t,T)*xi_temp,Inf);
+	    xi = [xi;xi_temp([n+1:end],:)];
+	    for rollout_ind = 1 : num_rollouts 
+			for t = 1:T
+				xi_mag(1+missing_ob_num*T+t,rollout_ind) = norm(select_m(t,T)*xi_temp(:,rollout_ind),Inf);
+			end
 		end
-
 	end
 
 	figure;
 	hold on;
-	bar([0:T*(3+1)],[ M1 opt_obj2*ones(1,T-1) M1 opt_obj2*ones(1,T-1) M1 opt_obj2*ones(1,T-1) M1 opt_obj2*ones(1,T-1) M1 ],'w')
-	plot([0:T*(3+1)],xi_mag)
+	bar([0:T*(3+1)]*T_s,[ M1 opt_obj2*ones(1,T-1) M1 opt_obj2*ones(1,T-1) M1 opt_obj2*ones(1,T-1) M1 opt_obj2*ones(1,T-1) M1 ],'w')
+	for rollout_ind = 1 : num_rollouts
+		plot([0:T*(3+1)]*T_s,xi_mag(:,rollout_ind)' )
+	end
 
 	legend('Guarantees')
+	axis([-0.5*T_s (T*(3+1)+0.5)*T_s 0 3.5])
 
-	xlabel('Time')
-	ylabel('\infty Norm of the Estimation Error')
-	title(['Estimator Performance when $M_1$=' num2str(M1_list(controller_num))],'Interpreter','latex')
+	xlabel('Time [sec]')
+	ylabel('$||x(t)-\hat{x}(t)||_{\infty}$','Interpreter','latex')
+	% title(['Estimator Performance when $M_1$=' num2str(M1_list(controller_num))],'Interpreter','latex')
 
-	% figure;
-	% for i = 1 : num_plots
-	% 	if i > 1
-	% 		[xi{i},xi_mag{i}] = apply_controller_to_rollouts(acc_e,contr2,T,num_rollouts,M1,'missing',i-1,'rollout_length',20);
-	% 	end
-
-	% 	subplot(2,2,i)
-	% 	hold on;
-
-	% 	bar([0:T],[ M1 value(alpha_2)*ones(1,T-1) M1 ],'w')
-	% 	for r_num = 1:rollouts_per_plot
-	% 		plot([0:T],xi_mag{i}(:,r_num))
-	% 	end
-	% 	xlabel('Time Step t')
-	% 	ylabel('$||\xi(t)||\infty$, Norm of Estimation Error','Interpreter','latex')
-	% 	if i > 1
-	% 		title(['Norm of the Estimation Error (Missing Data Occurs at t=' num2str(i-1) ')'])
-	% 	else
-	% 		title(['Norm of the Estimation Error (Data Always Available)'])
-	% 	end
-	% 	legend('Guarantees')
-	% end
+	xt = get(gca, 'XTick');
+	set(gca, 'FontSize', 16)
 
 	%%%%%%%%%%%%%%%%%%%%
 	%% Saving Results %%
@@ -401,6 +387,7 @@ function [ results ] = observer_comparison15( varargin )
 
 	results.sys = acc;
 	results.experim_params.T = T;
+	results.experim_params.M1s =M1_list;
 
 	results.m1_changed.optimization = optim1;
 	results.m1_changed.opt_obj = opt_obj1;
@@ -410,5 +397,12 @@ function [ results ] = observer_comparison15( varargin )
 	results.m1_changed.u0 = u0_1;
 	results.m1_changed.xi = xi_t1;
 	results.m1_changed.xi_mag = xi_mag_t1;
+
+	results.missing1.optimization = optim2;
+	results.missing1.opt_obj = opt_obj2;
+	results.missing1.Q = Q2;
+	results.missing1.r = r2;
+	results.missing1.F = F2;
+	results.missing1.u0 = u0_2;
 
 end

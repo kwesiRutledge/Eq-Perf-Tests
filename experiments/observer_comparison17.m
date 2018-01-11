@@ -38,7 +38,7 @@ function [ results ] = observer_comparison17( varargin )
 	example_sys.G = eye(size(example_sys.C,1));
 
 	example_sys.m = 0; %0.5*perf_level;
-	example_sys.d = 0.75*perf_level;
+	example_sys.d = 0.6*perf_level;
 
 	%Dimensions
 	p = size(example_sys.C,1);

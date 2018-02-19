@@ -7,6 +7,8 @@ function [ controller , optim_info ] = create_fhae_w_eg_recovery( varargin )
 	%	Usage:
 	%		[controller,optim_info] = create_fhae_w_eq_recovery( 'feasibility' , M1 , M2 , T , sys )
 	%		[controller,optim_info] = create_fhae_w_eq_recovery( 'min_M2' , M1 , T , sys )
+	%		[controller,optim_info] = create_fhae_w_eq_recovery( 'min_M2' , M1 , T , sys , 'verbosity', verbosity )
+	%		[controller,optim_info] = create_fhae_w_eq_recovery( 'min_M2' , M1 , T , sys , 'pattern' , pattern)
 	%
 	%	Inputs:
 	%		input_str - 	The first argument to this function should be a string telling the function
@@ -17,13 +19,19 @@ function [ controller , optim_info ] = create_fhae_w_eg_recovery( varargin )
 	%		M2 - 			The desired bound for the estimation error for times t in [0,T]. (Assume M1 <= M2)
 	%		T - 			Time horizon that we consider for recovery.
 	%		sys -
-
+	%		param_name - 	Name of the parameter which we will now tune.
+	%		
+	%		pattern_array - Array representing the missing data patterns that we will be robust against.
+	%						Array (n_patt x n(T+1)). Should contain only 0 and 1 values.
+	%						For each row in the matrix, it represents a feasible data pattern.
+	%						i.e. if the row contains, [1,0,1,1] that means the following observations are available:
+	%						y(t),y(t+2), and y(t+3) while the following observation is missing y(t+1)
 
 	%%%%%%%%%%%%%%%%%%%
 	%% Manage Inputs %%
 	%%%%%%%%%%%%%%%%%%%
 
-	if nargin == 0
+	if nargin <= 3
 		error('Need at least 4 inputs.')
 	end
 
@@ -52,6 +60,10 @@ function [ controller , optim_info ] = create_fhae_w_eg_recovery( varargin )
 		for ind = 5:2:nargin-1
 			if strcmp(varargin{ind},'verbosity')
 				verbosity = varargin{ind+1};
+			elseif strcmp(varargin{ind},'pattern')
+				pattern = varargin{ind+1};
+			else
+				error(['Unrecognized param_name string. Input number ' num2str(ind) '.' ])
 			end
 		end
 
@@ -209,8 +221,12 @@ function [ controller , optim_info ] = create_fhae_w_eg_recovery( varargin )
 
 		%Select all influenced states
 		sel_influenced_states = [];
-		for i = 1 : T
-			sel_influenced_states = [ sel_influenced_states ; select_m(i,T) ];
+		if exist('pattern')
+			sel_influenced_states = pattern_arr2sel_states(pattern,n,T);
+		else
+			for i = 1 : T
+				sel_influenced_states = [ sel_influenced_states ; select_m(i,T) ];
+			end
 		end
 
 		noise_constrs = [ Pi_1 * [ sys.d * ones(2*wd*T,1) ; sys.m * ones(2*vd*T,1) ; M1 * ones(2*n,1) ] <= alpha_2 * ones(2*n*T,1) - [eye(n*T);-eye(n*T)]*sel_influenced_states*S0*r ];

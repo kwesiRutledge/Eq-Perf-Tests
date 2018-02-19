@@ -1,5 +1,5 @@
 function [ results ] = observer_comparison19( varargin )
-%	observer_comparison16.m
+%	observer_comparison19.m
 %		Description:
 %			The objective of this experiment is to design a finite horizon, affine
 %			estimator (fhae) that is robust against the possibility of 1 observation

@@ -254,6 +254,52 @@ function [ controller , optim_info ] = create_fhae_w_eg_recovery( varargin )
 													[bl_row_num*size(sys.C,1)+1:end] ) == 0 ];
 		end
 
+		% Constraints due to missing data pattern
+		if exist('pattern')
+			for comb_num = 1:size(pattern,1)
+
+				missing_locs = pattern(comb_num==0)-1;
+
+				%Calculate Big C Matrix
+				[~,~,Cm,~] = create_skaf_n_boyd_matrices(sys,T,'missing',missing_locs);
+
+				%Create Special selection matrices for selecting the proper variables
+				R = [ zeros(n,n*T) eye(n) ];
+					% mu_select = [];
+					% for i = 1:T+1
+					% 	%Takes out the row representing the observation at time t=i+1
+					% 	if any(missing_loc+1+1 == i)
+					% 		mu_select = [ mu_select ; zeros(wd+vd,(wd+vd)*(T+1)) ];
+					% 	else
+					% 		mu_select = [ mu_select ; [ zeros((wd+vd),vd*(i-1)) eye(wd+vd) zeros(wd+vd,p*(T-i)) ] ];
+					% 	end
+					% end
+
+					% Pxd = [ Pxd ; (eye(n*(T+1))+S*Q*Cm)*S ];%E_bar*[ eye(b_dim*T) zeros(b_dim*T,b_dim) ];
+					% Pxm = [ Pxm ; S*Q*mu_select ];
+					% xi_tilde = [ xi_tilde ; (eye(n*(T+1)) + S*Q*Cm)*xi0m + S*r];
+
+				G_big_temp = zeros(T*size(sys.C_v,1),(T)*(vd));
+				for i = 1:T-1
+					%if any( i == (missing_locs+1)) || (any(i == (missing_locs+2) ))
+					if any( i == (missing_locs+1))
+						G_big_temp( [(i-1)*size(sys.C_v,1) + 1 : i*size(sys.C_v,1) ] , : ) = [ zeros(size(sys.C_v,1),T*(vd)) ];
+					else
+						size(sys.C_v)
+						size(G_big_temp)
+						G_big_temp( [(i-1)*size(sys.C_v,1) + 1 : i*size(sys.C_v,1) ] , : ) = [ zeros(size(sys.C_v,1),(i-1)*(vd)) sys.C_v zeros(size(sys.C_v,1),(T-i)*(vd) )];
+					end
+				end
+
+				G = [ (eye(n*(T+1))+S0*Q*Cm)*S0*Bw0 S0*Q*G_big_temp (eye(n*(T+1))+S0*Q*Cm)*pre_xi ];
+
+				%Awd to the constraint set
+				dual_equal_constrs = dual_equal_constrs + [Pi_1 * bounded_disturb_matrix == [eye(n*T); -eye(n*T)]*sel_influenced_states*G];
+				dual_equal_constrs = dual_equal_constrs + [Pi_2 * bounded_disturb_matrix == [eye(n);-eye(n)]*select_m(T,T)*G];
+
+			end
+		end
+
 		% OPTIMIZATION
 		% ++++++++++++
 		ops = sdpsettings('verbose',verbosity);

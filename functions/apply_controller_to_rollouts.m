@@ -56,7 +56,7 @@ function [ varargout ] = apply_controller_to_rollouts(varargin)
 %% Input Processing %%
 %%%%%%%%%%%%%%%%%%%%%%
 
-if (nargin < 5) or ( (nargin > 5) & (mod(nargin-5,2) == 1) )
+if (nargin < 5) | ( (nargin > 5) & (mod(nargin-5,2) == 1) )
 	error(['Improper number of arguments given. (Received ' num2str(nargin) ')'])
 end
 

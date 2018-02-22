@@ -1,23 +1,23 @@
-function [ select_influenced_states_mat ] = pattern_arr2sel_states(pattern_array,n,T)
+function [ missing_bG ] = pattern_arr2sel_states(single_pattern,n,T)
 	%Description:
-	%	Converts a matrix of possible data patterns into a constraint for the design of
-	%	Finite Horizon Affine Estimators that achieve Equalized Recovery.
+	%	Converts a single missing data pattern (represented as an arrat)
+	%	into a constraint for the design of	Finite Horizon Affine Estimators
+	%	that achieve Equalized Recovery.
 	%
 	%Inputs:
-	%
-	%
+	%	single_pattern - 	A binary arrat of length T that describes whether or not
+	%						an observation or data point is missing at a given time. 
+	%	n - Dimension of state space.
+
 
 	%% Constants
 
-	select_influenced_states_mat = [];
+	missing_bG = [];
 
 	%% Create matrix
-	for pattern_num = 1 : size(pattern_array,1)
-		temp_row = [];
-		for t = 0 : T
-			temp_row = [temp_row pattern_array(pattern_num,t+1)*eye(n)];
-		end
-		select_influenced_states_mat = [select_influenced_states_mat; temp_row];
+	for p_ind = 0 : T
+		temp_row = [zeros(n,p_ind*n) single_pattern(p_ind+1)*eye(n) zeros(n,(T-p_ind)*n)];
+		missing_bG = [missing_bG; temp_row];
 	end
 
 end

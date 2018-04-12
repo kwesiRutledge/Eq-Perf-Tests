@@ -31,7 +31,7 @@ results = observer_tests(13,{'verbosity,time_horizon,M1,M2'})
 	* Figure 2 is used in the paper.
 
 16. The objective of this set of experiments was to duplicate the results of Experiment 14, when the proper 'E' matrix was used. Started before experiment 15 was completed because an error (no consideration of the E matrix) was observed in the design of experiments 14 and 15.
-	* Figure 1 used in the paper.
+	* Figure 1 of this script became Figure 1 in the paper.
 
 17. Reran the counterexample provided in the paper. Here we compare the correctness of multiple synthesis methods, where the goal is to correctly identify when an estimator (aka gains L or (F,u0)) is feasible. We defined feasibility as "feasible" if an optimal objective was less than M and "infeasible" otherwise. The 3 objectives considered were:
 	* ||A+LC||{infty} M + ||L||{\infty} \eta_v + ||E||{\infty} \eta_w
@@ -46,3 +46,15 @@ results = observer_tests(13,{'verbosity,time_horizon,M1,M2'})
 
 20. Tests the ROO solution to the ACC problem to see if it can achieve equalized performance as well as plot how it might achieve equalized recovery. 
 	* Figure 1 used in the paper.
+21.
+22.
+23. Can we robustify against languages with more than one word?
+	* The answer is that our math, as of April 12th did not correctly handle more than one word.
+	* In this experiment, I compare one of our earlier experiments (#15) with the performance of a "worst case" language that we have proven to be correctly handled in the current framework.
+	* Plots compare the use of our old method for robustifying to languages with more than one word with a "worst case" language design. Plots 3 and 4 specifically display each estimators error when the following words are applied:
+		* 101111
+		* 110111
+		* 111011
+		* 111101
+
+24. Recreating the results of ROO ACC with "worst case" language L-star

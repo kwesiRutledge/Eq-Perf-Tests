@@ -1,5 +1,5 @@
 function [ results ] = observer_comparison20( varargin )
-%	observer_comparison20.m
+%	observer_comparison24.m
 %		Description:
 %			The objective of this experiment is to design a finite horizon, affine
 %			estimator (fhae) that is robust against the possibility of 1 observation
@@ -342,6 +342,21 @@ function [ results ] = observer_comparison20( varargin )
 	M1 = 1.5*perf_level;
 	num_potential_missing = 2;
 
+	L = [];
+	for choose_num = 1:3
+		missing_inds = nchoosek([1:T_allowed],choose_num);
+		for missing_tuple_num = 1 : size(missing_inds,1)
+			temp_word = ones(1,T);
+			temp_word(missing_inds(missing_tuple_num,:)) = 0;
+			L = [L; temp_word];
+		end
+	end
+
+	L_star = ones(1,T);
+	for sigma_ind = 1 : size(L,1)
+		L_star = bitand(L_star,L(sigma_ind,:));
+	end
+
 	T_not_feasible = true;
 
 	while T_not_feasible
@@ -371,7 +386,7 @@ function [ results ] = observer_comparison20( varargin )
 		% Creating Constraints
 		% ++++++++++++++++++++
 
-		[S0,H0,Cm0,xi0m] = create_skaf_n_boyd_matrices(test_sys,T);
+		[S0,H0,Cm0,xi0m] = create_skaf_n_boyd_matrices(test_sys,T,'missing',find(L_star==0)-1);
 
 		positive_constr = [ Pi_1 >= 0, Pi_2 >= 0 ];
 
@@ -416,42 +431,6 @@ function [ results ] = observer_comparison20( varargin )
 		for bl_row_num = 1 : T-1
 			l_diag_constr = l_diag_constr + [ Q(	[(bl_row_num-1)*size(test_sys.B,2)+1:bl_row_num*size(test_sys.B,2)], ...
 													[bl_row_num*size(test_sys.C,1)+1:end] ) == 0 ];
-		end
-
-		% Can we simply try to add further constraints?
-		% +++++++++++++++++++++++++++++++++++++++++++++
-
-		for missing_num = 1:num_potential_missing
-			
-			all_poss_comb = nchoosek([1:T_allowed],missing_num);
-
-			for comb_num = 1:size(all_poss_comb,1)
-
-				missing_locs = unique([ all_poss_comb(comb_num,:) (all_poss_comb(comb_num,:)+1) ]);
-
-				%Calculate Big C Matrix
-				[~,~,Cm,~] = create_skaf_n_boyd_matrices(test_sys,T,'missing',missing_locs);
-
-				%Create Special selection matrices for selecting the proper variables
-				R = [ zeros(n,n*T) eye(n) ];
-
-				G_big_temp = zeros(T*size(acc_roo.G,1),(T+1)*(wd+vd));
-				for i = 1:T-1
-					if any( i == (missing_locs+1)) || (any(i == (missing_locs+2) ))
-						G_big_temp( [(i-1)*size(acc_roo.G,1) + 1 : i*size(acc_roo.G,1) ] , : ) = [ zeros(size(acc_roo.G,1),(T+1)*(wd+vd)) ];
-					else
-						G_big_temp( [(i-1)*size(acc_roo.G,1) + 1 : i*size(acc_roo.G,1) ] , : ) = [ zeros(size(acc_roo.G,1),(i-1)*(wd+vd)) acc_roo.G zeros(size(acc_roo.G,1),(T-i)*(wd+vd) )];
-					end
-				end
-
-				G = [ (eye(n*(T+1))+S0*Q*Cm)*S0*E_big2+S0*Q*G_big_temp (eye(n*(T+1))+S0*Q*Cm)*pre_xi ];
-
-				%Awd to the constraint set
-				dual_equal_constrs = dual_equal_constrs + [Pi_1 * bounded_disturb_matrix == [eye(n*T); -eye(n*T)]*sel_influenced_states*G];
-				dual_equal_constrs = dual_equal_constrs + [Pi_2 * bounded_disturb_matrix == [eye(n);-eye(n)]*select_m(T,T)*G];
-
-			end
-
 		end
 
 		% OPTIMIZE

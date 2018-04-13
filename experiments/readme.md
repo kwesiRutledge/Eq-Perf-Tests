@@ -58,3 +58,4 @@ results = observer_tests(13,{'verbosity,time_horizon,M1,M2'})
 		* 111101
 
 24. Recreating the results of ROO ACC with "worst case" language L-star
+25. Solving the language problem with the gain switching controller+automaton concept. Proof of concept. Still need theory for this.

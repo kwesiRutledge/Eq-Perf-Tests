@@ -71,6 +71,8 @@ function [ results ] = observer_comparison23( varargin )
 	%Select matrix
 	select_m = @(t,T_r) [zeros(n,t*n) eye(n) zeros(n,(T_r-t)*n) ];
 
+	paper_format = true;
+
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	%% Synthesize Controller for 1 missing Data Case %%
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -371,8 +373,10 @@ function [ results ] = observer_comparison23( varargin )
 		xlabel('Time [sec]')
 		ylabel('$||x(t)-\hat{x}(t)||_{\infty}$','Interpreter','latex')
 		% title(['Estimator Performance when $M_1$=' num2str(M1_list(controller_num))],'Interpreter','latex')
-		title(['Estimator #' num2str(contr_num)])
-
+		if ~paper_format
+			title(['Estimator #' num2str(contr_num)])
+		end
+		
 		xt = get(gca, 'XTick');
 		set(gca, 'FontSize', 16)
 	end

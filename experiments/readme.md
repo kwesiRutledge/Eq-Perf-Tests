@@ -28,7 +28,6 @@ results = observer_tests(13,{'verbosity,time_horizon,M1,M2'})
 15. The objective of this set of experiments are:
 	* Consider the effect of changing the constant M1 on the minimal M2 that can be found for Equalized Recovery (assumes that the time horizon T is 6, by default). Note: A line search could be implemented to find minimal M1 AND minimial M2 using this method, but it is not considered here.
 	* Simulate when an estimator is defined for one time horizon, T, but the controller is run for an arbirary time horizon, T2.
-	* Figure 2 is used in the paper.
 
 16. The objective of this set of experiments was to duplicate the results of Experiment 14, when the proper 'E' matrix was used. Started before experiment 15 was completed because an error (no consideration of the E matrix) was observed in the design of experiments 14 and 15.
 	* Figure 1 of this script became Figure 1 in the paper.
@@ -45,7 +44,6 @@ results = observer_tests(13,{'verbosity,time_horizon,M1,M2'})
 	* function should be robust enough to allow for E/B_w and G/C_v matrices
 
 20. Tests the ROO solution to the ACC problem to see if it can achieve equalized performance as well as plot how it might achieve equalized recovery. 
-	* Figure 1 used in the paper.
 21.
 22.
 23. Can we robustify against languages with more than one word?
@@ -58,4 +56,9 @@ results = observer_tests(13,{'verbosity,time_horizon,M1,M2'})
 		* 111101
 
 24. Recreating the results of ROO ACC with "worst case" language L-star
+	* Figure 3 in the ADHS 2018 Paper comes from this experiment.
 25. Solving the language problem with the gain switching controller+automaton concept. Proof of concept. Still need theory for this.
+26. Observing the effect of underconstraining the optimization variable Q when data is missing.
+	* When data is missing, the C-bar matrix contains zeros in certain rows which (when placed into the prodcuts that form our constraints) should lead to an under constraining of Q.
+	* Formerly, the Q was constrained because we did not force v(t) = 0 when data was missing.
+	* Figure 2 in the ADHS 2018 paper, comes from this experiment.

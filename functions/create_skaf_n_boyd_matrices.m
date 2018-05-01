@@ -70,11 +70,11 @@ function [varargout] = create_skaf_n_boyd_matrices(varargin)
 		% Check to see if E/B_w or G/C_v exist
 		% If not just error out.
 
-		if ~isfield(sys,'E') & ~isfield(sys,'B_w')
+		if (~isfield(sys,'E')) & (~isfield(sys,'B_w')) & (~isa(sys, 'Aff_Dyn'))
 			error('E or B_w does not exist!')
 		end
 
-		if isfield(sys,'B_w')
+		if isfield(sys,'B_w') || isa(sys, 'Aff_Dyn')
 			E = sys.B_w;
 		else
 			E = sys.E;
@@ -91,11 +91,11 @@ function [varargout] = create_skaf_n_boyd_matrices(varargin)
 
 	if nargout >= 6
 
-		if ~isfield(sys,'G') & ~isfield(sys,'C_v')
+		if ~isfield(sys,'G') & ~isfield(sys,'C_v') & (~isa(sys, 'Aff_Dyn'))
 			error('G or C_v does not exist!')
 		end
 
-		if isfield(sys,'C_v')
+		if isfield(sys,'C_v') || isa(sys, 'Aff_Dyn')
 			C_v = sys.C_v;
 		else
 			C_v = sys.G;

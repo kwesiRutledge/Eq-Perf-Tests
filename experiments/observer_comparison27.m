@@ -1,5 +1,5 @@
 function [ results ] = observer_comparison27( varargin )
-%	observer_comparison25.m
+%	observer_comparison27.m
 %		Description:
 %			The objective of this experiment is to design a finite horizon, affine
 %			estimator (fhae) that is robust against the possibility of 1 observation
@@ -258,9 +258,9 @@ function [ results ] = observer_comparison27( varargin )
 			p1 = L(pattern_ind,:);
 			p2 = L(patt_i,:);
 			% Add xor
-			p_overlap = bitxor(p1,p2)
+			p_overlap = bitxor(p1,p2);
 			%Bit at which things end up being different
-			ind_identical = find(p_overlap,1) - 1
+			ind_identical = find(p_overlap,1) - 1;
 			%Add constraints
 			shared_Q_constrs = shared_Q_constrs +  [Q{pattern_ind}( [1:ind_identical*m] , [1:ind_identical*p] ) == Q{patt_i}( [1:ind_identical*m] , [1:ind_identical*p] )];
 		end

@@ -24,7 +24,7 @@ function [results] = observer_tests( varargin )
 
 	%%Run tests from 
 	for k = 1 : length(test_nums)
-		results(k) = eval([base_name num2str(test_nums(k)) '(' test_inputs{k} ')' ]);
+		results{k} = eval([base_name num2str(test_nums(k)) '(' test_inputs{k} ')' ]);
 	end
 
 end

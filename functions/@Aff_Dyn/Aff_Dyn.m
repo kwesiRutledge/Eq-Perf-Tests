@@ -17,6 +17,7 @@ classdef Aff_Dyn
 		C_v;
 		eta_w;
 		eta_v;
+		x0;
 	end
 
 	methods
@@ -40,6 +41,8 @@ classdef Aff_Dyn
 			n = size(A,1);
 			p = size(C,1);
 			m = size(B,2);
+
+			ad.x0 = zeros(n,1);
 
 			switch nargin
 			case 4

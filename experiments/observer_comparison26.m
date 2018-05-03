@@ -1,20 +1,8 @@
-function [ results ] = observer_comparison23( varargin )
-%observer_comparison23.m
+function [ results ] = observer_comparison26( varargin )
+%observer_comparison26.m
 %Description:
-%	The objective of this experiment is to compare design methods for a finite
-%	horizon, affine estimator (fhae) that is robust against the possibility of 1 observation
-%	missing in the middle 4 positions of the length 6 sequence.
-%
-%Difference Between this and Experiment 15:
-%	In this, we consider 2 methods for handling the language constraint (which we believe are
-%	equivalent):
-%		1. Incorrectly use the same Q for all nonlinear mappings (this is not mathematically
-%			grounded)
-%		2. Compress the language constraint L, to a worst case language L^*, such that
-%			- |L^*|=1
-%			- \sigma^* \in L^*
-%			- \sigma^* is the LUB of all words in L according to the generalized inequality in
-%			  Document #29.
+%	The objective of this experiment is to test the choice of v == 0 when data is missing instead of
+%	the current, incorrect method of not doing anything. 
 %
 %	Qualities of this Problem:
 %			- Robust Optimization proposed by Sze Zheng Yong
@@ -130,103 +118,9 @@ function [ results ] = observer_comparison23( varargin )
 
 	ops = sdpsettings('verbose',verbosity);
 
-	% Creating Constraints
-	% ++++++++++++++++++++
-
-	[S0,H0,Cm0,xi0m,E_big] = create_skaf_n_boyd_matrices(acc_e,T);
-
-	positive_constr = [ Pi_1 >= 0, Pi_2 >= 0 ];
-
-	%Select all influenced states
-	sel_influenced_states = [];
-	for i = 1 : T
-		sel_influenced_states = [ sel_influenced_states ; select_m(i,T) ];
-	end
-
-	noise_constrs = [ Pi_1 * [ acc_e.d * ones(2*wd*T,1) ; acc_e.m * ones(2*p*T,1) ; perf_level * ones(2*n,1) ] <= alpha_2 * ones(2*n*T,1) - [eye(n*T);-eye(n*T)]*sel_influenced_states*S0*r ];
-	noise_constrs = noise_constrs + [ Pi_2 * [ acc_e.d * ones(2*wd*T,1) ; acc_e.m * ones(2*p*T,1) ; perf_level * ones(2*n,1) ] <= M1 * ones(2*n,1) - [eye(n);-eye(n)]*select_m(T,T)*S0*r ];
-
-	%Dual relationship to design variables
-	pre_xi = [];
-	for i = 0:T
-		pre_xi = [ pre_xi ; acc_e.A^i];
-	end
-
-	G = [ (eye(n*(T+1))+S0*Q*Cm0)*S0*E_big S0*Q (eye(n*(T+1))+S0*Q*Cm0)*pre_xi ];
-
-	bounded_disturb_matrix = [ [ eye(wd*T) ; -eye(wd*T) ] zeros(2*wd*T,vd*T+n) ;
-								zeros(2*vd*T,wd*T) [ eye(vd*T) ; -eye(vd*T) ] zeros(2*vd*T,n) ;
-								zeros(2*n,(vd+wd)*T) [ eye(n) ; -eye(n) ] ];
-
-	dual_equal_constrs = [ Pi_1 * bounded_disturb_matrix == [eye(n*T); -eye(n*T)]*sel_influenced_states*G ];
-	dual_equal_constrs = dual_equal_constrs + [Pi_2 * bounded_disturb_matrix == [eye(n);-eye(n)]*select_m(T,T)*G];
-
-	%Lower Diagonal Constraint
-	l_diag_constr = [];
-	for bl_row_num = 1 : T-1
-		l_diag_constr = l_diag_constr + [ Q(	[(bl_row_num-1)*size(acc_e.B,2)+1:bl_row_num*size(acc_e.B,2)], ...
-												[bl_row_num*size(acc_e.C,1)+1:end] ) == 0 ];
-	end
-
-	% Can we simply try to add further constraints?
-	% +++++++++++++++++++++++++++++++++++++++++++++
-
-	for missing_loc = (find(L_star == 0)-1)
-		% Create Trajectory Matrices
-		[~,~,Cm,~] = create_skaf_n_boyd_matrices(acc_e,T,'missing',missing_loc);
-
-		%Create Special selection matrices for selecting the proper variables
-		R = [ zeros(n,n*T) eye(n) ];
-		mu_select = [];
-		for i = 1:T
-			if any(missing_loc == (i-1))
-				mu_select = [ mu_select ; zeros(p,p*T) ];
-			else
-				mu_select = [ mu_select ; [ zeros(p,p*(i-1)) eye(p) zeros(p,p*(T-i)) ] ];
-			end
-		end
-
-		% Pxd = [ Pxd ; (eye(n*(T+1))+S*Q*Cm)*S ];%E_bar*[ eye(b_dim*t_horizon) zeros(b_dim*t_horizon,b_dim) ];
-		% Pxm = [ Pxm ; S*Q*mu_select ];
-		% xi_tilde = [ xi_tilde ; (eye(n*(T+1)) + S*Q*Cm)*xi0m + S*r];
-
-		G = [ (eye(n*(T+1))+S0*Q*Cm)*S0*E_big S0*Q*mu_select (eye(n*(T+1))+S0*Q*Cm)*pre_xi ];
-
-		%Add to the constraint set
-		dual_equal_constrs = dual_equal_constrs + [Pi_1 * bounded_disturb_matrix == [eye(n*T); -eye(n*T)]*sel_influenced_states*G];
-		dual_equal_constrs = dual_equal_constrs + [Pi_2 * bounded_disturb_matrix == [eye(n);-eye(n)]*select_m(T,T)*G];
-
-	end
-
-	% OPTIMIZE
-	% ++++++++
-
-	% ops = sdpsettings('verbose',verbosity);
-	optim1 = optimize(positive_constr+noise_constrs+dual_equal_constrs+l_diag_constr, ...
-			alpha_2, ...
-			ops);
-
-	if optim1.problem ~= 0
-		error(['The design problem was not completely solved.' optim2.info ])
-	end
-
-	% Save Feedback Matrices
-	% ++++++++++++++++++++++
-	Q1 = value(Q);
-	r1 = value(r);
-	F1 = value( (inv(value(eye(size(Q,1)) + Q*Cm0*S0)) ) * Q);
-	u0_1 = value( inv(value(eye(size(Q,1)) + Q*Cm0*S0)) * r );
-
-	opt_obj1 = value(alpha_2);
-
-	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-	%% Solving for Worst Case Word %%
-	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-	clear positive_constr
-	clear noise_constrs
-	clear dual_equal_constrs
-	clear l_diag_constr
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	%% Solving for Worst Case Word while overconstraining Q %%
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 	% Creating Constraints
 	% ++++++++++++++++++++
@@ -280,12 +174,100 @@ function [ results ] = observer_comparison23( varargin )
 
 	% Save Feedback Matrices
 	% ++++++++++++++++++++++
-	Q2 = value(Q);
-	r2 = value(r);
-	F2 = value( (inv(value(eye(size(Q,1)) + Q*Cm0*S0)) ) * Q);
-	u0_2 = value( inv(value(eye(size(Q,1)) + Q*Cm0*S0)) * r );
+	Q_val = value(Q);
+	r_val = value(r);
+	F = value( (inv(value(eye(size(Q,1)) + Q*Cm0*S0)) ) * Q);
+	u0 = value( inv(value(eye(size(Q,1)) + Q*Cm0*S0)) * r );
 
 	opt_obj2 = value(alpha_2);
+
+	v_free.optim = optim2;
+	v_free.Q = Q_val;
+	v_free.r = r_val;
+	v_free.F = F;
+	v_free.u0 = u0;
+	v_free.M2 = opt_obj2;
+
+	clear positive_constr
+	clear noise_constrs
+	clear dual_equal_constrs
+	clear l_diag_constr
+
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	%% Solving for Worst Case Word while properly Q %%
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+	% Creating Constraints
+	% ++++++++++++++++++++
+
+	[S0,H0,Cm0,xi0m,E_big] = create_skaf_n_boyd_matrices(acc_e,T,'missing',find(L_star==0)-1);
+
+	positive_constr = [ Pi_1 >= 0, Pi_2 >= 0 ];
+
+	%Select all influenced states
+	sel_influenced_states = [];
+	for i = 1 : T
+		sel_influenced_states = [ sel_influenced_states ; select_m(i,T) ];
+	end
+
+	noise_constrs = [ Pi_1 * [ acc_e.d * ones(2*wd*T,1) ; acc_e.m * ones(2*p*T,1) ; perf_level * ones(2*n,1) ] <= alpha_2 * ones(2*n*T,1) - [eye(n*T);-eye(n*T)]*sel_influenced_states*S0*r ];
+	noise_constrs = noise_constrs + [ Pi_2 * [ acc_e.d * ones(2*wd*T,1) ; acc_e.m * ones(2*p*T,1) ; perf_level * ones(2*n,1) ] <= M1 * ones(2*n,1) - [eye(n);-eye(n)]*select_m(T,T)*S0*r ];
+
+	%Dual relationship to design variables
+	pre_xi = [];
+	for i = 0:T
+		pre_xi = [ pre_xi ; acc_e.A^i];
+	end
+
+	G = [ (eye(n*(T+1))+S0*Q*Cm0)*S0*E_big S0*Q (eye(n*(T+1))+S0*Q*Cm0)*pre_xi ];
+
+	bounded_disturb_matrix = [ [ eye(wd*T) ; -eye(wd*T) ] zeros(2*wd*T,vd*T+n) ;
+								zeros(2*vd*T,wd*T) [ eye(vd*T) ; -eye(vd*T) ] zeros(2*vd*T,n) ;
+								zeros(2*n,(vd+wd)*T) [ eye(n) ; -eye(n) ] ];
+
+	dual_equal_constrs = [ Pi_1 * bounded_disturb_matrix == [eye(n*T); -eye(n*T)]*sel_influenced_states*G ];
+	dual_equal_constrs = dual_equal_constrs + [Pi_2 * bounded_disturb_matrix == [eye(n);-eye(n)]*select_m(T,T)*G];
+
+	%Lower Diagonal Constraint
+	l_diag_constr = [];
+	for bl_row_num = 1 : T-1
+		l_diag_constr = l_diag_constr + [ Q(	[(bl_row_num-1)*size(acc_e.B,2)+1:bl_row_num*size(acc_e.B,2)], ...
+												[bl_row_num*size(acc_e.C,1)+1:end] ) == 0 ];
+	end
+
+	% Disturbance v=0
+	v_constr = [];
+	for v_ind = find(L_star==0)
+		v_constr = v_constr + [ v([(v_ind-1)*p+1:v_ind*p])==0 ];
+	end
+
+	% OPTIMIZE
+	% ++++++++
+
+	% ops = sdpsettings('verbose',verbosity);
+	optim2 = optimize(positive_constr+noise_constrs+dual_equal_constrs+l_diag_constr + v_constr, ...
+			alpha_2, ...
+			ops);
+
+	if optim2.problem ~= 0
+		error(['The design problem was not completely solved.' optim2.info ])
+	end
+
+	% Save Feedback Matrices
+	% ++++++++++++++++++++++
+	Q_val = value(Q);
+	r_val = value(r);
+	F = value( (inv(value(eye(size(Q,1)) + Q*Cm0*S0)) ) * Q);
+	u0 = value( inv(value(eye(size(Q,1)) + Q*Cm0*S0)) * r );
+
+	opt_obj2 = value(alpha_2);
+
+	v_constrained.optim = optim2;
+	v_constrained.Q = Q_val;
+	v_constrained.r = r_val;
+	v_constrained.F = F;
+	v_constrained.u0 = u0;
+	v_constrained.M2 = opt_obj2;
 
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	%% Plot the Performance of this Designed Controller %%
@@ -295,11 +277,11 @@ function [ results ] = observer_comparison23( varargin )
 	T_s = 0.5;
 
 	%Controller Definition
-	contr1.F = F1;
-	contr1.u0 = u0_1;
+	contr1.F = v_free.F;
+	contr1.u0 = v_free.u0;
 
-	contr2.F = F2;
-	contr2.u0 = u0_2;
+	contr2.F = v_constrained.F;
+	contr2.u0 = v_constrained.u0;
 
 	controllers = [contr1,contr2];
 
@@ -357,7 +339,7 @@ function [ results ] = observer_comparison23( varargin )
 		t_test = [0:T*(length(find(L_star == 0)))]*T_s;
 		bar_heights = [ M1 ];
 		for i = 1:length(find(L_star==0))
-			bar_heights = [ bar_heights opt_obj1*ones(1,T-1) M1];
+			bar_heights = [ bar_heights opt_obj2*ones(1,T-1) M1];
 		end
 
 		figure;
@@ -368,7 +350,7 @@ function [ results ] = observer_comparison23( varargin )
 		end
 
 		legend('Guarantees')
-		axis([-0.5*T_s (T*(3+1)+0.5)*T_s 0 opt_obj1+0.5])
+		axis([-0.5*T_s (T*(3+1)+0.5)*T_s 0 opt_obj2+0.5])
 
 		xlabel('Time [sec]')
 		ylabel('$||x(t)-\hat{x}(t)||_{\infty}$','Interpreter','latex')
@@ -389,14 +371,7 @@ function [ results ] = observer_comparison23( varargin )
 	results.experim_params.T = T;
 	results.experim_params.M1s = M1_list;
 
-	results.Q1 = Q1;
-	results.F1 = F1;
-	results.u0_1 = u0_1;
-	results.opt_obj1 = opt_obj1;
-
-	results.Q2 = Q2;
-	results.F2 = F2;
-	results.u0_2 = u0_2;
-	results.opt_obj2 = opt_obj2;
+	results.v_free = v_free;
+	results.v_constrained = v_constrained;
 
 end

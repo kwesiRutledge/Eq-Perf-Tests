@@ -206,7 +206,7 @@ function [ results ] = observer_comparison27( varargin )
 		Pi_2{pattern_ind} = sdpvar(2*n,2*(dd+p)*T+2*n,'full');
 	end
 
-	shared_Q_constrs = [];
+	shared_Q_constrs = []; shared_r_constrs = [];
 	dual_equal_constrs = [];
 	positive_constr = [];
 	noise_constrs = [];
@@ -263,6 +263,7 @@ function [ results ] = observer_comparison27( varargin )
 			ind_identical = find(p_overlap,1) - 1;
 			%Add constraints
 			shared_Q_constrs = shared_Q_constrs +  [Q{pattern_ind}( [1:ind_identical*m] , [1:ind_identical*p] ) == Q{patt_i}( [1:ind_identical*m] , [1:ind_identical*p] )];
+			shared_r_constrs = shared_r_constrs +  [r{pattern_ind}( [1:ind_identical*m] ) == r{patt_i}([1:ind_identical*m]) ];
 		end
 
 	end
@@ -270,7 +271,7 @@ function [ results ] = observer_comparison27( varargin )
 	% OPTIMIZATION
 	% ++++++++++++
 	ops = sdpsettings('verbose',verbosity);
-	optim2 = optimize(positive_constr+noise_constrs+dual_equal_constrs+l_diag_constr + shared_Q_constrs, ...
+	optim2 = optimize(positive_constr+noise_constrs+dual_equal_constrs+l_diag_constr + shared_Q_constrs + shared_r_constrs, ...
 			alpha_2, ...
 			ops)
 
@@ -283,6 +284,9 @@ function [ results ] = observer_comparison27( varargin )
 	% Save Feedback Matrices
 	% ++++++++++++++++++++++s
 	for pattern_ind = 1 : size(L,1)
+		%Get Parameters
+		[S0,H0,Cm0,~,E_big] = create_skaf_n_boyd_matrices(sys0,T,'missing',find(L(pattern_ind,:) == 0)-1);
+
 		state_based.Q{pattern_ind} = value(Q{pattern_ind});
 		state_based.r{pattern_ind} = value(r{pattern_ind});
 		state_based.F{pattern_ind} = value( (inv(value(eye(size(S0,2)) + kron(eye(T),sys0.B)*Q{pattern_ind}*Cm0*S0)) ) *kron(eye(T),sys0.B)* Q{pattern_ind});

@@ -11,7 +11,7 @@ function [ opt_out, fb ] = eq_rec_design_t( varargin )
 %	eq_rec_design_tf( ad , 'Feasible Set' , M1 , M2 , T )	
 %	eq_rec_design_tf( ad , 'Min_M2' , M1 , T )
 %	eq_rec_design_tf( ad , 'Feasible Set' , M1 , M2 , T , L )
-%	eq_rec_design_tf( ad , 'Min_M2' , M1 , T , L)
+%	eq_rec_design_tf( ad , 'Min_M2' , M1 , T , L )
 
 if nargin < 2
 	error('Not enough initial inputs given.')
@@ -215,10 +215,6 @@ case 'Min_M2'
 	bounded_disturb_matrix = [ [ eye(wd*T) ; -eye(wd*T) ] zeros(2*wd*T,vd*T+n) ;
 								zeros(2*vd*T,wd*T) [ eye(vd*T) ; -eye(vd*T) ] zeros(2*vd*T,n) ;
 								zeros(2*n,(vd+wd)*T) [ eye(n) ; -eye(n) ] ];
-
-								size(Pi_1)
-								size(bounded_disturb_matrix)
-								size(G)
 
 	dual_equal_constrs = [ Pi_1 * bounded_disturb_matrix == [eye(n*T); -eye(n*T)]*sel_influenced_states*G ];
 	dual_equal_constrs = dual_equal_constrs + [Pi_2 * bounded_disturb_matrix == [eye(n);-eye(n)]*select_m(T,T)*G];

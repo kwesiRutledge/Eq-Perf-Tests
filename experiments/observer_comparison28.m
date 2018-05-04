@@ -77,7 +77,7 @@ function [ results ] = observer_comparison28( varargin )
 	disp('Testing a feasibility problem for the prefix-based feedback law version.')
 	[ opt_data2 , new_contr ] = eq_rec_design_pb( acc_ad , 'Feasible Set' , M1 , oc27_contr1.opt_obj, T , L );
 
-	new_contr.apply_control([1,1,0],2);
+	new_contr.apply_control([1,1,0],ones(3*size(acc.C,1),1))
 
 	%%%%%%%%%%%%%%%%%%%%
 	%% Saving Results %%

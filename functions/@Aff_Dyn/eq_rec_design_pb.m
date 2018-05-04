@@ -169,8 +169,16 @@ case 'Feasible Set'
 			r_set{pattern_ind} = value(r{pattern_ind});
 			F_set{pattern_ind} = value( (inv(value(eye(size(S0,2)) + kron(eye(T),ad.B)*Q{pattern_ind}*Cm0*S0)) ) *kron(eye(T),ad.B)* Q{pattern_ind});
 			u0_set{pattern_ind} = value( inv(value(eye(size(S0,2)) + kron(eye(T),ad.B)*Q{pattern_ind}*Cm0*S0)) *kron(eye(T),ad.B)* r{pattern_ind} );
+			
+			%Fix up F and u0 to avoid NaN
+			F_set{pattern_ind}( isnan(F_set{pattern_ind}) ) = 0;
+			% u0_set{pattern_ind}( isnan(u0_set{pattern_ind}) ) = 0;
+
 		end
 	end
+
+	opt_out.Q_set = Q_set;
+	opt_out.r_set = r_set;
 
 	contr = FHAE_sb(L,F_set,u0_set);
 

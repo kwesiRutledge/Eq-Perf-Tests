@@ -1,5 +1,5 @@
 function [ results ] = observer_comparison28( varargin )
-%	observer_comparison27.m
+%	observer_comparison28.m
 %		Description:
 %			The objective of this experiment is to design a finite horizon, affine
 %			estimator (fhae) that is robust against the possibility of 1 observation
@@ -59,8 +59,7 @@ function [ results ] = observer_comparison28( varargin )
 	L = [	1,0,1,1,1,1;
 			1,1,0,1,1,1;
 			1,1,1,0,1,1;
-			1,1,1,1,0,1 ];
-
+			1,1,1,1,0,1];
 	%Using ACC System
 	load('data/system_examples/acc_p.mat');
 
@@ -79,6 +78,20 @@ function [ results ] = observer_comparison28( varargin )
 
 	new_contr.apply_control([1,1,0],ones(3*size(acc.C,1),1))
 
+	disp('Simulate one round with prefix-based control.')
+	pb_sim1 = new_contr.simulate_1run( acc_ad , M1 );
+
+	figure;
+	plot(pb_sim1')
+
+	num_runs = 10;
+
+	disp('Simulate 10 rounds with prefix-based control.')
+	[ pb_sim2 , pb_sim2_norm ] = new_contr.simulate_n_runs( acc_ad , M1 , num_runs );
+
+	figure;
+	plot(reshape(pb_sim2_norm,T+1,num_runs));
+
 	%%%%%%%%%%%%%%%%%%%%
 	%% Saving Results %%
 	%%%%%%%%%%%%%%%%%%%%
@@ -94,6 +107,10 @@ function [ results ] = observer_comparison28( varargin )
 
 	results.pb_exp1_opt = opt_data2;
 	results.pb_exp1_contr = new_contr;
+
+	results.pb_sim1 = pb_sim1;
+	results.pb_sim2.x = pb_sim2;
+	results.pb_sim2.x_norms = pb_sim2_norm;
 
 end
 

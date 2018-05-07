@@ -72,8 +72,6 @@ case 'Feasible Set'
 	alpha_l 	= sdpvar(T+1,1,'full');
 
 	for pattern_ind = 1 : size(L,1)
-		v{pattern_ind} = sdpvar(vd*T,1,'full');
-
 		% Feedback Variables
 		Q{pattern_ind} = sdpvar(m*T,p*T,'full');
 		r{pattern_ind} = sdpvar(m*T,1,'full');
@@ -103,8 +101,8 @@ case 'Feasible Set'
 			sel_influenced_states = [ sel_influenced_states ; select_m(i,T) ];
 		end
 
-		noise_constrs = noise_constrs + [ Pi_1{pattern_ind} * [ ad.eta_w * ones(2*wd*T,1) ; ad.eta_v * ones(2*p*T,1) ; M1 * ones(2*n,1) ] <= M2 * ones(2*n*T,1) - [eye(n*T);-eye(n*T)]*sel_influenced_states*S0*kron(eye(T),ad.B)*r{pattern_ind} ];
-		noise_constrs = noise_constrs + [ Pi_2{pattern_ind} * [ ad.eta_w * ones(2*wd*T,1) ; ad.eta_v * ones(2*p*T,1) ; M1 * ones(2*n,1) ] <= M1 * ones(2*n,1) - [eye(n);-eye(n)]*select_m(T,T)*S0*kron(eye(T),ad.B)*r{pattern_ind} ];
+		noise_constrs = noise_constrs + [ Pi_1{pattern_ind} * [ ad.eta_w * ones(2*wd*T,1) ; ad.eta_v * ones(2*p*T,1) ; M1 * ones(2*n,1) ] <= M2 * ones(2*n*T,1) - [eye(n*T);-eye(n*T)]*sel_influenced_states*H0*r{pattern_ind} ];
+		noise_constrs = noise_constrs + [ Pi_2{pattern_ind} * [ ad.eta_w * ones(2*wd*T,1) ; ad.eta_v * ones(2*p*T,1) ; M1 * ones(2*n,1) ] <= M1 * ones(2*n,1) - [eye(n);-eye(n)]*select_m(T,T)*H0*r{pattern_ind} ];
 
 		%Dual relationship to design variables
 		pre_xi = [];
@@ -112,16 +110,16 @@ case 'Feasible Set'
 			pre_xi = [ pre_xi ; ad.A^i];
 		end
 
-		G = [ 	(eye(n*(T+1))+H0*Q{pattern_ind}*Cm0)*S0*B_w_big ...
-				H0*Q{pattern_ind}*C_v_big ...
-				(eye(n*(T+1))+H0*Q{pattern_ind}*Cm0)*pre_xi ];
+		G{pattern_ind} = [ 	(eye(n*(T+1))+H0*Q{pattern_ind}*Cm0)*S0*B_w_big ...
+							H0*Q{pattern_ind}*C_v_big ...
+							(eye(n*(T+1))+H0*Q{pattern_ind}*Cm0)*pre_xi ];
 
 		bounded_disturb_matrix = [ [ eye(wd*T) ; -eye(wd*T) ] zeros(2*wd*T,vd*T+n) ;
 									zeros(2*vd*T,wd*T) [ eye(vd*T) ; -eye(vd*T) ] zeros(2*vd*T,n) ;
 									zeros(2*n,(vd+wd)*T) [ eye(n) ; -eye(n) ] ];
 
-		dual_equal_constrs = dual_equal_constrs + [Pi_1{pattern_ind} * bounded_disturb_matrix == [eye(n*T); -eye(n*T)]*sel_influenced_states*G ];
-		dual_equal_constrs = dual_equal_constrs + [Pi_2{pattern_ind} * bounded_disturb_matrix == [eye(n);-eye(n)]*select_m(T,T)*G];
+		dual_equal_constrs = dual_equal_constrs + [Pi_1{pattern_ind} * bounded_disturb_matrix == [eye(n*T); -eye(n*T)]*sel_influenced_states*G{pattern_ind} ];
+		dual_equal_constrs = dual_equal_constrs + [Pi_2{pattern_ind} * bounded_disturb_matrix == [eye(n);-eye(n)]*select_m(T,T)*G{pattern_ind}];
 
 		%Lower Diagonal Constraint
 		for bl_row_num = 1 : T-1
@@ -167,8 +165,8 @@ case 'Feasible Set'
 
 			Q_set{pattern_ind} = value(Q{pattern_ind});
 			r_set{pattern_ind} = value(r{pattern_ind});
-			F_set{pattern_ind} = value( (inv(value(eye(size(S0,2)) + kron(eye(T),ad.B)*Q{pattern_ind}*Cm0*S0)) ) *kron(eye(T),ad.B)* Q{pattern_ind});
-			u0_set{pattern_ind} = value( inv(value(eye(size(S0,2)) + kron(eye(T),ad.B)*Q{pattern_ind}*Cm0*S0)) *kron(eye(T),ad.B)* r{pattern_ind} );
+			F_set{pattern_ind} = value( (inv(value(eye(size(S0,2)) + Q{pattern_ind}*Cm0*S0)) ) *kron(eye(T),ad.B)* Q{pattern_ind});
+			u0_set{pattern_ind} = value( inv(value(eye(size(S0,2)) + Q{pattern_ind}*Cm0*S0)) *kron(eye(T),ad.B)* r{pattern_ind} );
 			
 			%Fix up F and u0 to avoid NaN
 			F_set{pattern_ind}( isnan(F_set{pattern_ind}) ) = 0;

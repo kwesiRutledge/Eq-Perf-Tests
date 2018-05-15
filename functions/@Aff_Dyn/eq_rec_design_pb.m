@@ -147,7 +147,7 @@ case 'Feasible Set'
 	% ++++++++
 
 	% ops = sdpsettings('verbose',verbosity);
-	optim0 = optimize(positive_constr+noise_constrs+dual_equal_constrs+l_diag_constr, ...
+	optim0 = optimize(positive_constr+noise_constrs+dual_equal_constrs+l_diag_constr+shared_Q_constrs+shared_r_constrs, ...
 			[], ...
 			ops);
 
@@ -165,8 +165,8 @@ case 'Feasible Set'
 
 			Q_set{pattern_ind} = value(Q{pattern_ind});
 			r_set{pattern_ind} = value(r{pattern_ind});
-			F_set{pattern_ind} = value( (inv(value(eye(size(S0,2)) + Q{pattern_ind}*Cm0*S0)) ) *kron(eye(T),ad.B)* Q{pattern_ind});
-			u0_set{pattern_ind} = value( inv(value(eye(size(S0,2)) + Q{pattern_ind}*Cm0*S0)) *kron(eye(T),ad.B)* r{pattern_ind} );
+			F_set{pattern_ind} = value( (inv(value(eye(size(S0,2)) + Q{pattern_ind}*Cm0*H0)) ) * Q{pattern_ind});
+			u0_set{pattern_ind} = value( inv(value(eye(size(S0,2)) + Q{pattern_ind}*Cm0*H0)) * r{pattern_ind} );
 			
 			%Fix up F and u0 to avoid NaN
 			F_set{pattern_ind}( isnan(F_set{pattern_ind}) ) = 0;
@@ -178,7 +178,7 @@ case 'Feasible Set'
 	opt_out.Q_set = Q_set;
 	opt_out.r_set = r_set;
 
-	contr = FHAE_sb(L,F_set,u0_set);
+	contr = FHAE_pb(L,F_set,u0_set);
 
 case 'Min_M2'
 	%Collect Inputs
@@ -271,15 +271,7 @@ case 'Min_M2'
 																[bl_row_num*p+1:end] ) == 0 ];
 		end
 
-		% % Disturbance v=0
-		% v_constr = [];
-		% for v_ind = find(L_star==0)
-		% 	v_constr = v_constr + [ v{pattern_ind}([(v_ind-1)*p+1:v_ind*p])==0 ];
-		% end
-
 		%Awd joint constraints for all 
-		disp(size(L,1))
-		disp(pattern_ind)
 		for patt_i = pattern_ind+1:size(L,1)
 			%Match
 			p1 = L(pattern_ind,:);
@@ -299,7 +291,7 @@ case 'Min_M2'
 	% ++++++++
 
 	% ops = sdpsettings('verbose',verbosity);
-	optim0 = optimize(positive_constr+noise_constrs+dual_equal_constrs+l_diag_constr, ...
+	optim0 = optimize(positive_constr+noise_constrs+dual_equal_constrs+l_diag_constr+shared_Q_constrs+shared_r_constrs, ...
 			alpha_2, ...
 			ops);
 
@@ -319,10 +311,15 @@ case 'Min_M2'
 			r_set{pattern_ind} = value(r{pattern_ind});
 			F_set{pattern_ind} = value( (inv(value(eye(size(S0,2)) + kron(eye(T),ad.B)*Q{pattern_ind}*Cm0*S0)) ) *kron(eye(T),ad.B)* Q{pattern_ind});
 			u0_set{pattern_ind} = value( inv(value(eye(size(S0,2)) + kron(eye(T),ad.B)*Q{pattern_ind}*Cm0*S0)) *kron(eye(T),ad.B)* r{pattern_ind} );
+		
+			%Fix up F and u0 to avoid NaN
+			F_set{pattern_ind}( isnan(F_set{pattern_ind}) ) = 0;
+			% u0_set{pattern_ind}( isnan(u0_set{pattern_ind}) ) = 0;
 		end
 	end
 
-	contr = FHAE_sb(L,F_set,u0_set);
+	opt_out.M2 = value(alpha_2);
+	contr = FHAE_pb(L,F_set,u0_set);
 
 otherwise
 	error(['Unrecognized String: ' str_in ] )

@@ -18,7 +18,7 @@ classdef FSM0
 	%			Data Type: |X| x 2 Matrix. First entry of each row is value from X, second entry is output from Y
 	%
 	%	Delta - Transition Relation Between States
-	%			Data Type: 2 x |Delta| matrix. First entry is originating state (from X), second entry is target state (from X).
+	%			Data Type: |Delta| x 2 matrix. First entry is originating state (from X), second entry is target state (from X).
 	%
 
 	properties
@@ -39,6 +39,37 @@ classdef FSM0
 			fsm.Y = Y;
 			fsm.H = H;
 			fsm.Delta = Delta;
+
+			%Error Checking
+			if ~any(fsm.X0 == fsm.X)
+				error('X0 is not a member of state space X.')
+			end
+
+			if size(H,2) ~= 2
+				error('H is not a properly defined output relation. It must be a set of ordered pairs where each row is an ordered pair.')
+			end
+
+			for ind = 1:size(H,1)
+				if ~any(H(ind,1) == X)
+					error(['There is a state ''' num2str(H(ind,1)) ''' in the output relation which is not in the state space X.'])
+				end
+				if ~any(H(ind,2) == Y)
+					error(['There is an output ''' num2str(H(ind,2)) ''' in the output relation which is not in the output space Y.'])
+				end
+			end
+
+			if size(Delta,2) ~= 2
+				error('Delta is not a properly defined transition relation. It must be a set of ordered pairs, where each row is a pair.')
+			end
+
+			for ind = 1:size(Delta,1)
+				if ~any(Delta(ind,1) == X)
+					error(['There is a state ''' num2str(Delta(ind,1)) ''' in the transition relation which is not in the state space X.'])
+				end
+				if ~any(Delta(ind,2) == X)
+					error(['There is a state ''' num2str(Delta(ind,2)) ''' in the transition relation which is not in the state space X.'])
+				end
+			end
 
 			fsm.Theta = fsm.create_Theta;
 			fsm.Pi = fsm.create_Pi;
@@ -73,24 +104,32 @@ classdef FSM0
 			obj.Theta = fsm_Theta;
 		end
 
-		function [s_states] = succ( obj , x0 )
+		function [s_states] = succ( obj , x_in )
 			%Description:
-			%	Find the set of states that can possibly follow the current state x0.
+			%	Find the set of states that can possibly follow the set of states within x_in.
 			%
 			%Assumption:
-			%	Assumption is that x0 is a SINGLE state.
+			%	Assumption is that x_in is either a scalar or a column vector.
 			%
-			s_states = obj.Delta( find(obj.Delta(:,1)==x0) , 2 );
+			s_states = [];
+			for x0 = x_in'
+				s_states = [s_states; obj.Delta( find(obj.Delta(:,1)==x0) , 2 ) ];
+			end
+			% s_states = obj.Delta( find(obj.Delta(:,1)==x0) , 2 );
 		end
 
-		function [p_states] = pre(obj, x0)
+		function [p_states] = pre(obj, x_in)
 			%Description:
-			%	Find the set of states that can possibly precede the current state x0.
+			%	Find the set of states that can possibly precede the set of states within x_in.
 			%
 			%Assumption:
-			%	Assumption is that x0 is a SINGLE state.
+			%	Assumption is that x_in is either a scalar or a column vector.
 			%
-			p_states = obj.Delta( find(obj.Delta(:,2)==x0) , 1 );
+			p_states = [];
+			for x0 = x_in'
+				p_states = [p_states; obj.Delta( find(obj.Delta(:,2)==x0) , 1 )];
+			end
+			% p_states = obj.Delta( find(obj.Delta(:,2)==x0) , 1 );
 		end
 
 		function [cp] = cart_prod(obj, set1 , set2)

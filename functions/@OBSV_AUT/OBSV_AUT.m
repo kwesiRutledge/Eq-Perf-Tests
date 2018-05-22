@@ -46,6 +46,7 @@ classdef OBSV_AUT
 			E_list = {};
 			s_node0.xs = fsm_i.X0;
 			s_node0.parent = Inf;
+			s_node0.next = {};
 			Ek = s_node0;
 
 			E_list{1} = Ek;
@@ -69,15 +70,23 @@ classdef OBSV_AUT
 							temp_n0 = [temp_n0; node_num];
 						else
 							error('Unrecognized output label.');
-						end
-							
+						end	
 					end
-					%3. Each of those clusters becomes a super node with parent being the current super node
-					sn0.xs 		= temp_n0
-					sn0.parent 	= Ek(curr_sn_ind).xs;
+					%Save the list as a set.
+					temp_n0 = unique(temp_n0);
+					temp_n1 = unique(temp_n1);
 
-					sn1.xs 		= temp_n1
+					%3. Each of those clusters becomes a super node with parent being the current super node
+					sn0.xs 		= temp_n0;
+					sn0.parent 	= Ek(curr_sn_ind).xs;
+					sn0.next 	= {};
+
+					sn1.xs 		= temp_n1;
 					sn1.parent 	= Ek(curr_sn_ind).xs;
+					sn1.next 	= {};
+
+					%3.1 Add each of these nodes to the 'next' field
+					Ek(curr_sn_ind).next = { temp_n0 , temp_n1 };
 
 					%4. Place these new nodes into the next expansion set IF THEY DO NOT EXIST IN ANY OTHER EXPANSION Ek
 					sn0_match = false;
@@ -86,11 +95,13 @@ classdef OBSV_AUT
 						%Check every super node in Ek
 						for ind0 = 1 : length(E_list{k})
 							%Try to match the xs in the list with those in our sn0 or sn1.
-							if length(sn0.xs) == length(E_list{k}(ind0).xs)
+							if length(unique(sn0.xs)) == length(E_list{k}(ind0).xs)
 								if all( unique(sn0.xs) == unique(E_list{k}(ind0).xs) )
 									sn0_match = true;
 								end
-							elseif length(sn1.xs) == length(E_list{k}(ind0).xs)
+							elseif length(unique(sn1.xs)) == length(E_list{k}(ind0).xs)
+								sn1.xs
+								E_list{k}(ind0).xs
 								if all( unique(sn1.xs) == unique(E_list{k}(ind0).xs) )
 									sn1_match = true;
 								end
@@ -110,6 +121,7 @@ classdef OBSV_AUT
 				end	 
 
 				%Update Ek and Ekp1;
+				E_list{end} = Ek;
 				Ek = Ekp1;
 				Ekp1 = [];
 
@@ -143,38 +155,70 @@ classdef OBSV_AUT
 
 			%4. Use E-Levels to create edges in OX.
 			oa.Delta = [];
+			% oa.Delta2 = [];
 			for k = 1:length(E_list)-1
 				%For every i-set in the expansion level, connect it to its parent (if the parent exists).
 				for entry_ind = 1 : length(E_list{k})
-					%Check to see if parent exists
-					if E_list{k}(entry_ind).parent ~= Inf
-						%Find parent, now that exists.
-						parent_ind = -1;
-						curr_ind = -1;
-						for OX_ind = 1 : length(oa.OX)
-							%Find Parent
-							if length(oa.OX{OX_ind}) == length(E_list{k}(entry_ind).parent)
-								if all(oa.OX{OX_ind} == E_list{k}(entry_ind).parent)
-									parent_ind = OX_ind;
-								end
-							end
-							%Find Current Node
-							if length(oa.OX{OX_ind}) == length(E_list{k}(entry_ind).xs)
-								if all(oa.OX{OX_ind} == E_list{k}(entry_ind).xs)
-									curr_ind = OX_ind;
-								end
+					% %4.1 Check to see if parent exists
+					% if E_list{k}(entry_ind).parent ~= Inf
+					% 	%Find parent, now that we know it exists.
+					% 	parent_ind = oa.get_OX_ind_of( E_list{k}(entry_ind).parent );
+					% 	curr_ind = oa.get_OX_ind_of( E_list{k}(entry_ind).xs );
+						
+					% 	oa.Delta = [oa.Delta; parent_ind, curr_ind];
+					% end
+					%4.2 Check the value of the 'next' field
+					for next_ind = 1:length(E_list{k}(entry_ind).next)
+						%Check to see if the entry exists
+						if ~isempty(E_list{k}(entry_ind).next{next_ind})
+							%If the entry exists, then select that edge.
+							temp_edge = [ oa.get_OX_ind_of( E_list{k}(entry_ind).xs ) , oa.get_OX_ind_of( E_list{k}(entry_ind).next{next_ind} ) ];
+							if isempty( findrows(oa.Delta,temp_edge) )
+								oa.Delta = [oa.Delta ; temp_edge];
 							end
 						end
-						oa.Delta = [oa.Delta; parent_ind, curr_ind]
 					end
 				end
 			end
 
-			%%%%%%%%%%%%%%%%%%%%%%
-			%% HELPER FUNCTIONS %%
-			%%%%%%%%%%%%%%%%%%%%%%
+			%5. Use the label function from the FSM0 to make a labeling function for these nodes
+			oa.H = [];
+			for OX_ind = 1 : length(oa.OX)
+				%Check each i-set for the label
+				oa.H = [ oa.H ; OX_ind , fsm_i.H_of( oa.OX{OX_ind}(1) ) ];
+			end
+
+			%6. Set of outputs are identical to that of the FSM
+			oa.Y = fsm_i.Y;
 
 		end
+
+		function [ox_ind] = get_OX_ind_of(obj,OX_val)
+			%Description:
+			%	Searches through the OX cell array to find the proper index that matches
+			%	the value OX_val.
+			%
+			%Assumptions:
+			%	Assumes OX_val is in OX
+			ox_ind = Inf;
+			for ind = 1 : length(obj.OX)
+				%First check to see if lengths match.
+				if(length(obj.OX{ind}) == length(OX_val))
+					%Then check to see if the values are identical.
+					if all(OX_val == obj.OX{ind})
+						ox_ind = ind;
+					end
+				end
+			end
+
+			if isinf(ox_ind)
+				error(['OX_val ' num2str(OX_val') ' does not correspond to anything in OX.'])
+			end
+		end
+
+		%%%%%%%%%%%%%%%%%%%%%%
+		%% HELPER FUNCTIONS %%
+		%%%%%%%%%%%%%%%%%%%%%%
 
 		
 

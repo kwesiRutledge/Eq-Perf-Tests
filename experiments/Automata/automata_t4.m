@@ -58,6 +58,7 @@ function [data_out] = automata_t4(varargin)
 	E_list = {};
 	s_node0.xs = fsm_i.X0;
 	s_node0.parent = Inf;
+	s_node0.next = {};
 	Ek = s_node0;
 
 	E_list{1} = Ek;
@@ -85,11 +86,16 @@ function [data_out] = automata_t4(varargin)
 					
 			end
 			%3. Each of those clusters becomes a super node with parent being the current super node
-			sn0.xs 		= temp_n0
+			sn0.xs 		= temp_n0;
 			sn0.parent 	= Ek(curr_sn_ind).xs;
+			sn0.next 	= {};
 
-			sn1.xs 		= temp_n1
+			sn1.xs 		= temp_n1;
 			sn1.parent 	= Ek(curr_sn_ind).xs;
+			sn1.next 	= {};
+
+			%3.1 Add each of these nodes to the 'next' field
+			Ek(curr_sn_ind).next = { temp_n0 , temp_n1 }
 
 			%4. Place these new nodes into the next expansion set IF THEY DO NOT EXIST IN ANY OTHER EXPANSION Ek
 			sn0_match = false;
@@ -122,6 +128,7 @@ function [data_out] = automata_t4(varargin)
 		end	 
 
 		%Update Ek and Ekp1;
+		E_list{end} = Ek;
 		Ek = Ekp1;
 		Ekp1 = [];
 

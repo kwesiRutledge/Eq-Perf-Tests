@@ -100,8 +100,6 @@ classdef OBSV_AUT
 									sn0_match = true;
 								end
 							elseif length(unique(sn1.xs)) == length(E_list{k}(ind0).xs)
-								sn1.xs
-								E_list{k}(ind0).xs
 								if all( unique(sn1.xs) == unique(E_list{k}(ind0).xs) )
 									sn1_match = true;
 								end
@@ -120,19 +118,23 @@ classdef OBSV_AUT
 					end	
 				end	 
 
+				%Save things to E_list
+				E_list{exp_level} = Ek;
+				exp_level = exp_level + 1;
+				E_list{exp_level} = Ekp1;
+
 				%Update Ek and Ekp1;
-				E_list{end} = Ek;
 				Ek = Ekp1;
 				Ekp1 = [];
-
-				exp_level = exp_level + 1;
-				E_list{exp_level} = Ek;
 
 				if exp_level == 10
 					break;
 				end
 
 			end
+			% E_list
+			% E_list{3}
+			% E_list{3}(1)
 
 			%2. Use E-levels to create nodes in OX.
 			node_ind = 1;
@@ -173,7 +175,9 @@ classdef OBSV_AUT
 						if ~isempty(E_list{k}(entry_ind).next{next_ind})
 							%If the entry exists, then select that edge.
 							temp_edge = [ oa.get_OX_ind_of( E_list{k}(entry_ind).xs ) , oa.get_OX_ind_of( E_list{k}(entry_ind).next{next_ind} ) ];
-							if isempty( findrows(oa.Delta,temp_edge) )
+							if isempty(oa.Delta)
+								oa.Delta = [temp_edge];
+							elseif ~any( ismember(oa.Delta,temp_edge,'rows') )
 								oa.Delta = [oa.Delta ; temp_edge];
 							end
 						end
@@ -220,6 +224,28 @@ classdef OBSV_AUT
 		%% HELPER FUNCTIONS %%
 		%%%%%%%%%%%%%%%%%%%%%%
 
+		function [G] = gen_digraph(obj)
+			%Description:
+			%	Plots the automaton using matlab's inherent graph tools on the current figure.
+			%
+
+			%1. Define Adjacency Matrix
+			am = zeros(length(obj.OX));
+			for edge_num = 1:size(obj.Delta,1)
+				%Index by the edge number and change a few entries to 1.
+				am( obj.Delta(edge_num,1) , obj.Delta(edge_num,2) ) = 1;
+			end
+			%2. Define Node Names
+			names = {};
+			obj.OX
+			for name_ind = 1 : length(obj.OX)
+				obj.OX{name_ind}
+				names{name_ind} = num2str(obj.OX{name_ind}'); %'
+			end
+
+			G = digraph(am,names);
+			
+		end
 		
 
 	end

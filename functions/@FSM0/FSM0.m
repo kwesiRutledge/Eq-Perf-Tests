@@ -165,6 +165,27 @@ classdef FSM0
 			end
 		end
 
+		function [G] = gen_digraph(obj)
+			%Description:
+			%	Plots the automaton using matlab's inherent graph tools on the current figure.
+			%
+
+			%1. Define Adjacency Matrix
+			am = zeros(length(obj.X));
+			for edge_num = 1:size(obj.Delta,1)
+				%Index by the edge number and change a few entries to 1.
+				am( find(obj.Delta(edge_num,1) == obj.X) , find(obj.Delta(edge_num,2) == obj.X) ) = 1;
+			end
+			%2. Define Node Names
+			names = {};
+			for name_ind = 1 : length(obj.X)
+				names{name_ind} = num2str(obj.X(name_ind));
+			end
+
+			G = digraph(am,names);
+			
+		end
+
 	end
 
 end

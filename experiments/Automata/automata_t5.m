@@ -38,7 +38,7 @@ function [data_out] = automata_t5(varargin)
 			 	2,3;
 			 	3,4;
 			 	4,5;
-			 	5,0 ];
+			 	5,1];
 
 	fsm3 = FSM0(X2,X0_2,Y2,H2,Delta2);
 

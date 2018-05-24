@@ -19,3 +19,7 @@ results = automata_tests(4)
 3. Testing the use of the Finite State Automata formal structure developed by Wang et. al. in a 2007 article mentioning an 'observable automaton.' Some FSA functions implemented but not all. Defined Automaton #1 in this new context.
 
 4. Created an algorithm to create an automaton of the form that Prof. Ozay described, without using any previous work as guidance. Introduced Automaton 3. This is Prof. Ozay's example from a meeting on May 17.
+
+5. Testing the OBSV_AUT class. The observable automaton in the sense of our work. Collects 5 example automata and finds their observable forms using an algorithm similar to experiment 4.
+
+6. Drawing Graphs. Attempts to implement drawing functions for the automaton classes that have been created so far.

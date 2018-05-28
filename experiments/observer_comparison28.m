@@ -69,7 +69,7 @@ function [ results ] = observer_comparison28( varargin )
 	%Using ACC System
 	load('data/system_examples/acc_p.mat');
 
-	%Create AFF_Dyn object with the data from acc_e
+	%Create Aff_Dyn object with the data from acc_e
 	acc_e = acc;
 	acc_e.B = eye(size(acc.A,1));
 

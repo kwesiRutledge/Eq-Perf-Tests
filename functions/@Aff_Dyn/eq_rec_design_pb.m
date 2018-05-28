@@ -196,10 +196,10 @@ case 'Min_M2'
 	end
 
 	% Create L_star
-	L_star = ones(1,T);
-	for sig_i = 1:size(L,1)
-		L_star = bitand(L_star,L(sig_i,:));
-	end
+	% L_star = ones(1,T);
+	% for sig_i = 1:size(L,1)
+	% 	L_star = bitand(L_star,L(sig_i,:));
+	% end
 
 	%%%%%%%%%%%%%%%%%%%%%%%%%%
 	%% Perform Optimization %%

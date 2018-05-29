@@ -99,8 +99,18 @@ function [ results ] = observer_comparison28( varargin )
 	disp(['Simulate ' num2str(num_runs) ' rounds with prefix-based control.'])
 	[ pb_sim2 , pb_sim2_norm ] = new_contr.simulate_n_runs( acc_ad , M1 , num_runs );
 
+	pb_sim2_mod = [];
+	for ind = 1:length(pb_sim2)
+		pb_sim2_mod(:,:,ind) = pb_sim2{ind};
+	end
+
+	pb_sim2_norm_mod = [];
+	for ind = 1:length(pb_sim2_norm)
+		pb_sim2_norm_mod(:,:,ind) = pb_sim2_norm{ind};
+	end
+
 	figure;
-	plot([0:T],reshape(pb_sim2_norm,T+1,num_runs));
+	plot([0:T],reshape(pb_sim2_norm_mod,T+1,num_runs));
 	axis([0 T 0 oc27_contr1.opt_obj+0.2 ])
 
 	title('State Based Observer with Feasible Set of(M_1,M_2,T)')
@@ -112,14 +122,18 @@ function [ results ] = observer_comparison28( varargin )
 	[ pb_opt3 , pb_contr3 ] = eq_rec_design_pb( acc_ad , 'Min_M2' , M1 , T , L );
 	[ pb3_sim , pb3_sim_norm ] = pb_contr3.simulate_n_runs( acc_ad , M1 , num_runs );
 
-	figure;
+	pb3_sim_norm_mod = [];
+	for ind = 1:length(pb_sim2_norm)
+		pb3_sim_norm_mod(:,:,ind) = pb3_sim_norm{ind};
+	end
 
+	figure;
 	bar_heights = [ M1 pb_opt3.M2*ones(1,T-1) M1];
 
 	subplot(1,2,1)
 	hold on;
 	bar([0:T],bar_heights,'w')
-	plot([0:T],reshape(pb3_sim_norm,T+1,num_runs));
+	plot([0:T],reshape(pb3_sim_norm_mod,T+1,num_runs));
 	
 	axis([0-0.5 T+0.5 0 oc27_contr1.opt_obj+0.2 ])
 	xlabel('Time Index')
@@ -131,12 +145,17 @@ function [ results ] = observer_comparison28( varargin )
 	[ pb_opt4 , pb_contr4 ] = eq_rec_design_pb(acc_ad , 'Min_M2' , M1 , T , L_star);
 	[ pb4_sim , pb4_sim_norm ] = pb_contr4.simulate_n_runs( acc_ad , M1 , num_runs );
 
+	pb4_sim_norm_mod = [];
+	for ind = 1:length(pb_sim2_norm)
+		pb4_sim_norm_mod(:,:,ind) = pb4_sim_norm{ind};
+	end
+
 	bar_heights = [ M1 pb_opt4.M2*ones(1,T-1) M1];
 
 	subplot(1,2,2);
 	hold on;
 	bar([0:T],bar_heights,'w')
-	plot([0:T],reshape(pb4_sim_norm,T+1,num_runs));
+	plot([0:T],reshape(pb4_sim_norm_mod,T+1,num_runs));
 	
 	axis([0-0.5 T+0.5 0 oc27_contr1.opt_obj+0.2 ])
 	xlabel('Time Index')
@@ -162,18 +181,18 @@ function [ results ] = observer_comparison28( varargin )
 	results.pb_exp1_contr = new_contr;
 
 	results.pb_sim1 = pb_sim1;
-	results.pb_sim2.x = pb_sim2;
-	results.pb_sim2.x_norms = pb_sim2_norm;
+	results.pb_sim2.x = pb_sim2_mod;
+	results.pb_sim2.x_norms = pb_sim2_norm_mod;
 
 	results.pb3.opt = pb_opt3;
 	results.pb3.contr = pb_contr3;
 	results.pb3.x = pb3_sim;
-	results.pb3.x_norm = pb3_sim_norm;
+	results.pb3.x_norm = pb3_sim_norm_mod;
 
 	results.pb4.opt = pb_opt4;
 	results.pb4.contr = pb_contr4;
 	results.pb4.x = pb4_sim;
-	results.pb4.x_norm = pb4_sim_norm;
+	results.pb4.x_norm = pb4_sim_norm_mod;
 
 end
 

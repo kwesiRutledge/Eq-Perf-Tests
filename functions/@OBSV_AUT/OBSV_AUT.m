@@ -220,6 +220,42 @@ classdef OBSV_AUT
 			end
 		end
 
+		function [pre_set] = pre(obj,ox_in)
+			%Description:
+			%	Calculates the set of states pre_set that could have preceded ANY d-set in ox_in.
+			%
+			%Output:
+			%	pre_set - A vector of indices. Each index corresponds to the index of a d-set in OX.
+			%
+			
+			pre_set = [];
+			for transition_num = 1 : size(obj.Delta,1)
+				%Search through every transition in the transition relation Delta
+				if any(obj.Delta(transition_num,2) == ox_in )
+					pre_set = [ pre_set ; obj.Delta(transition_num,1) ];
+				end
+			end
+			pre_set = unique(pre_set);
+		end
+
+		function [succ_set] = succ(obj,ox_in)
+			%Description:
+			%	Calculates the set of states pre_set that could have preceded ANY d-set in ox_in.
+			%
+			%Output:
+			%	pre_set - A vector of indices. Each index corresponds to the index of a d-set in OX.
+			%
+			
+			succ_set = [];
+			for transition_num = 1 : size(obj.Delta,1)
+				%Search through every transition in the transition relation Delta
+				if any(obj.Delta(transition_num,1) == ox_in )
+					succ_set = [ succ_set ; obj.Delta(transition_num,2) ];
+				end
+			end
+			succ_set = unique(succ_set);
+		end
+
 		%%%%%%%%%%%%%%%%%%%%%%
 		%% HELPER FUNCTIONS %%
 		%%%%%%%%%%%%%%%%%%%%%%
@@ -243,10 +279,8 @@ classdef OBSV_AUT
 				names{name_ind} = num2str(obj.OX{name_ind}'); %'
 			end
 
-			G = digraph(am,names);
-			
+			G = digraph(am,names);	
 		end
-		
 
 	end
 

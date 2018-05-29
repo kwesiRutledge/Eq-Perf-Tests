@@ -59,7 +59,7 @@ function [results] = observer_comparison29(varargin)
 	%% Language Consisting of Different Length Words Tests %%
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-	disp('1.1. Replace old synthesis method (where array is a constraint),')
+	disp('1. Replace old synthesis method (where array is a constraint),')
 	disp('     with one where a cell array is the constraint.')
 	disp('     Problem Details:')
 	disp('		- Minimize M2')
@@ -185,11 +185,11 @@ function [results] = observer_comparison29(varargin)
 	% Save Results of the Standard Matrix Tests
 	% +++++++++++++++++++++++++++++++++++++++++
 
-	results.exp1_1.matrix_opt_out = opt_out;
-	results.exp1_1.matrix_contr = contr;
-	results.exp1_1.L = L;
-	results.exp1_1.L2 = L2;
-	results.exp1_1.M1 = M1;
+	results.exp1.matrix_opt_out = opt_out;
+	results.exp1.matrix_contr = contr;
+	results.exp1.L = L;
+	results.exp1.L2 = L2;
+	results.exp1.M1 = M1;
 
 	%Perform Optimization USING CELL constraint
 
@@ -333,12 +333,53 @@ function [results] = observer_comparison29(varargin)
 	opt_out.M2 = value(alpha_2);
 	contr = FHAE_pb(L2,F_set,u0_set);
 
-
 	% Save Results of the Cell Matrix Tests
 	% +++++++++++++++++++++++++++++++++++++
 
-	results.exp1_1.T_max = T_max;
-	results.exp1_1.cell_opt_out = opt_out;
-	results.exp1_1.cell_contr = contr;
+	results.exp2.T_max = T_max;
+	results.exp2.cell_opt_out = opt_out;
+	results.exp2.cell_contr = contr;
+
+	%% Compare entries
+	disp('Comparing the entries of test 1 and test 2''s Prefix-Based Controllers:')
+	
+	matrix_contr = results.exp1.matrix_contr;
+	cell_contr = results.exp2.cell_contr;
+
+	for prefix_num = 1 : length(results.exp2.cell_contr.F_set)
+		%Compare the F's associated with this pattern index
+		if sum(sum( matrix_contr.F_set{prefix_num} == cell_contr.F_set{prefix_num} )) == prod(size(matrix_contr.F_set{prefix_num}))
+			disp(['Prefix #' num2str(prefix_num) ' F: Match.' ])
+		else
+			disp(['Prefix #' num2str(prefix_num) ' F: DO NOT MATCH.'])
+		end
+
+		if sum( matrix_contr.u0_set{prefix_num} == cell_contr.u0_set{prefix_num} ) == prod(size(matrix_contr.u0_set{prefix_num}))
+			disp(['Prefix #' num2str(prefix_num) ' u0: Match.' ])
+		else
+			disp(['Prefix #' num2str(prefix_num) ' u0: DO NOT MATCH' ])
+		end
+
+	end
+
+	disp('Identical Prefix-Based Feedback is created.')
+
+	%%%%%%%%%%%%
+	%% Test 3 %%
+	%%%%%%%%%%%%
+
+	disp('======================================================')
+	disp('3. Modify the FHAE_pb class AND the synthesis function')
+	disp('   eq_rec_design_pb() to reflect this new change.')
+	disp(' ')
+
+	disp('FHAE_pb has been accurately updated. See observer_comparison28().')
+
+	L3 = L2;
+	L3{length(L3)+1} = [1,0,1,0,1];
+
+
+
+	results.exp3.L = L3;
 
 end

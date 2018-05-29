@@ -57,8 +57,11 @@ results = observer_tests(13,{'verbosity,time_horizon,M1,M2'})
 
 24. Recreating the results of ROO ACC with "worst case" language L-star
 	* Figure 3 in the ADHS 2018 Paper comes from this experiment.
-25. Solving the language problem with the gain switching controller+automaton concept. Proof of concept. Still need theory for this.
+25. Solving the language problem with the gain switching controller concept. Proof of concept. Still need theory for this.
 26. Observing the effect of underconstraining the optimization variable Q when data is missing.
 	* When data is missing, the C-bar matrix contains zeros in certain rows which (when placed into the prodcuts that form our constraints) should lead to an under constraining of Q.
 	* Formerly, the Q was constrained because we did not force v(t) = 0 when data was missing.
 	* Figure 2 in the ADHS 2018 paper, comes from this experiment.
+27.
+28.	
+29. Set of experiments that are required to implement a FHAE_pb design change where L is saved locally as a cell matrix.

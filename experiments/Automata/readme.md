@@ -23,3 +23,5 @@ results = automata_tests(4)
 5. Testing the OBSV_AUT class. The observable automaton in the sense of our work. Collects 5 example automata and finds their observable forms using an algorithm similar to experiment 4.
 
 6. Drawing Graphs. Attempts to implement drawing functions for the automaton classes that have been created so far.
+
+7. Starting the helper functions that will eventually be used to create the 'Critical paths' in the Observeable Automaton that we need to derive feedback laws for.

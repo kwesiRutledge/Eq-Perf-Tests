@@ -10,8 +10,26 @@ classdef FHAE_pb
 	methods
 		%Constructor
 		function contr = FHAE_pb( L , F_set , u0_set )
-			%Simply copy everything over
-			contr.L = L;
+			%Description:
+			%	Simply copy everything over
+			%Inputs:
+			%	L - 	A cell array of one dimension.
+			%	F_set - A 1 x |L| cell array of feedback matrices which are indexed
+			%			based on the index of the matching word in L.
+			
+			if isnumeric(L)
+				%Convert L to cell array.
+				L_temp = {};
+				for word_ind = 1:size(L,1)
+					L_temp{word_ind} = L(word_ind,:);
+				end
+				contr.L = L_temp;
+			elseif iscell(L)
+				contr.L = L;
+			else
+				error('Unknown type of L.')
+			end
+
 			contr.F_set = F_set;
 			contr.u0_set = u0_set;
 		end
@@ -20,12 +38,22 @@ classdef FHAE_pb
 		function u = apply_control( obj , observed_w , y_vec )
 			%Useful Constants
 			ow_len = length(observed_w);
-			m = size(obj.F_set{1},1) / size(obj.L,2);
-			p = size(obj.F_set{1},2) / size(obj.L,2);
+			num_words = length(obj.L);
+			m = size(obj.F_set{1},1) / length(obj.L{1});
+			p = size(obj.F_set{1},2) / length(obj.L{1});
 
 			%Match observed_w with a word from L
-			matching_mat = obj.L(:,1:ow_len);
-			matching_mat = repmat(observed_w,size(obj.L,1),1) == matching_mat;
+			matching_mat = [];
+			for word_ind = 1:length(obj.L)
+				if length(obj.L{word_ind}) >= ow_len
+					matching_mat = [matching_mat; obj.L{word_ind}(1:ow_len)]
+				else
+					%If the word is not long enough to match, then place some nonsense in the
+					%corresponding row of the matching matrix.
+					matching_mat = [matching_mat; Inf(1,ow_len)]
+				end
+			end
+			matching_mat = repmat(observed_w,num_words,1) == matching_mat;
 
 			matching_locs = all(matching_mat')';
 
@@ -53,24 +81,26 @@ classdef FHAE_pb
 			%			with the tuple (ad,M1,sigma)
 
 			%Constants
-			T = size(obj.L,2);
+			% T = size(obj.L,2);
 			n = size(ad.A,1);
 			wd = size(ad.B_w,2);
 			vd = size(ad.C_v,2);
+
+			if nargin ~= 4
+				rand_word_ind = randi(length(obj.L),1);
+				sig = obj.L{rand_word_ind};
+				T = length(obj.L{rand_word_ind});
+			else
+				if (size(in_sig,1) ~= 1) %|| (size(in_sig,2) ~= T)
+					error('Input word is not a single word or does not have the correct length.' )
+				end
+				sig = in_sig;
+			end
 
 			%Generate Random Variables
 			x0 = unifrnd(-M1,M1,n,1);
 			w  = unifrnd(-ad.eta_w,ad.eta_w,wd,T);
 			v  = unifrnd(-ad.eta_v,ad.eta_v,vd,T);
-
-			if nargin ~= 4
-				sig = obj.L( randi(size(obj.L,1),1) , : );
-			else
-				if (size(in_sig,1) ~= 1) || (size(in_sig,2) ~= T)
-					error('Input word is not a single word or does not have the correct length.' )
-				end
-				sig = in_sig;
-			end
 
 			%Simulate system forward.
 			x_t = x0;
@@ -100,7 +130,7 @@ classdef FHAE_pb
 
 		end
 
-		function [x_tensor,x_norm_tensor] = simulate_n_runs( obj , ad , M1 , num_runs , in_sig )
+		function [run_data_x,run_data_x_norm] = simulate_n_runs( obj , ad , M1 , num_runs , in_sig )
 			%Description:
 			%	Uses the information provided in the affine dynamics instance ad and the problem
 			%	specification M1 along with the given controller to simulate as many runs as the user
@@ -110,28 +140,33 @@ classdef FHAE_pb
 			%	x_tensor = simulate_n_runs( obj , ad , M1 , num_runs , in_sig )
 			%
 			%Outputs:
-			%	x_tensor - An n x (T+1) x num_runs tensor which defines the num_runs trajectories of the
-			%			   state.
+			%	run_data_x -	A 1 x 'num_runs' cell array of n x (T_i+1) matrices which defines
+			%					the num_runs trajectories of the state.
+			%			   		T_i can change for each run.
+			%	run_data_x_norm - 	A cell array of
 
 			if nargin < 3
 				error('Not enough inputs.')
 			end
 
 			%% Constants
-			T = size(obj.L,2);
+			n = size(ad.A,1);
 
-			x_tensor = [];
+			%% Implement Loop
+			run_data_x = {};
+			run_data_x_norm = {};
 			for run_ind = 1:num_runs
 				%
 				if nargin < 5
-					x_tensor(:,:,run_ind) = obj.simulate_1run( ad , M1 );
+					run_data_x{run_ind} = obj.simulate_1run( ad , M1 );
 				else
-					x_tensor(:,:,run_ind) = obj.simulate_1run( ad , M1 , in_sig );
+					run_data_x{run_ind} = obj.simulate_1run( ad , M1 , in_sig );
 				end
 
 				%Calculate Norms
+				T = size(run_data_x{run_ind},2)-1;
 				for t = 0 : T
-					x_norm_tensor(t+1,:,run_ind) = norm( x_tensor(:,t+1,run_ind) , Inf );
+					run_data_x_norm{run_ind}(t+1,:) = norm( run_data_x{run_ind}(:,t+1) , Inf );
 				end
 			end
 

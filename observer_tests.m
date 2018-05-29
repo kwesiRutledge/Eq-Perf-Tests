@@ -8,7 +8,9 @@ function [results] = observer_tests( varargin )
 		addpath('./functions/')
 	end
 
-	if isempty(strfind(path,'./experiments/'))
+	try
+		empty_function_experiments()
+	catch
 		addpath('./experiments/')
 	end
 

@@ -81,7 +81,7 @@ function [ results ] = observer_comparison28( varargin )
 
 	disp('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
 	disp('Testing a feasibility problem for the prefix-based feedback law version.')
-	[ opt_data2 , new_contr ] = eq_rec_design_pb( acc_ad , 'Feasible Set' , M1 , oc27_contr1.opt_obj, T , L );
+	[ opt_data2 , new_contr ] = eq_rec_design_pb( acc_ad , 'Feasible Set' , M1 , oc27_contr1.opt_obj, L );
 
 	new_contr.apply_control([1,1,0],ones(3*size(acc.C,1),1))
 
@@ -113,13 +113,13 @@ function [ results ] = observer_comparison28( varargin )
 	plot([0:T],reshape(pb_sim2_norm_mod,T+1,num_runs));
 	axis([0 T 0 oc27_contr1.opt_obj+0.2 ])
 
-	title('State Based Observer with Feasible Set of(M_1,M_2,T)')
+	title('State Based Observer with Feasible Set of (M_1,M_2,T)')
 
 
 	%Test Minimization of M2 with prefix based observers.
 	disp('+++++++++++++++++++++++++++++++++++++++++++++++++++')
 	disp('Test Minimization of M2 with prefix based observer.')
-	[ pb_opt3 , pb_contr3 ] = eq_rec_design_pb( acc_ad , 'Min_M2' , M1 , T , L );
+	[ pb_opt3 , pb_contr3 ] = eq_rec_design_pb( acc_ad , 'Min_M2' , M1 , L );
 	[ pb3_sim , pb3_sim_norm ] = pb_contr3.simulate_n_runs( acc_ad , M1 , num_runs );
 
 	pb3_sim_norm_mod = [];
@@ -142,7 +142,7 @@ function [ results ] = observer_comparison28( varargin )
 	disp('Plotted Prefix-based solution.')
 
 	%Time Based Simulation
-	[ pb_opt4 , pb_contr4 ] = eq_rec_design_pb(acc_ad , 'Min_M2' , M1 , T , L_star);
+	[ pb_opt4 , pb_contr4 ] = eq_rec_design_pb(acc_ad , 'Min_M2' , M1 , L_star );
 	[ pb4_sim , pb4_sim_norm ] = pb_contr4.simulate_n_runs( acc_ad , M1 , num_runs );
 
 	pb4_sim_norm_mod = [];

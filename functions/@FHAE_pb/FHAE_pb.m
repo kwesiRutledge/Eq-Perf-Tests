@@ -46,14 +46,14 @@ classdef FHAE_pb
 			matching_mat = [];
 			for word_ind = 1:length(obj.L)
 				if length(obj.L{word_ind}) >= ow_len
-					matching_mat = [matching_mat; obj.L{word_ind}(1:ow_len)]
+					matching_mat = [matching_mat; obj.L{word_ind}(1:ow_len)];
 				else
 					%If the word is not long enough to match, then place some nonsense in the
 					%corresponding row of the matching matrix.
-					matching_mat = [matching_mat; Inf(1,ow_len)]
+					matching_mat = [matching_mat; Inf(1,ow_len)];
 				end
 			end
-			matching_mat = repmat(observed_w,num_words,1) == matching_mat;
+			matching_mat = repmat(observed_w,num_words,1) == matching_mat
 
 			matching_locs = all(matching_mat')';
 

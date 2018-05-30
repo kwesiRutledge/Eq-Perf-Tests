@@ -375,8 +375,11 @@ function [results] = observer_comparison29(varargin)
 
 	disp('FHAE_pb has been accurately updated. See observer_comparison28().')
 
+
 	L3 = L2;
 	L3{length(L3)+1} = [1,0,1,0,1];
+
+	[ opt_data, contr ] = eq_rec_design_pb( acc_ad , 'Feasible Set' , M1 , 3 , 6 )
 
 
 

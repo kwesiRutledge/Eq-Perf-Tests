@@ -1,19 +1,25 @@
-function [ opt_out, contr ] = eq_rec_design_pb( varargin )
+function [ opt_out, contr ] = free_rec_design_pb( varargin )
 %Description:
 %	Searches for a feasible, prefix-based feedback that satisfies the parameters given in the
 %	Equalized Recovery Problem:
-%		(M1,M2,T,L)
+%		(M1,M2,M3,T,L)
 %
-%	There are 2 different problems that we consider:
-%	'Min_M2' , 'Feasible Set'. Which describe the purpose of our optimization.
+%	There are 3 different problems that we consider:
+%		1. 'Min_M2'
+%		2. 'Feasible Set'
+%		3. 'Min_M3'
+%	Which describe the purpose of our optimization.
 %
 %Usage:
-%	[ opt_out, contr ] = eq_rec_design_pb( ad , 'Feasible Set' , M1 , M2 , T )
-%	[ opt_out, contr ] = eq_rec_design_pb( ad , 'Feasible Set' , M1 , M2 , L )	
-%	[ opt_out, contr ] = eq_rec_design_pb( ad , 'Min_M2' , M1 , T )
-%	[ opt_out, contr ] = eq_rec_design_pb( ad , 'Min_M2' , M1 , L )
-%	[ opt_out, contr ] = eq_rec_design_pb( ad , 'Min_M1' , M2 , L )
-
+%	[ opt_out, contr ] = eq_rec_design_pb( ad , 'Feasible Set' , M1 , M2 , M3 , T )
+%	[ opt_out, contr ] = eq_rec_design_pb( ad , 'Feasible Set' , M1 , M2 , M3 , L )	
+%	[ opt_out, contr ] = eq_rec_design_pb( ad , 'Min_M2' , M1 , M3 , T )
+%	[ opt_out, contr ] = eq_rec_design_pb( ad , 'Min_M2' , M1 , M3 , L )
+%	[ opt_out, contr ] = eq_rec_design_pb( ad , 'Min_M3' , M1 , M2 , T )
+%	[ opt_out, contr ] = eq_rec_design_pb( ad , 'Min_M3' , M1 , M2 , L )
+%
+%Notes:
+%	Previously, a 'Max_M3' mode was tried, but the problem is unbounded. Typically any M3 larger than the minimum M3 will do for this problem.
 
 if nargin < 2
 	error('Not enough initial inputs given.')
@@ -41,10 +47,65 @@ obj_constrs = [];
 switch str_in
 case 'Feasible Set'
 	%Collect Inputs
-	if nargin < 5
+	if nargin < 6
 		error('Not enough inputs.')
 	end
 
+	M1 = varargin{3};
+	M2 = varargin{4};
+	M3 = varargin{5};
+
+	if iscell(varargin{6})
+		L_in = varargin{6};
+	elseif isscalar(varargin{6})
+		L = {ones(1,varargin{6})};
+	elseif isnumeric(varargin{6})
+		L_in = varargin{6};
+		L = {};
+		for ind = 1:size(L_in,1)
+			L{ind} = L_in(ind,:);
+		end
+	else
+		error(['Unrecognized fifth input: ' num2str(varargin{6}) '.'])
+	end
+
+	%Define Objective Function
+	obj_fcn = [];
+
+case 'Min_M2'
+
+	if nargin < 5
+		error('Not enough inputs for Min_M2 mode.')
+	end
+
+	M1 = varargin{3};
+	M3 = varargin{4}
+	if iscell(varargin{5})
+		L_in = varargin{5};
+	elseif isscalar(varargin{5})
+		L = {ones(1,varargin{5})};
+	elseif isnumeric(varargin{5})
+		L_in = varargin{5};
+		L = {};
+		for ind = 1:size(L_in,1)
+			L{ind} = L_in(ind,:);
+		end
+	else
+		error(['Unrecognized fifth input: ' num2str(varargin{5}) '.']);
+	end
+
+	M2 = sdpvar(1,1,'full');
+
+	obj_fcn = M2;
+
+case 'Min_M3'
+
+	%Process Inputs
+	if nargin < 4
+		error('Not enough inputs for Min_M1 mode.')
+	end
+
+	%Save Inputs
 	M1 = varargin{3};
 	M2 = varargin{4};
 
@@ -59,70 +120,16 @@ case 'Feasible Set'
 			L{ind} = L_in(ind,:);
 		end
 	else
-		error(['Unrecognized fifth input: ' num2str(varargin{5}) '.'])
-	end
-
-	%Define Objective Function
-	obj_fcn = [];
-
-case 'Min_M2'
-
-	if nargin < 4
-		error('Not enough inputs for Min_M2 mode.')
-	end
-
-	M1 = varargin{3};
-	if iscell(varargin{4})
-		L_in = varargin{4};
-	elseif isscalar(varargin{4})
-		L = {ones(1,varargin{4})};
-	elseif isnumeric(varargin{4})
-		L_in = varargin{4};
-		L = {};
-		for ind = 1:size(L_in,1)
-			L{ind} = L_in(ind,:);
-		end
-	else
-		error(['Unrecognized fifth input: ' num2str(varargin{4}) '.']);
-	end
-
-	M2 = sdpvar(1,1,'full');
-
-	obj_fcn = M2;
-
-case 'Min_M1'
-
-	%Process Inputs
-	if nargin < 4
-		error('Not enough inputs for Min_M1 mode.')
-	end
-
-	%Save Inputs
-	M2 = varargin{3};
-	if iscell(varargin{4})
-		L_in = varargin{4};
-	elseif isscalar(varargin{4})
-		L = {ones(1,varargin{4})};
-	elseif isnumeric(varargin{4})
-		L_in = varargin{4};
-		L = {};
-		for ind = 1:size(L_in,1)
-			L{ind} = L_in(ind,:);
-		end
-	else
-		error(['Unrecognized fifth input: ' num2str(varargin{4}) '.']);
+		error(['Unrecognized fifth input: ' num2str(varargin{5}) '.']);
 	end
 
 	%Create Optimization Objective
-	M1 = sdpvar(1,1,'full');
-	obj_fcn = M1;
-	obj_constrs = obj_constrs + [M1 >= 0];
-
-	error('This option is not currently working. The optimization is suspected to be incorrect.')
+	M3 = sdpvar(1,1,'full');
+	obj_fcn = M3;
+	obj_constrs = obj_constrs + [M3 >= 0];
 
 otherwise
 	error(['Unrecognized String: ' str_in ] )
-
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -173,7 +180,7 @@ for pattern_ind = 1 : length(L)
 	end
 
 	noise_constrs = noise_constrs + [ Pi_1{pattern_ind} * [ ad.eta_w * ones(2*wd*T_i,1) ; ad.eta_v * ones(2*p*T_i,1) ; M1 * ones(2*n,1) ] <= M2 * ones(2*n*T_i,1) - [eye(n*T_i);-eye(n*T_i)]*sel_influenced_states*H0*r{pattern_ind} ];
-	noise_constrs = noise_constrs + [ Pi_2{pattern_ind} * [ ad.eta_w * ones(2*wd*T_i,1) ; ad.eta_v * ones(2*p*T_i,1) ; M1 * ones(2*n,1) ] <= M1 * ones(2*n,1) - [eye(n);-eye(n)]*select_m(T_i,T_i)*H0*r{pattern_ind} ];
+	noise_constrs = noise_constrs + [ Pi_2{pattern_ind} * [ ad.eta_w * ones(2*wd*T_i,1) ; ad.eta_v * ones(2*p*T_i,1) ; M1 * ones(2*n,1) ] <= M3 * ones(2*n,1) - [eye(n);-eye(n)]*select_m(T_i,T_i)*H0*r{pattern_ind} ];
 
 	%Dual relationship to design variables
 	pre_xi = [];
@@ -262,9 +269,8 @@ end
 switch varargin{2}
 case 'Min_M2'
 	opt_out.M2 = value(M2);
-case 'Min_M1'
-	opt_out.M1 = value(M1);
+case 'Min_M3'
+	opt_out.M3 = value(M3);
 end
 
 end
-

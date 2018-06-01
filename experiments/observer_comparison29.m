@@ -379,10 +379,26 @@ function [results] = observer_comparison29(varargin)
 	L3 = L2;
 	L3{length(L3)+1} = [1,0,1,0,1];
 
-	[ opt_data, contr ] = eq_rec_design_pb( acc_ad , 'Feasible Set' , M1 , 3 , 6 )
-
-
+	[ opt_data, contr ] = eq_rec_design_pb( acc_ad , 'Feasible Set' , M1 , 3 , 6 );
 
 	results.exp3.L = L3;
+	results.exp3.opt_data_feas = opt_data;
+	results.exp3.contr_feas = contr;
+
+	[ opt_data , contr ] = free_rec_design_pb( acc_ad , 'Feasible Set' , M1 , 3 , M1 , 6 );
+	results.exp3.opt_data_free_rec = opt_data;
+	results.exp3.contr_free_rec = contr;
+
+	[ opt_data , contr ] = free_rec_design_pb( acc_ad , 'Min_M3' , M1 , 3 , 6 );
+	results.exp3.opt_data_minM3 = opt_data;
+	results.exp3.contr_minM3 = contr;
+
+	disp('Introduced the free recovery problem synthesis function.')
+
+	%%%%%%%%%%%%
+	%% Test 4 %%
+	%%%%%%%%%%%%
+
+	disp('4. ')
 
 end

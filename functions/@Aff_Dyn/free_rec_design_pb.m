@@ -56,7 +56,7 @@ case 'Feasible Set'
 	M3 = varargin{5};
 
 	if iscell(varargin{6})
-		L_in = varargin{6};
+		L = varargin{6};
 	elseif isscalar(varargin{6})
 		L = {ones(1,varargin{6})};
 	elseif isnumeric(varargin{6})
@@ -81,7 +81,7 @@ case 'Min_M2'
 	M1 = varargin{3};
 	M3 = varargin{4}
 	if iscell(varargin{5})
-		L_in = varargin{5};
+		L = varargin{5};
 	elseif isscalar(varargin{5})
 		L = {ones(1,varargin{5})};
 	elseif isnumeric(varargin{5})
@@ -110,7 +110,7 @@ case 'Min_M3'
 	M2 = varargin{4};
 
 	if iscell(varargin{5})
-		L_in = varargin{5};
+		L = varargin{5};
 	elseif isscalar(varargin{5})
 		L = {ones(1,varargin{5})};
 	elseif isnumeric(varargin{5})

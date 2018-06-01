@@ -256,9 +256,95 @@ classdef OBSV_AUT
 			succ_set = unique(succ_set);
 		end
 
+		function [q] = H_of(obj,ox_in)
+			%Description:
+			%	Finds the appropriate labels for every d-set INDEX that is provided in the ox_in vector.
+			%
+			%Inputs:
+			%	ox_in:	A column vector of indices (thus positive numbers) referencing existing d-sets in OX
+
+			q = [];
+			for ind = ox_in'
+				q = [q; obj.H( obj.H(:,1) == ind , 2 ) ];
+			end
+		end
 		%%%%%%%%%%%%%%%%%%%%%%
 		%% HELPER FUNCTIONS %%
 		%%%%%%%%%%%%%%%%%%%%%%
+
+		function [L,S] = find_all_2R_paths(obj)
+			%Description:
+			%	Find all feasible paths that start and end with i_sets containing OX_O.
+			%	In other words, finds all paths in the graph such that:
+			%		- the d-set at the beginning contains the index OX_0
+			%		- the d-set at the end contains the index OX_0
+			%		- there are no other d-sets in the path containing index OX_0
+
+			%Create Heap of All Paths 
+			L = {}; S = {};
+			V = [];
+
+			%Search starting from the initial node.
+			node0.state_seq = [ obj.OX_0 ];
+			node0.ind = obj.OX_0;
+
+			E_0 = [node0];
+			E_list{1} = E_0;
+			E_k = E_0;
+			V = [obj.OX_0];
+
+			while(~isempty(E_k) )
+				%Initialization.
+				E_kp1 = [];
+
+				%For every i-set in the current expansion level
+				for node_i_ind = 1:length(E_k)
+					node_i = E_k(node_i_ind);
+					%1. Find successors
+					succ_i = obj.succ( node_i.ind );
+					%2. For each successor,
+					for s_ind = succ_i'
+						%2.2 If the successor is a recovery node, then add the current state sequence
+						%	 to list S.
+						if any( obj.OX_0 == obj.OX{s_ind} )
+							S{length(S)+1} = [ node_i.state_seq ; s_ind ];
+
+							node_ip1.ind = s_ind;
+							node_ip1.state_seq = [ s_ind ];
+
+							%add to the next expansion level if the node doesn't already exist in a previous level.
+							if ~any(V == s_ind)
+								E_kp1 = [E_kp1 ; node_ip1 ];
+								V = [V; s_ind];
+							end
+						%2.3 If the successor is a standard node, then we have found a loop.
+						elseif any( s_ind == node_i.state_seq )
+								disp('error. Off recovery loop detected.')
+						%2.1 If the successor is not in the current word label then add the new successor node to next expansion level.
+						elseif ~any( s_ind == node_i.state_seq )
+							%Create node
+							node_ip1.ind = s_ind;
+							node_ip1.state_seq = [ node_i.state_seq ; s_ind ];
+
+							%Add node to expansion level.
+							E_kp1 = [E_kp1 ; node_ip1];
+
+							V = [V; s_ind];
+							
+						end
+					end
+				end
+				%Update expansion level.
+				E_list{length(E_list)+1} = E_kp1;
+				E_k = E_kp1
+
+			end
+
+
+			for word_ind = 1:length(S)
+				L{word_ind} = obj.H_of(S{word_ind});
+			end
+		end
 
 		function [G] = gen_digraph(obj)
 			%Description:

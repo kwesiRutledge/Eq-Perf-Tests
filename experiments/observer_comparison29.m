@@ -399,6 +399,55 @@ function [results] = observer_comparison29(varargin)
 	%% Test 4 %%
 	%%%%%%%%%%%%
 
-	disp('4. ')
+	disp('===================================================================================================')
+	disp('4. Testing how the new free recovery problem handles strange languages with different length words.')
+	disp(' ')
+
+	[ opt_data , contr ] = free_rec_design_pb( acc_ad , 'Min_M3' , M1 , 3 , L3 );
+	results.exp4.L = L3;
+	results.exp4.opt_data = opt_data;
+	results.exp4.contr = contr;
+
+	%%%%%%%%%%%%
+	%% Test 5 %%
+	%%%%%%%%%%%%
+
+	disp('======================================================')
+	disp('5. Testing the Synthesis Based on Observable Automaton')
+	disp(' ')
+
+	X2   = [0:5]';
+	X0_2 = [1];
+	Y2   = [0;1];
+	H2 = [ 	0,0 ;
+			1,1 ;
+			2,0 ;
+			3,1 ;
+			4,0 ;
+			5,0 ];
+	Delta2 = [	0,1;
+			 	1,0;
+			 	1,2;
+			 	2,3;
+			 	3,4;
+			 	4,5;
+			 	5,1 ];
+    
+	fsm3 = FSM0(X2,X0_2,Y2,H2,Delta2);
+
+	disp('Automata created.')
+	disp(' ')
+
+	oa3 = OBSV_AUT(fsm3);
+
+	disp('Created Observable Automaton?')
+	disp(' ')
+
+	[L,S] = oa3.find_all_2R_paths()
+
+	results.exp5.L = L;
+	results.exp5.S = S;
+	results.exp5.oa = oa3;
+	results.exp5.fsm = fsm3;
 
 end

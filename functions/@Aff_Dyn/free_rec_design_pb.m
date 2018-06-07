@@ -72,6 +72,33 @@ case 'Feasible Set'
 	%Define Objective Function
 	obj_fcn = [];
 
+case 'Max_M1'
+
+	if nargin < 5
+		error('Not enough inputs for Min_M1 mode.')
+	end
+
+	M2 = varargin{3};
+	M3 = varargin{4}
+	if iscell(varargin{5})
+		L = varargin{5};
+	elseif isscalar(varargin{5})
+		L = {ones(1,varargin{5})};
+	elseif isnumeric(varargin{5})
+		L_in = varargin{5};
+		L = {};
+		for ind = 1:size(L_in,1)
+			L{ind} = L_in(ind,:);
+		end
+	else
+		error(['Unrecognized fifth input: ' num2str(varargin{5}) '.']);
+	end
+
+	M1 = sdpvar(1,1,'full');
+
+	obj_fcn = -M1;
+	obj_constrs = [obj_constrs,M1 >= 0];
+
 case 'Min_M2'
 
 	if nargin < 5
@@ -101,7 +128,7 @@ case 'Min_M2'
 case 'Min_M3'
 
 	%Process Inputs
-	if nargin < 4
+	if nargin < 5
 		error('Not enough inputs for Min_M1 mode.')
 	end
 
@@ -267,6 +294,8 @@ else
 end
 
 switch varargin{2}
+case 'Max_M1'
+	opt_out.M1 = value(M1);
 case 'Min_M2'
 	opt_out.M2 = value(M2);
 case 'Min_M3'

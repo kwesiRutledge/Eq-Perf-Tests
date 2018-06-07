@@ -450,4 +450,10 @@ function [results] = observer_comparison29(varargin)
 	results.exp5.oa = oa3;
 	results.exp5.fsm = fsm3;
 
+	%%%%%%%%%%%%
+	%% Test 7 %%
+	%%%%%%%%%%%%
+
+	oa3.filter_synthesis( acc_ad , M1 , 3 )
+
 end

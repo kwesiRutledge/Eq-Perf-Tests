@@ -609,4 +609,10 @@ function [results] = observer_comparison29(varargin)
 	results.exp6.opt_out = opt_out;
 	results.exp6.contr = contr;
 
+	%%%%%%%%%%%%
+	%% Test 7 %%
+	%%%%%%%%%%%%
+
+	oa3.filter_synthesis( acc_ad , M1 , 3 )
+
 end

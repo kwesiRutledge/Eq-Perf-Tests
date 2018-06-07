@@ -250,13 +250,13 @@ else
 		F_set{pattern_ind}( isnan(F_set{pattern_ind}) ) = 0;
 		% u0_set{pattern_ind}( isnan(u0_set{pattern_ind}) ) = 0;
 
-		%Create Function Outputs
-		opt_out.Q_set = Q_set;
-		opt_out.r_set = r_set;
-
-		contr = FHAE_pb(L,F_set,u0_set);
-
 	end
+
+	%Create Function Outputs
+	opt_out.Q_set = Q_set;
+	opt_out.r_set = r_set;
+
+	contr = FHAE_pb(L,F_set,u0_set);
 end
 
 switch varargin{2}

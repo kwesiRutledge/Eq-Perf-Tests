@@ -53,7 +53,7 @@ classdef FHAE_pb
 					matching_mat = [matching_mat; Inf(1,ow_len)];
 				end
 			end
-			matching_mat = repmat(observed_w,num_words,1) == matching_mat;
+			matching_mat = repmat(observed_w,num_words,1) == matching_mat;	
 
 			matching_locs = all(matching_mat')';
 

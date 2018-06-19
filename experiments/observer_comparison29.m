@@ -450,6 +450,8 @@ function [results] = observer_comparison29(varargin)
 	results.exp5.oa = oa3;
 	results.exp5.fsm = fsm3;
 
+	free_rec_design_pb( acc_ad , 'Feasible Set' , M1 , 3 , M1 , {L{[1 3]}} )
+
 	%%%%%%%%%%%%
 	%% Test 6 %%
 	%%%%%%%%%%%%
@@ -613,6 +615,6 @@ function [results] = observer_comparison29(varargin)
 	%% Test 7 %%
 	%%%%%%%%%%%%
 
-	oa3.filter_synthesis( acc_ad , M1 , 3 )
+	% oa3.filter_synthesis( acc_ad , M1 , 3 )
 
 end

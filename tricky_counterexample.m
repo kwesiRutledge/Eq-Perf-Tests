@@ -1,40 +1,105 @@
-function [ opt_out, contr ] = free_rec_design_pb( varargin )
-%Description:
-%	Searches for a feasible, prefix-based feedback that satisfies the parameters given in the
-%	Equalized Recovery Problem:
-%		(M1,M2,M3,T,L)
-%
-%	There are 3 different problems that we consider:
-%		1. 'Min_M2'
-%		2. 'Feasible Set'
-%		3. 'Min_M3'
-%	Which describe the purpose of our optimization.
-%
-%Usage:
-%	[ opt_out, contr ] = free_rec_design_pb( ad , 'Feasible Set' , M1 , M2 , M3 , T )
-%	[ opt_out, contr ] = free_rec_design_pb( ad , 'Feasible Set' , M1 , M2 , M3 , L )	
-%	[ opt_out, contr ] = free_rec_design_pb( ad , 'Min_M2' , M1 , M3 , T )
-%	[ opt_out, contr ] = free_rec_design_pb( ad , 'Min_M2' , M1 , M3 , L )
-%	[ opt_out, contr ] = free_rec_design_pb( ad , 'Min_M3' , M1 , M2 , T )
-%	[ opt_out, contr ] = free_rec_design_pb( ad , 'Min_M3' , M1 , M2 , L )
-%
-%Notes:
-%	Previously, a 'Max_M3' mode was tried, but the problem is unbounded. Typically any M3 larger than the minimum M3 will do for this problem.
+% tricky_counterexample.m
 
-if nargin < 2
-	error('Not enough initial inputs given.')
+clear all;
+close all;
+clc;
+
+%% Import Functions
+
+try
+	FSA({1:10}',... %'
+		{1},[0;1],[ [1:10] ; mod([1:10],2) ]', ... %'
+		[ [1:10] [1:10] ; ones(1,10) zeros(1,10) ; [1:10] mod([1:10]+1,10)+1 ]');
+catch
+	add('functions/')
 end
 
-%Manage Inputs
-ad 		= varargin{1};
-str_in 	= varargin{2}; 
+try
+	Polyhedron
+catch
+	error('MPT3 is not added to path.')
+end
 
-% Constants
-n = size(ad.A,1);
-m = size(ad.B,2);
-p = size(ad.C,1);
-wd = size(ad.B_w,2);
-vd = size(ad.C_v,2);
+%% Constants
+n = 3;
+m = n;
+
+M1 = 1;
+M2 = 2;
+eta.w = 0.1;
+eta.v = 0.2;
+
+A_eigval = [0.6; 1.1; 0.4];
+sp_evec = [1;0.26;1];
+sp_evec = sp_evec / norm(sp_evec,2);
+
+A_eigvec = eye(n);%[1 1 0; 0 0.2 0; 0 1 1];
+A_eigvec(:,2) = sp_evec;
+
+sys.A = A_eigvec*diag(A_eigval)*inv(A_eigvec);
+
+sys.B = eye(n);
+sys.B_w = eye(n);
+sys.C = [0 1 0; 0 0 1];
+
+dyn = Aff_Dyn(sys.A,sys.B,zeros(n,1),sys.C,eta.w,eta.v);
+
+experim_enable = [	false;
+					true];
+
+%% Attempt a Filter Design for simple problem.
+L=[1,1,1,1];
+for t = 1:8
+	L = [];
+	L = ones(1,t);
+	[ opt_out, contr ] = free_rec_design_pb( dyn , 'Min_M3' , M1 , M2 , L )
+	exp1.results{t}.opt_out = opt_out;
+	exp1.results{t}.contr = contr;
+	M3(t) = opt_out.M3;
+end
+
+
+figure;
+plot(M3)
+xlabel('Time Horizon T')
+ylabel('Estimation Error')
+
+disp('The Problem is configured such that, with no memory,')
+disp('I believe that an estimation error increase will always occur in the first time step.')
+disp('From here, I suspect that without memory we will make an improper assumption and ')
+
+%% Problem That Should Not Be Feasible
+
+disp('Challenge Problem')
+disp(' ')
+disp('Now, using the problem without memory we will see if recovery is feasible on the hard')
+disp('pattern:')
+disp(' [ R-1-> X -1-> X -1-> R -1-> R ] ')
+disp(' ')
+
+L = [1];
+[ opt_out, contr ] = free_rec_design_pb( dyn , 'Min_M3' , M3(3) , M2 , L )
+
+disp('Okay!')
+disp('With the tricky problem it could not recover well when given the correct hypercube size.')
+disp('But the hypercube is an over approximation, let''s use MPT3 to give a better constraint.')
+
+n = size(dyn.A,1);
+m = size(dyn.B,2);
+p = size(dyn.C,1);
+wd = size(dyn.B_w,2);
+vd = size(dyn.C_v,2);
+
+%New Inputs
+M1 = M3(3);
+%M2 unchanged
+L = {[1]};
+
+%Create Optimization Objective
+M3 = sdpvar(1,1,'full');
+obj_fcn = M3;
+obj_constrs = [];
+obj_constrs = obj_constrs + [M3 >= 0];
 
 verbosity = 1;
 ops = sdpsettings('verbose',verbosity);
@@ -42,95 +107,23 @@ ops = sdpsettings('verbose',verbosity);
 %Select matrix
 select_m = @(t,T_r) [zeros(n,t*n) eye(n) zeros(n,(T_r-t)*n) ];
 
-%Constraints on Objective
-obj_constrs = [];
-switch str_in
-case 'Feasible Set'
-	%Collect Inputs
-	if nargin < 6
-		error('Not enough inputs.')
-	end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Create Polyhedral Set where xi(t_0) really lies %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-	M1 = varargin{3};
-	M2 = varargin{4};
-	M3 = varargin{5};
+w_disturb_box = Polyhedron('A',[eye(3*wd);-eye(3*wd)],'b',dyn.eta_w*ones(2*(3*wd),1));
+v_disturb_box = Polyhedron('A',[eye(3*vd);-eye(3*vd)],'b',dyn.eta_v*ones(2*3*vd,1));
+xi_disturb_box = Polyhedron('A',[eye(n);-eye(n)],'b',M1*ones(2*n,1));
 
-	if iscell(varargin{6})
-		L = varargin{6};
-	elseif isscalar(varargin{6})
-		L = {ones(1,varargin{6})};
-	elseif isnumeric(varargin{6})
-		L_in = varargin{6};
-		L = {};
-		for ind = 1:size(L_in,1)
-			L{ind} = L_in(ind,:);
-		end
-	else
-		error(['Unrecognized fifth input: ' num2str(varargin{6}) '.'])
-	end
+%Get the Q and r that correspond to M3(3)
+Q_set0 = exp1.results{3}.opt_out.Q_set;
+r_set0 = exp1.results{3}.opt_out.r_set;
 
-	%Define Objective Function
-	obj_fcn = [];
+[S0,H0,Cm0,~,B_w_big,C_v_big] = create_skaf_n_boyd_matrices(dyn,3,'missing',find([1,1,1] == 0)-1);
 
-case 'Min_M2'
-
-	if nargin < 5
-		error('Not enough inputs for Min_M2 mode.')
-	end
-
-	M1 = varargin{3};
-	M3 = varargin{4}
-	if iscell(varargin{5})
-		L = varargin{5};
-	elseif isscalar(varargin{5})
-		L = {ones(1,varargin{5})};
-	elseif isnumeric(varargin{5})
-		L_in = varargin{5};
-		L = {};
-		for ind = 1:size(L_in,1)
-			L{ind} = L_in(ind,:);
-		end
-	else
-		error(['Unrecognized fifth input: ' num2str(varargin{5}) '.']);
-	end
-
-	M2 = sdpvar(1,1,'full');
-
-	obj_fcn = M2;
-
-case 'Min_M3'
-
-	%Process Inputs
-	if nargin < 4
-		error('Not enough inputs for Min_M1 mode.')
-	end
-
-	%Save Inputs
-	M1 = varargin{3};
-	M2 = varargin{4};
-
-	if iscell(varargin{5})
-		L = varargin{5};
-	elseif isscalar(varargin{5})
-		L = {ones(1,varargin{5})};
-	elseif isnumeric(varargin{5})
-		L_in = varargin{5};
-		L = {};
-		for ind = 1:size(L_in,1)
-			L{ind} = L_in(ind,:);
-		end
-	else
-		error(['Unrecognized fifth input: ' num2str(varargin{5}) '.']);
-	end
-
-	%Create Optimization Objective
-	M3 = sdpvar(1,1,'full');
-	obj_fcn = M3;
-	obj_constrs = obj_constrs + [M3 >= 0];
-
-otherwise
-	error(['Unrecognized String: ' str_in ] )
-end
+xi_t_polyh = (S0+S0*Q_set0{1}*Cm0*S0)*w_disturb_box+...
+				S0*Q_set0{1}*v_disturb_box+...
+				(eye(4*n)+S0*Q_set0{1}*Cm0)*[eye(3);dyn.A;dyn.A^2;dyn.A^3]*xi_disturb_box;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Perform Optimization %%
@@ -138,7 +131,7 @@ end
 
 % Optimization Variables
 % ++++++++++++++++++++++
-ad.x0 	= sdpvar(n,1,'full');
+dyn.x0 	= sdpvar(n,1,'full');
 
 max_T_i = -1;
 for pattern_ind = 1 : length(L)
@@ -169,7 +162,7 @@ for pattern_ind = 1 : length(L)
 	% Creating Constraints
 	% ++++++++++++++++++++
 
-	[S0,H0,Cm0,xi0m,B_w_big,C_v_big] = create_skaf_n_boyd_matrices(ad,T_i,'missing',find(L{pattern_ind} == 0)-1);
+	[S0,H0,Cm0,xi0m,B_w_big,C_v_big] = create_skaf_n_boyd_matrices(dyn,T_i,'missing',find(L{pattern_ind} == 0)-1);
 
 	positive_constr = positive_constr + [ Pi_1{pattern_ind} >= 0, Pi_2{pattern_ind} >= 0 ];
 
@@ -179,13 +172,13 @@ for pattern_ind = 1 : length(L)
 		sel_influenced_states = [ sel_influenced_states ; select_m(i,T_i) ];
 	end
 
-	noise_constrs = noise_constrs + [ Pi_1{pattern_ind} * [ ad.eta_w * ones(2*wd*T_i,1) ; ad.eta_v * ones(2*p*T_i,1) ; M1 * ones(2*n,1) ] <= M2 * ones(2*n*T_i,1) - [eye(n*T_i);-eye(n*T_i)]*sel_influenced_states*H0*r{pattern_ind} ];
-	noise_constrs = noise_constrs + [ Pi_2{pattern_ind} * [ ad.eta_w * ones(2*wd*T_i,1) ; ad.eta_v * ones(2*p*T_i,1) ; M1 * ones(2*n,1) ] <= M3 * ones(2*n,1) - [eye(n);-eye(n)]*select_m(T_i,T_i)*H0*r{pattern_ind} ];
+	noise_constrs = noise_constrs + [ Pi_1{pattern_ind} * [ dyn.eta_w * ones(2*wd*T_i,1) ; dyn.eta_v * ones(2*p*T_i,1) ; M1 * ones(2*n,1) ] <= M2 * ones(2*n*T_i,1) - [eye(n*T_i);-eye(n*T_i)]*sel_influenced_states*H0*r{pattern_ind} ];
+	noise_constrs = noise_constrs + [ Pi_2{pattern_ind} * [ dyn.eta_w * ones(2*wd*T_i,1) ; dyn.eta_v * ones(2*p*T_i,1) ; M1 * ones(2*n,1) ] <= M3 * ones(2*n,1) - [eye(n);-eye(n)]*select_m(T_i,T_i)*H0*r{pattern_ind} ];
 
 	%Dual relationship to design variables
 	pre_xi = [];
 	for i = 0:T_i
-		pre_xi = [ pre_xi ; ad.A^i];
+		pre_xi = [ pre_xi ; dyn.A^i];
 	end
 
 	G{pattern_ind} = [ 	(eye(n*(T_i+1))+H0*Q{pattern_ind}*Cm0)*S0*B_w_big ...
@@ -246,7 +239,7 @@ else
 	for pattern_ind = 1 : length(L)
 		T_i = length(L{pattern_ind});
 		%Get Parameters
-		[S0,H0,Cm0,~,B_w_big,C_v_big] = create_skaf_n_boyd_matrices(ad,T_i,'missing',find(L{pattern_ind} == 0)-1);
+		[S0,H0,Cm0,~,B_w_big,C_v_big] = create_skaf_n_boyd_matrices(dyn,T_i,'missing',find(L{pattern_ind} == 0)-1);
 
 		Q_set{pattern_ind} = value(Q{pattern_ind});
 		r_set{pattern_ind} = value(r{pattern_ind});
@@ -266,11 +259,3 @@ else
 	end
 end
 
-switch varargin{2}
-case 'Min_M2'
-	opt_out.M2 = value(M2);
-case 'Min_M3'
-	opt_out.M3 = value(M3);
-end
-
-end

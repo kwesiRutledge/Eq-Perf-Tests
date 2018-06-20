@@ -74,9 +74,11 @@ function [  ] = filter_synthesis( varargin )
 		end
 	end
 	S_queue = S_queue(2:end);
-	
+
 	%Apply Synthesis
 	[ opt_data , contr ] = free_rec_design_pb( ad , 'Min_M3' , M1 , M2 , L0 );
+
+
 
 	while( ~isempty(S_queue) )
 		%Select State Index from Queue

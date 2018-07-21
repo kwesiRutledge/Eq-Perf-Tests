@@ -17,6 +17,7 @@ function [ opt_out, contr ] = free_rec_design_pb( varargin )
 %	[ opt_out, contr ] = free_rec_design_pb( ad , 'Min_M2' , M1 , M3 , L )
 %	[ opt_out, contr ] = free_rec_design_pb( ad , 'Min_M3' , M1 , M2 , T )
 %	[ opt_out, contr ] = free_rec_design_pb( ad , 'Min_M3' , M1 , M2 , L )
+%	[ opt_out, contr ] = free_rec_design_pb( ad , 'Min_M3' , M1 , M2 , T , 'verbosity' , 0 )
 %
 %Notes:
 %	Previously, a 'Max_M3' mode was tried, but the problem is unbounded. Typically any M3 larger than the minimum M3 will do for this problem.
@@ -36,11 +37,10 @@ p = size(ad.C,1);
 wd = size(ad.B_w,2);
 vd = size(ad.C_v,2);
 
-verbosity = 1;
-ops = sdpsettings('verbose',verbosity);
-
 %Select matrix
 select_m = @(t,T_r) [zeros(n,t*n) eye(n) zeros(n,(T_r-t)*n) ];
+
+nargin_evaltd = -1;
 
 %Constraints on Objective
 obj_constrs = [];
@@ -72,7 +72,10 @@ case 'Feasible Set'
 	%Define Objective Function
 	obj_fcn = [];
 
-case 'Max_M1'
+	%Update the number of inputs that have been evaluated.
+	nargin_evaltd = 6;
+
+case 'Min_M1'
 
 	if nargin < 5
 		error('Not enough inputs for Min_M1 mode.')
@@ -99,6 +102,11 @@ case 'Max_M1'
 	obj_fcn = -M1;
 	obj_constrs = [obj_constrs,M1 >= 0];
 
+	%Update the number of inputs that have been evaluated.
+	nargin_evaltd = 5;
+
+	error('This problem is nonlinear and does not currently have a reasonable solution in our framework.')
+
 case 'Min_M2'
 
 	if nargin < 5
@@ -122,8 +130,10 @@ case 'Min_M2'
 	end
 
 	M2 = sdpvar(1,1,'full');
-
 	obj_fcn = M2;
+
+	%Update the number of inputs that have been evaluated.
+	nargin_evaltd = 5;
 
 case 'Min_M3'
 
@@ -155,9 +165,30 @@ case 'Min_M3'
 	obj_fcn = M3;
 	obj_constrs = obj_constrs + [M3 >= 0];
 
+	%Update the number of inputs that have been evaluated.
+	nargin_evaltd = 5;
+
 otherwise
 	error(['Unrecognized String: ' str_in ] )
 end
+
+%If the number of arguments evaluated is greater than 0 (valid)
+%and LESS than the maximum. Look for other options to tweak.
+while (nargin_evaltd > 0) & (nargin > nargin_evaltd)
+	switch varargin{nargin_evaltd+1}
+		case 'verbosity'
+			verbosity = varargin{nargin_evaltd+2};
+			nargin_evaltd = nargin_evaltd + 2;
+		otherwise
+			error(['Unrecognized option: ' varargin{nargin_evaltd} ])
+	end
+
+end
+
+if ~exist('verbosity')
+	verbosity = 1;
+end
+ops = sdpsettings('verbose',verbosity);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Perform Optimization %%

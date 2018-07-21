@@ -11,14 +11,10 @@ try
 		{1},[0;1],[ [1:10] ; mod([1:10],2) ]', ... %'
 		[ [1:10] [1:10] ; ones(1,10) zeros(1,10) ; [1:10] mod([1:10]+1,10)+1 ]');
 catch
-	add('functions/')
+	addpath('functions/')
 end
 
-try
-	Polyhedron
-catch
-	error('MPT3 is not added to path.')
-end
+include_fcns('MPT3','YALMIP');
 
 %% Constants
 n = 3;
@@ -52,7 +48,7 @@ L=[1,1,1,1];
 for t = 1:8
 	L = [];
 	L = ones(1,t);
-	[ opt_out, contr ] = free_rec_design_pb( dyn , 'Min_M3' , M1 , M2 , L )
+	[ opt_out, contr ] = free_rec_design_pb( dyn , 'Min_M3' , M1 , M2 , L , 'verbosity' , 0 )
 	exp1.results{t}.opt_out = opt_out;
 	exp1.results{t}.contr = contr;
 	M3(t) = opt_out.M3;
@@ -125,6 +121,8 @@ xi_t_polyh = (S0+S0*Q_set0{1}*Cm0*S0)*w_disturb_box+...
 				S0*Q_set0{1}*v_disturb_box+...
 				(eye(4*n)+S0*Q_set0{1}*Cm0)*[eye(3);dyn.A;dyn.A^2;dyn.A^3]*xi_disturb_box;
 
+xi_t0_p_T_polyh = select_m(3,3)*xi_t_polyh;
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Perform Optimization %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -141,14 +139,15 @@ for pattern_ind = 1 : length(L)
 	r{pattern_ind} = sdpvar(m*T_i,1,'full');
 
 	% Dual Variables
-	Pi_1{pattern_ind} = sdpvar(2*n*T_i,2*(wd+vd)*T_i+2*n,'full');
-	Pi_2{pattern_ind} = sdpvar(2*n,2*(wd+vd)*T_i+2*n,'full');
+	Pi_1{pattern_ind} = sdpvar(2*n*T_i,2*(wd+vd)*T_i+size(xi_t0_p_T_polyh.b,1),'full');
+	Pi_2{pattern_ind} = sdpvar(2*n,2*(wd+vd)*T_i+size(xi_t0_p_T_polyh.b,1),'full');
 
 	%Find the maximum T_i
 	if T_i > max_T_i
 		max_T_i = T_i;
 	end
 end
+
 w	= sdpvar(wd*max_T_i,1,'full');
 
 shared_Q_constrs = []; shared_r_constrs = [];
@@ -172,8 +171,8 @@ for pattern_ind = 1 : length(L)
 		sel_influenced_states = [ sel_influenced_states ; select_m(i,T_i) ];
 	end
 
-	noise_constrs = noise_constrs + [ Pi_1{pattern_ind} * [ dyn.eta_w * ones(2*wd*T_i,1) ; dyn.eta_v * ones(2*p*T_i,1) ; M1 * ones(2*n,1) ] <= M2 * ones(2*n*T_i,1) - [eye(n*T_i);-eye(n*T_i)]*sel_influenced_states*H0*r{pattern_ind} ];
-	noise_constrs = noise_constrs + [ Pi_2{pattern_ind} * [ dyn.eta_w * ones(2*wd*T_i,1) ; dyn.eta_v * ones(2*p*T_i,1) ; M1 * ones(2*n,1) ] <= M3 * ones(2*n,1) - [eye(n);-eye(n)]*select_m(T_i,T_i)*H0*r{pattern_ind} ];
+	noise_constrs = noise_constrs + [ Pi_1{pattern_ind} * [ dyn.eta_w * ones(2*wd*T_i,1) ; dyn.eta_v * ones(2*p*T_i,1) ; xi_t0_p_T_polyh.b ] <= M2 * ones(2*n*T_i,1) - [eye(n*T_i);-eye(n*T_i)]*sel_influenced_states*H0*r{pattern_ind} ];
+	noise_constrs = noise_constrs + [ Pi_2{pattern_ind} * [ dyn.eta_w * ones(2*wd*T_i,1) ; dyn.eta_v * ones(2*p*T_i,1) ; xi_t0_p_T_polyh.b ] <= M3 * ones(2*n,1) - [eye(n);-eye(n)]*select_m(T_i,T_i)*H0*r{pattern_ind} ];
 
 	%Dual relationship to design variables
 	pre_xi = [];
@@ -185,9 +184,9 @@ for pattern_ind = 1 : length(L)
 						H0*Q{pattern_ind}*C_v_big ...
 						(eye(n*(T_i+1))+H0*Q{pattern_ind}*Cm0)*pre_xi ];
 
-	bounded_disturb_matrix = [ [ eye(wd*T_i) ; -eye(wd*T_i) ] zeros(2*wd*T_i,vd*T_i+n) ;
-								zeros(2*vd*T_i,wd*T_i) [ eye(vd*T_i) ; -eye(vd*T_i) ] zeros(2*vd*T_i,n) ;
-								zeros(2*n,(vd+wd)*T_i) [ eye(n) ; -eye(n) ] ];
+	bounded_disturb_matrix = [ [ eye(wd*T_i) ; -eye(wd*T_i) ] zeros(2*wd*T_i,vd*T_i+size(xi_t0_p_T_polyh.A,2)) ;
+								zeros(2*vd*T_i,wd*T_i) [ eye(vd*T_i) ; -eye(vd*T_i) ] zeros(2*vd*T_i,size(xi_t0_p_T_polyh.A,2)) ;
+								zeros(size(xi_t0_p_T_polyh.A,1),(vd+wd)*T_i) xi_t0_p_T_polyh.A ];
 
 	dual_equal_constrs = dual_equal_constrs + [Pi_1{pattern_ind} * bounded_disturb_matrix == [eye(n*T_i); -eye(n*T_i)]*sel_influenced_states*G{pattern_ind} ];
 	dual_equal_constrs = dual_equal_constrs + [Pi_2{pattern_ind} * bounded_disturb_matrix == [eye(n);-eye(n)]*select_m(T_i,T_i)*G{pattern_ind}];

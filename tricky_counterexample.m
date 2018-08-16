@@ -14,7 +14,7 @@ catch
 	addpath('functions/')
 end
 
-include_fcns('MPT3','YALMIP');
+include_fcns('tbxmanager2');
 
 %% Constants
 n = 3;

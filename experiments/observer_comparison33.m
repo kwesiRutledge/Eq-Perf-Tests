@@ -18,7 +18,7 @@ function [results] = observer_comparison33(varargin)
 
 	L1 = [1,0,1,0,0];
 
-	attempt_these_tests = [4];
+	attempt_these_tests = [1 2 3 4];
 
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	%% Iterate through Some Values of M1 %%
@@ -37,9 +37,11 @@ function [results] = observer_comparison33(varargin)
 				M3_vals = [ M3_vals opt_out.M3 ];
 			else
 				M3_vals = [ M3_vals nan];
-			end
-		end
-
+            end
+            fprintf('.')
+        end
+        disp('.')
+        
 		results.o1 = opt_out;
 		results.e1 = estima;
 
@@ -73,9 +75,11 @@ function [results] = observer_comparison33(varargin)
 				M3_vals = [ M3_vals opt_out.M3 ];
 			else
 				M3_vals = [ M3_vals nan];
-			end
-		end
-
+            end
+            fprintf('.')
+        end
+        disp('.')
+        
 		figure;
 		plot(M1_vals,M3_vals)
 		axis([min(M1_vals) max(M1_vals) 0 max(M3_vals)+0.3 ])
@@ -107,8 +111,10 @@ function [results] = observer_comparison33(varargin)
 				M3_vals = [ M3_vals opt_out.M3 ];
 			else
 				M3_vals = [ M3_vals nan];
-			end
-		end
+            end
+            fprintf('.')
+        end
+        disp('.')
 
 		figure;
 		plot(M1_vals,M3_vals)
@@ -140,8 +146,10 @@ function [results] = observer_comparison33(varargin)
 				M3_vals = [ M3_vals opt_out.M3 ];
 			else
 				M3_vals = [ M3_vals nan];
-			end
-		end
+            end
+            fprintf('.')
+        end
+        disp('.')
 
 		figure;
 		plot(M1_vals,M3_vals)

@@ -29,7 +29,7 @@ classdef Aff_Dyn
 
 			%Input processing
 			if ~any(nargin == allowed_nargins)
-				error([ num2str(nargin) 'number of inputs is not supported.']);
+				error([ num2str(nargin) ' number of inputs is not supported.']);
 			end
 
 			%Assign basic variables

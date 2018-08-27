@@ -7,7 +7,7 @@ function [] = include_fcns(varargin)
 
 
 if nargin == 0
-	error('No toolboxes/libraries given to include.')
+	warning('No toolboxes/libraries given to include.')
 end
 
 if strcmp(getenv('USER'),'kwesirutledge') %Suggests the laptop is in use
@@ -62,10 +62,35 @@ if strcmp(getenv('USER'),'kwesirutledge') %Suggests the laptop is in use
                 error(['The toolbox name that you provided ' varargin{arg_ind} ' is not a valid library/toolbox. ' ])
         end
     end
+    disp(['All Libraries successfully added to path.'])
 else
-    error([ 'Unrecognized user: ' getenv('USER') ] )
+    %Depending on the Toolbox, do different things.
+    for arg_ind = 1:nargin
+    switch varargin{arg_ind}
+        case 'MPT3'
+            try
+                Polyhedron();
+            catch
+                warning('MPT3 Toolbox does not appear in path!')
+
+            end
+        case 'YALMIP'
+            try
+                a = sdpvar(1,1,'full');
+            catch
+                warning('YALMIP does not appear in path!');
+                try
+                    addpath(genpath([ '../../' 'YALMIP-master' ]));
+                    b = sdpvar(1,1,'full');
+                catch
+                    error('YALMIP not added to path.')
+                end
+            end
+    end
+    end
+    
+    warning([ 'Unrecognized user: ' getenv('USER') '. Not adding libraries to path.' ] )
 end
 
-disp(['All Libraries successfully added to path.'])
 
 end

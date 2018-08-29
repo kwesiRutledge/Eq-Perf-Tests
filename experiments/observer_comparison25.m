@@ -283,47 +283,6 @@ function [ results ] = observer_comparison25( varargin )
 
 	hybrid_obsv.opt_obj = value(alpha_2);
 
-	% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-	% %% Plot the Performance of this Designed Controller %%
-	% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-	% %Controller Definition
-	% contr2.F = F2;
-	% contr2.u0 = u0_2;
-
-	% num_plots = 4;
-
-	% %Plot Constants
-	% [xi_t0,xi_mag_t0] = apply_controller_to_rollouts(acc_e,contr2,T,num_rollouts,M1);
-	% xi{1} = xi_t0;
-	% xi_mag{1} = xi_mag_t0;
-
-	% figure('units','normalized','outerposition',[0 0 0.5 0.5]);
-	% for i = 1 : num_plots
-	% 	if i > 1
-	% 		[xi{i},xi_mag{i}] = apply_controller_to_rollouts(acc_e,contr2,T,num_rollouts,M1,'missing',i-1);
-	% 	end
-
-	% 	subplot(2,2,i)
-	% 	hold on;
-
-	% 	bar([0:T]*T_s,[ M1 value(alpha_2)*ones(1,T-1) M1 ],'w')
-	% 	for r_num = 1:rollouts_per_plot
-	% 		plot([0:T]*T_s,xi_mag{i}(:,r_num))
-	% 	end
-	% 	xlabel('Time [sec]')
-	% 	ylabel('$||x(t)-\hat{x}(t)||_{\infty}$','Interpreter','latex')
-	% 	% if i > 1
-	% 	% 	title(['Norm of the Estimation Error (Missing Data Occurs at t=' num2str(i-1) ')'])
-	% 	% else
-	% 	% 	title(['Norm of the Estimation Error (Data Always Available)'])
-	% 	% end
-	% 	legend('Guarantees')
-	% 	xt = get(gca, 'XTick');
-	% 	set(gca, 'FontSize', 16)
-	% end
-
-
 	%%%%%%%%%%%%%%%%%%%%
 	%% Saving Results %%
 	%%%%%%%%%%%%%%%%%%%%

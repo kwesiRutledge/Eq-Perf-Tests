@@ -73,11 +73,11 @@ if any(expm_under_test == 2)
         fprintf('.')
     end
     
-    exp1.M1 = [0:0.1:2];
-    exp1.M3 = M3_vals;
+    exp2.M1 = [0:0.1:2];
+    exp2.M3 = M3_vals;
 
     figure;
-    plot(exp1.M1([1:length(M3_vals)]),exp1.M3)
+    plot(exp2.M1([1:length(M3_vals)]),exp2.M3)
     xlabel('M1 Assumption Value')
     ylabel('Minimum M3 Value')
     title('Experiment 2: Identity B Matrix')
@@ -85,7 +85,11 @@ if any(expm_under_test == 2)
 end
 
 %% Assigning Results
+if exist('exp1')
+    results.exp1 = exp1;
+end
 
-results.exp1 = exp1;
-
+if exist('exp2')
+    results.exp2 = exp2;
+end
 end

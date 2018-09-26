@@ -308,10 +308,6 @@ else
 
 		Q_set{pattern_ind} = value(Q{pattern_ind});
 		r_set{pattern_ind} = value(r{pattern_ind});
-        value(eye(size(Q{pattern_ind},1)) + Q{pattern_ind}*Cm0*H0)
-        H0
-        Cm0
-        value(Q{pattern_ind})
 		F_set{pattern_ind} = value( (pinv(value(eye(size(Q{pattern_ind},1)) + Q{pattern_ind}*Cm0*H0)) ) * Q{pattern_ind});
 		u0_set{pattern_ind} = value( pinv(value(eye(size(Q{pattern_ind},1)) + Q{pattern_ind}*Cm0*H0)) * r{pattern_ind} );
 		

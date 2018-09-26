@@ -262,9 +262,10 @@ function [ results ] = observer_comparison25( varargin )
 	% ++++++++
 
 	% ops = sdpsettings('verbose',verbosity);
+    ops2 = sdpsettings(ops,'solver','mosek');
 	optim2 = optimize(positive_constr+noise_constrs+dual_equal_constrs+l_diag_constr+overlap_Q_constr, ...
 			alpha_2, ...
-			ops)
+			ops2)
 
 	if optim2.problem ~= 0
 		error(['The design problem was not completely solved.' optim2.info ])
@@ -296,4 +297,6 @@ function [ results ] = observer_comparison25( varargin )
 	results.hybrid_obsv = hybrid_obsv;
 	results.worst_case_L = worst_case_L;
 
+    results.ops2 = ops2;
+    
 end

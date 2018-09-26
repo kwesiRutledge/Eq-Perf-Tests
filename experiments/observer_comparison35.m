@@ -66,6 +66,8 @@ plot(ic_poly)
 plot(xi1_poly,'color','cyan')
 axis([-2 2 -2 2])
 
+exp1.xi1_poly = xi1_poly;
+
 %% Use Set Based Operations to Determine the True Set
 F_00 = estima.F_set{1};
 A_tilde = ...

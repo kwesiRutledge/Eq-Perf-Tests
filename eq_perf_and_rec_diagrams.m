@@ -9,6 +9,8 @@ x_t = xh_t + unifrnd(-1,1,[2,1]);
 
 M = 1;
 
+fs = 20 ; %Font Size for Plots
+
 figure;
 subplot(1,2,1)
 hold on;
@@ -20,8 +22,8 @@ rectangle('Position',[ xh_t' - ones(size(xh_t))'*M 2*M 2*M ], ...
 
 axis([-1 4 -1 4])
 grid on
-xlabel('$x_1(t)$','Interpreter','latex')
-ylabel('$x_2(t)$','Interpreter','latex')
+xlabel('$x_1(t)$','Interpreter','latex','FontSize',20)
+ylabel('$x_2(t)$','Interpreter','latex','FontSize',20)
 
 % Create time t+1
 xh_tp1 = [2;1];
@@ -37,8 +39,8 @@ rectangle('Position',[ xh_tp1' - ones(size(xh_tp1))'*M 2*M 2*M ], ...
 
 axis([-1 4 -1 4])
 grid on
-xlabel('$x_1(t+1)$','Interpreter','latex')
-ylabel('$x_2(t+1)$','Interpreter','latex')
+xlabel('$x_1(t+1)$','Interpreter','latex','FontSize',fs)
+ylabel('$x_2(t+1)$','Interpreter','latex','FontSize',fs)
 
 
 %% Equalized Recovery Diagram
@@ -65,8 +67,8 @@ rectangle('Position',[ xh_t' - ones(size(xh_t))'*M 2*M 2*M ], ...
 
 axis([-1 4 -1 4])
 grid on
-xlabel('$x_1(t)$','Interpreter','latex')
-ylabel('$x_2(t)$','Interpreter','latex')
+xlabel('$x_1(t)$','Interpreter','latex','FontSize',fs)
+ylabel('$x_2(t)$','Interpreter','latex','FontSize',fs)
 
 subplot(1,3,2)
 hold on;
@@ -78,8 +80,8 @@ rectangle('Position',[ xh_tpk' - ones(size(xh_tp1))'*M2 2*M2 2*M2 ], ...
 
 axis([-1 4 -1 4])
 grid on
-xlabel('$x_1(t+k)$','Interpreter','latex')
-ylabel('$x_2(t+k)$','Interpreter','latex')
+xlabel('$x_1(t+k)$','Interpreter','latex','FontSize',fs)
+ylabel('$x_2(t+k)$','Interpreter','latex','FontSize',fs)
 
 subplot(1,3,3)
 hold on;
@@ -91,6 +93,6 @@ rectangle('Position',[ xh_tpT' - ones(size(xh_tp1))'*M 2*M 2*M ], ...
 
 axis([-1 4 -1 4])
 grid on
-xlabel('$x_1(t+T)$','Interpreter','latex')
-ylabel('$x_2(t+T)$','Interpreter','latex')
+xlabel('$x_1(t+T)$','Interpreter','latex','FontSize',fs)
+ylabel('$x_2(t+T)$','Interpreter','latex','FontSize',fs)
 

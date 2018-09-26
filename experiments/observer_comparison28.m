@@ -73,6 +73,10 @@ function [ results ] = observer_comparison28( varargin )
 	acc_e = acc;
 	acc_e.B = eye(size(acc.A,1));
 
+    fs = 20;
+    
+    %% Design Problems
+    
 	acc_ad = Aff_Dyn(acc_e.A,acc_e.B,zeros(size(acc_e.A,1),1), acc_e.C, acc_e.d , acc_e.m, acc_e.E , eye(size(acc.C,1)) );
 	[ oc27_opt1 , oc27_contr1 ] = eq_rec_design_t( acc_ad , 'Min_M2' , M1 , T , L );
 
@@ -136,8 +140,8 @@ function [ results ] = observer_comparison28( varargin )
 	plot([0:T],reshape(pb3_sim_norm_mod,T+1,num_runs));
 	
 	axis([0-0.5 T+0.5 0 oc27_contr1.opt_obj+0.2 ])
-	xlabel('Time Index')
-	ylabel('$||x(t)-\hat{x}(t)||_{\infty}$','Interpreter','latex')
+	xlabel('Time Index','FontSize',fs)
+	ylabel('$||x(t)-\hat{x}(t)||_{\infty}$','Interpreter','latex','FontSize',fs)
 	title('Prefix-Based Observer with Minimized M_2')
 	disp('Plotted Prefix-based solution.')
 
@@ -158,8 +162,8 @@ function [ results ] = observer_comparison28( varargin )
 	plot([0:T],reshape(pb4_sim_norm_mod,T+1,num_runs));
 	
 	axis([0-0.5 T+0.5 0 oc27_contr1.opt_obj+0.2 ])
-	xlabel('Time Index')
-	ylabel('$||x(t)-\hat{x}(t)||_{\infty}$','Interpreter','latex')
+	xlabel('Time Index','FontSize',fs)
+	ylabel('$||x(t)-\hat{x}(t)||_{\infty}$','Interpreter','latex','FontSize',fs)
 	title('(Pseudo) Time-Based Observer with Minimized M_2')
 	disp('Plotted time-based solution.')
 

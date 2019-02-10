@@ -243,8 +243,8 @@ else
 
 		Q_set{pattern_ind} = value(Q{pattern_ind});
 		r_set{pattern_ind} = value(r{pattern_ind});
-		F_set{pattern_ind} = value( (inv(value(eye(size(S0,2)) + Q{pattern_ind}*Cm0*H0)) ) * Q{pattern_ind});
-		u0_set{pattern_ind} = value( inv(value(eye(size(S0,2)) + Q{pattern_ind}*Cm0*H0)) * r{pattern_ind} );
+		F_set{pattern_ind} = value( (inv(value(eye(size(H0,2)) + Q{pattern_ind}*Cm0*H0)) ) * Q{pattern_ind});
+		u0_set{pattern_ind} = value( inv(value(eye(size(H0,2)) + Q{pattern_ind}*Cm0*H0)) * r{pattern_ind} );
 		
 		%Fix up F and u0 to avoid NaN
 		F_set{pattern_ind}( isnan(F_set{pattern_ind}) ) = 0;

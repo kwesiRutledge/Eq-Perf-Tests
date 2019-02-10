@@ -54,8 +54,15 @@ classdef FHAE_pb
 				end
 			end
 			matching_mat = repmat(observed_w,num_words,1) == matching_mat;	
-
-			matching_locs = all(matching_mat')';
+            
+            %Showing which words match the observed prefix
+            if ow_len == 1
+                matching_locs = matching_mat;
+            elseif ow_len > 1
+                matching_locs = all(matching_mat')';
+            else
+                error('ow_len is a nonpositive integer.')
+            end
 
 			first_match_ind = find(matching_locs,1);
 

@@ -193,6 +193,7 @@ function [results] = observer_comparison36(varargin)
 	opt_out = optim0;
 	if opt_out.problem ~= 0
 		contr = [];
+		error(['The optimization was infeasible.'])
 	else
 		% Save Feedback Matrices
 		% ++++++++++++++++++++++

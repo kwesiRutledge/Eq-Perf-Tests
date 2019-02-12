@@ -75,17 +75,79 @@ classdef FHAE_pb
 		end
 
 		%Simulation of a single run
-		function x_0_t = simulate_1run( obj , ad , M1 , in_sig )
+		function x_0_t = simulate_1run( varargin )
 			%Description:
 			%	Uses the information provided in the Affine Dynamics instance ad and
 			%	the problem specification M1 along with the given controller
 			%	to simulate a single run of the prefix based controller.
 			%Usages:
+			%	x_0_t = obj.simulate_1run( ad , M1 , in_sig )
+			%	x_0_t = obj.simulate_1run( ad , M1 , 'in_sigma' , in_sig )
+			%	x_0_t = obj.simulate_1run( ad , M1 , 'in_sigma' , in_sig , 'in_w' , in_w )
+			%	
+			%
+			%Inputs:
+			%	ad - An Aff_Dyn object.
+			%		 This should be the affine dynamics for which this controller was synthesized.
+			%		 If it is not, then no guarantees on performance can be maintained.
+			%	M1 - A nonnegative scalar.
+			%	in_str - This input string should tell what type of constant you would like to hold.
 			%
 			%Outputs:
 			%	x_0_t - An n x (T+1) matrix which defines the trajectory of the state
 			%			for a feasible realization of the random variables associated
 			%			with the tuple (ad,M1,sigma)
+
+			%++++++++++++++++
+			%Input Processing
+			obj = varargin{1};
+			ad = varargin{2};
+			M1 = varargin{3};
+
+			if nargin < 4
+				rand_word_ind = randi(length(obj.L),1);
+				sig = obj.L{rand_word_ind};
+				T = length(obj.L{rand_word_ind});
+			else
+				if isa(varargin{4},'char')
+					%This means that the newer version of simulate_1run is being called.
+					%Read the characters.
+					flag_ind = 4;
+					while flag_ind <= nargin
+						switch varargin{flag_ind}
+						case 'in_sigma'
+							if (size(varargin{flag_ind+1},1) ~= 1) %|| (size(in_sig,2) ~= T)
+								error('Input word is not a single word or does not have the correct length.' )
+							end
+							sig = varargin{flag_ind+1};
+							T = length(sig);
+							%Increment Flag Index
+							flag_ind = flag_ind+2;
+						case 'in_w'
+							if ~exist('T')
+								warning('simulate_1run was called with ''in_w'' parameter flag, but ''T'' was not defined.')
+							end
+							in_w = varargin{flag_ind+1};
+							if ((size(in_w,1) ~= size(ad.B_w,2)) || (size(in_w,2) ~= T))
+								error('The dimensions of the input w sequence are not correct.')
+							end
+							%Increment Flag Index
+							flag_ind = flag_ind+2;
+						otherwise
+							error(['Unrecognized input to simulate_1run: ' varargin{flag_ind} ])
+						end
+					end
+				elseif isa(varargin{4},'double')
+					%This means that the older version of simulate_1run is being called.
+					%Read the double.
+					in_sig = varargin{4};
+				else
+					error('Unrecognized type for fourth argument.')
+				end
+			end
+
+			%+++++++++
+			%Algorithm
 
 			%Constants
 			% T = size(obj.L,2);
@@ -93,20 +155,13 @@ classdef FHAE_pb
 			wd = size(ad.B_w,2);
 			vd = size(ad.C_v,2);
 
-			if nargin ~= 4
-				rand_word_ind = randi(length(obj.L),1);
-				sig = obj.L{rand_word_ind};
-				T = length(obj.L{rand_word_ind});
-			else
-				if (size(in_sig,1) ~= 1) %|| (size(in_sig,2) ~= T)
-					error('Input word is not a single word or does not have the correct length.' )
-				end
-				sig = in_sig;
-			end
-
 			%Generate Random Variables
 			x0 = unifrnd(-M1,M1,n,1);
-			w  = unifrnd(-ad.eta_w,ad.eta_w,wd,T);
+			if exist('in_w')
+				w = in_w;
+			else
+				w  = unifrnd(-ad.eta_w,ad.eta_w,wd,T);
+			end
 			v  = unifrnd(-ad.eta_v,ad.eta_v,vd,T);
 
 			%Simulate system forward.
@@ -137,14 +192,17 @@ classdef FHAE_pb
 
 		end
 
-		function [run_data_x,run_data_x_norm] = simulate_n_runs( obj , ad , M1 , num_runs , in_sig )
+		function [run_data_x,run_data_x_norm] = simulate_n_runs( varargin )
 			%Description:
 			%	Uses the information provided in the affine dynamics instance ad and the problem
 			%	specification M1 along with the given controller to simulate as many runs as the user
 			%	would like.
 			%
-			%Inputs:
+			%Usage:
 			%	x_tensor = simulate_n_runs( obj , ad , M1 , num_runs , in_sig )
+			%
+			%Inputs:
+			%	
 			%
 			%Outputs:
 			%	run_data_x -	A 1 x 'num_runs' cell array of n x (T_i+1) matrices which defines
@@ -152,9 +210,55 @@ classdef FHAE_pb
 			%			   		T_i can change for each run.
 			%	run_data_x_norm - 	A cell array of
 
-			if nargin < 3
+			%++++++++++++++++
+			%Input Processing
+
+			if nargin < 4
 				error('Not enough inputs.')
 			end
+
+			obj = varargin{1};
+			ad = varargin{2};
+			M1 = varargin{3};
+			num_runs = varargin{4};
+
+			if nargin >= 5
+				if isa(varargin{5},'char')
+					%This means that the newer version of simulate_1run is being called.
+					%Read the characters.
+					flag_ind = 5;
+					while flag_ind <= nargin
+						switch varargin{flag_ind}
+						case 'in_sigma'
+							if (size(varargin{flag_ind+1},1) ~= 1) %|| (size(in_sig,2) ~= T)
+								error('Input word is not a single word or does not have the correct length.' )
+							end
+							in_sig = varargin{flag_ind+1};
+							T = length(in_sig);
+							%Increment Flag Index
+							flag_ind = flag_ind+2;
+						case 'in_w'
+							in_w = varargin{flag_ind+1};
+							if ((size(in_w,1) ~= size(ad.B_w,2)) || (size(in_w,2) ~= T))
+								error('The dimensions of the input w sequence are not correct.')
+							end
+							%Increment Flag Index
+							flag_ind = flag_ind+2;
+						otherwise
+							error(['Unrecognized input to simulate_n_runs: ' varargin{flag_ind} ])
+						end
+					end
+				elseif isa(varargin{5},'double')
+					%This means that the older version of simulate_1run is being called.
+					%Read the double.
+					in_sig = varargin{5};
+				else
+					error('Unrecognized type for fourth argument.')
+				end
+			end
+
+			%+++++++++
+			%Algorithm
 
 			%% Constants
 			n = size(ad.A,1);
@@ -166,8 +270,10 @@ classdef FHAE_pb
 				%
 				if nargin < 5
 					run_data_x{run_ind} = obj.simulate_1run( ad , M1 );
-				else
-					run_data_x{run_ind} = obj.simulate_1run( ad , M1 , in_sig );
+				elseif exist('in_sig')
+					run_data_x{run_ind} = obj.simulate_1run( ad , M1 , 'in_sigma', in_sig );
+				elseif exist('in_w')
+					run_data_x{run_ind} = obj.simulate_1run( ad , M1 , 'in_sigma' , in_sig , 'in_w' , in_w )
 				end
 
 				%Calculate Norms

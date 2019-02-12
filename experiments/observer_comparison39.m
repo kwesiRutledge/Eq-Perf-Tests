@@ -14,8 +14,8 @@ function [results] = observer_comparison39(varargin)
 	word_len = 4; window_len = 1;
 	L = {};
 	for L_ind = 2:1+window_len
-		L{L_ind-1} = ones(1,word_len);
-		L{L_ind}(L_ind) = 0;
+		L{end+1} = ones(1,word_len);
+		L{end}(L_ind) = 0;
 	end
 	L{end+1} = ones(1,word_len);
 
@@ -56,6 +56,30 @@ function [results] = observer_comparison39(varargin)
 	% simple_LK = Aff_Dyn(	con.dyn_lk.A,con.dyn_lk.B,con.dyn_lk.F,eye(n_x),...
 	% 						eta_w,eta_v, ...
 	% 						con.dyn_lk.B, eye(n_y) );
+
+	%System Parameters
+	A = [ zeros(2,1) [1;-20] ];
+	n_x = size(A,1);
+
+	B = [ 0; 1];
+	F = zeros(n_x,1);
+	
+	C = eye(2);%[1,0];
+	n_y = size(C,1);
+
+	temp_sys = ss(A,B,C,0);
+	dt = 0.05;
+	temp_dsys = c2d(temp_sys,dt);
+
+	temp_sys2 = ss(A,[1;0],C,0);
+	temp_dsys2 = c2d(temp_sys2,dt);
+
+	eta_w = 0.05; eta_v = 0.1;
+
+	simple_LK = Aff_Dyn(	temp_dsys.A,temp_dsys.B,F,C,...
+							eta_w,eta_v, ...
+							temp_dsys2.B, eye(n_y) );
+
 	disp('Created Aff_Dyn object.')
 
 	lane_width = 2*0.9;
@@ -67,7 +91,7 @@ function [results] = observer_comparison39(varargin)
 	%% Synthesis %%
 	%%%%%%%%%%%%%%%
 
-	ad = lk_dyn;
+	ad = simple_LK;
 
 	%+++++++++++++++++++
 	%Synthesis Constants
@@ -98,8 +122,8 @@ function [results] = observer_comparison39(varargin)
 		r{pattern_ind} = sdpvar(m*T_i,1,'full');
 
 		% Dual Variables
-		Pi_1{pattern_ind} = sdpvar(2*n*T_i,2*(wd+vd)*T_i+num_cis_ineqs,'full');
-		Pi_2{pattern_ind} = sdpvar(num_cis_ineqs,2*(wd+vd)*T_i+num_cis_ineqs,'full');
+		Pi_1{pattern_ind} = sdpvar(2*n*T_i,2*(wd+vd)*T_i+2*n,'full');
+		Pi_2{pattern_ind} = sdpvar(2*n,2*(wd+vd)*T_i+2*n,'full');
 
 		%Find the maximum T_i
 		if T_i > max_T_i
@@ -134,8 +158,8 @@ function [results] = observer_comparison39(varargin)
 			sel_influenced_states = [ sel_influenced_states ; select_m(i,T_i) ];
 		end
 
-		noise_constrs = noise_constrs + [ Pi_1{pattern_ind} * [ ad.eta_w * ones(2*wd*T_i,1) ; ad.eta_v * ones(2*vd*T_i,1) ; start_set.b ] <= mu2 * ones(2*n*T_i,1) - [eye(n*T_i);-eye(n*T_i)]*sel_influenced_states*H0*r{pattern_ind} ];
-		noise_constrs = noise_constrs + [ Pi_2{pattern_ind} * [ ad.eta_w * ones(2*wd*T_i,1) ; ad.eta_v * ones(2*vd*T_i,1) ; start_set.b ] <= lk_inv_set.b - lk_inv_set.A*select_m(T_i,T_i)*H0*r{pattern_ind} ];
+		noise_constrs = noise_constrs + [ Pi_1{pattern_ind} * [ ad.eta_w * ones(2*wd*T_i,1) ; ad.eta_v * ones(2*vd*T_i,1) ; M1*ones(2*n,1) ] <= mu2 * ones(2*n*T_i,1) - [eye(n*T_i);-eye(n*T_i)]*sel_influenced_states*H0*r{pattern_ind} ];
+		noise_constrs = noise_constrs + [ Pi_2{pattern_ind} * [ ad.eta_w * ones(2*wd*T_i,1) ; ad.eta_v * ones(2*vd*T_i,1) ; M1*ones(2*n,1) ] <= M1*ones(2*n,1) - [eye(n);-eye(n)]*select_m(T_i,T_i)*H0*r{pattern_ind} ];
 
 		%Dual relationship to design variables
 		pre_xi = [];
@@ -152,7 +176,7 @@ function [results] = observer_comparison39(varargin)
 									zeros(num_cis_ineqs,(vd+wd)*T_i) start_set.A ];
 
 		dual_equal_constrs = dual_equal_constrs + [Pi_1{pattern_ind} * bounded_disturb_matrix == [eye(n*T_i); -eye(n*T_i)]*sel_influenced_states*G{pattern_ind} ];
-		dual_equal_constrs = dual_equal_constrs + [Pi_2{pattern_ind} * bounded_disturb_matrix == lk_inv_set.A*select_m(T_i,T_i)*G{pattern_ind}];
+		dual_equal_constrs = dual_equal_constrs + [Pi_2{pattern_ind} * bounded_disturb_matrix == [eye(n);-eye(n)]*select_m(T_i,T_i)*G{pattern_ind}];
 
 		%Lower Diagonal Constraint
 		for bl_row_num = 1 : T_i-1

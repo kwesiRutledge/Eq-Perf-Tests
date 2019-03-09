@@ -11,7 +11,7 @@ function [results] = observer_comparison39(varargin)
 	[~,lk_dyn] = get_lk_aff_dyn(dt);
 
 	%Missing Data Parameters
-	word_len = 4; window_len = 1;
+	word_len = 6; window_len = 1;
 	L = {};
 	for L_ind = 2:1+window_len
 		L{end+1} = ones(1,word_len);
@@ -19,7 +19,7 @@ function [results] = observer_comparison39(varargin)
 	end
 	L{end+1} = ones(1,word_len);
 
-	L = {ones(1,5)};
+% 	L = {ones(1,word_len)};
 
 	%Simulation constants
 	num_runs = 100;
@@ -91,7 +91,7 @@ function [results] = observer_comparison39(varargin)
 	%% Synthesis %%
 	%%%%%%%%%%%%%%%
 
-	ad = simple_LK;
+	ad = lk_dyn_disc;
 
 	%+++++++++++++++++++
 	%Synthesis Constants
@@ -158,8 +158,8 @@ function [results] = observer_comparison39(varargin)
 			sel_influenced_states = [ sel_influenced_states ; select_m(i,T_i) ];
 		end
 
-		noise_constrs = noise_constrs + [ Pi_1{pattern_ind} * [ ad.eta_w * ones(2*wd*T_i,1) ; ad.eta_v * ones(2*vd*T_i,1) ; M1*ones(2*n,1) ] <= mu2 * ones(2*n*T_i,1) - [eye(n*T_i);-eye(n*T_i)]*sel_influenced_states*H0*r{pattern_ind} ];
-		noise_constrs = noise_constrs + [ Pi_2{pattern_ind} * [ ad.eta_w * ones(2*wd*T_i,1) ; ad.eta_v * ones(2*vd*T_i,1) ; M1*ones(2*n,1) ] <= M1*ones(2*n,1) - [eye(n);-eye(n)]*select_m(T_i,T_i)*H0*r{pattern_ind} ];
+		noise_constrs = noise_constrs + [ Pi_1{pattern_ind} * [ ad.eta_w * ones(2*wd*T_i,1) ; ad.eta_v * ones(2*vd*T_i,1) ; start_set.b ] <= mu2 * ones(2*n*T_i,1) - [eye(n*T_i);-eye(n*T_i)]*sel_influenced_states*H0*r{pattern_ind} ];
+		noise_constrs = noise_constrs + [ Pi_2{pattern_ind} * [ ad.eta_w * ones(2*wd*T_i,1) ; ad.eta_v * ones(2*vd*T_i,1) ; start_set.b ] <= M1*ones(2*n,1) - [eye(n);-eye(n)]*select_m(T_i,T_i)*H0*r{pattern_ind} ];
 
 		%Dual relationship to design variables
 		pre_xi = [];
@@ -210,14 +210,45 @@ function [results] = observer_comparison39(varargin)
 	
 	%Optimization
 	obj_fcn = mu2;
-	ops = sdpsettings('verbose',1);
+	ops = sdpsettings('verbose',1,'debug',1);
 	optim0 = optimize(positive_constr+noise_constrs+dual_equal_constrs+l_diag_constr+shared_Q_constrs+shared_r_constrs+obj_constrs, ...
 						obj_fcn, ...
 						ops);
 
 	disp('Optimization Function Returned.')
-	pause;
 
+    opt_out = optim0;
+    if opt_out.problem ~= 0
+        oc39_contr1 = [];
+    else
+        % Save Feedback Matrices
+        % ++++++++++++++++++++++
+        Q_set = {}; r_set = {};
+        F_set = {}; u0_set = {};
+        for pattern_ind = 1 : length(L)
+            T_i = length(L{pattern_ind});
+            %Get Parameters
+            [S0,H0,Cm0,~,B_w_big,C_v_big] = create_skaf_n_boyd_matrices(ad,T_i,'missing',find(L{pattern_ind} == 0)-1);
+
+            Q_set{pattern_ind} = value(Q{pattern_ind});
+            r_set{pattern_ind} = value(r{pattern_ind});
+            F_set{pattern_ind} = value( (inv(value(eye(size(H0,2)) + Q{pattern_ind}*Cm0*H0)) ) * Q{pattern_ind});
+            u0_set{pattern_ind} = value( inv(value(eye(size(H0,2)) + Q{pattern_ind}*Cm0*H0)) * r{pattern_ind} );
+
+            %Fix up F and u0 to avoid NaN
+            F_set{pattern_ind}( isnan(F_set{pattern_ind}) ) = 0;
+            % u0_set{pattern_ind}( isnan(u0_set{pattern_ind}) ) = 0;
+
+        end
+
+        %Create Function Outputs
+        opt_out.Q_set = Q_set;
+        opt_out.r_set = r_set;
+
+        oc39_contr1 = FHAE_pb(L,F_set,u0_set);
+    end
+    
+    M2 = value(mu2);
 	%[ oc37_opt1 , oc37_contr1 ] = simple_LK.eq_rec_design_pb( 'Min_M2' , M1 , L );
 
 	%%%%%%%%%%%%%
@@ -225,11 +256,11 @@ function [results] = observer_comparison39(varargin)
 	%%%%%%%%%%%%%
 
 	%Simulate
-	[ ctrl_sim1, ~ ] = oc37_contr1.simulate_n_runs( ad , M1 , num_runs )
+	[ ctrl_sim1, ~ ] = oc39_contr1.simulate_n_runs( ad , M1 , num_runs )
 
 	ctrl_sim1_mod = [];
 	for ind = 1:length(ctrl_sim1)
-		ctrl_sim1_mod(:,:,ind) = simple_LK.C*ctrl_sim1{ind};
+		ctrl_sim1_mod(:,:,ind) = ad.C*ctrl_sim1{ind};
 	end
 
 	figure;
@@ -245,11 +276,12 @@ function [results] = observer_comparison39(varargin)
 		plot([0:word_len]*dt,ctrl_sim1_mod(1,:,sim_num))
 	end
 
-	axis([0,word_len*dt,-1,1])
+	axis([0,word_len*dt,-M2,M2])
 
 	% Saving
-
+    optim0.M2= M2;
+    
 	results.exp1.sys = simple_LK;
-	results.exp1.opt = oc37_opt1;
-	results.exp1.contr = oc37_contr1;
+	results.exp1.opt = optim0;
+	results.exp1.contr = oc39_contr1;
 end

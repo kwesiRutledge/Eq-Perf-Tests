@@ -87,11 +87,16 @@ function [results] = observer_comparison39(varargin)
 	%Desired Constants
 	M1 = 0.3;
 
+	%Select matrix
+	select_m = @(t,T_r) [zeros(n,t*n) eye(n) zeros(n,(T_r-t)*n) ];
+
 	%%%%%%%%%%%%%%%
 	%% Synthesis %%
 	%%%%%%%%%%%%%%%
 
 	ad = lk_dyn_disc;
+	Z1 = lk_cis_zono;
+	Z2 = lk_cis_zono;
 
 	%+++++++++++++++++++
 	%Synthesis Constants
@@ -101,17 +106,15 @@ function [results] = observer_comparison39(varargin)
 	wd = size(ad.B_w,2);
 	vd = size(ad.C_v,2);
 
-	num_g = size(lk_cis_zono.G,2);
+	num_g1 = size(Z1.G,2);
+	dim_Z1 = size(Z1.G,1);
+	num_g2 = size(Z2.G,2);
+	dim_Z2 = size(Z2.G,1);
 	num_cis_ineqs = size(lk_inv_set.A,1);
-
-	%Select matrix
-	select_m = @(t,T_r) [zeros(n,t*n) eye(n) zeros(n,(T_r-t)*n) ];
 
 	%+++++++++++++++++++++++++++++
 	%Create Optimization Variables
 	mu2 = sdpvar(1,1,'full');
-	theta1 = sdpvar(num_g,1,'full');
-	theta2 = sdpvar(num_g,1,'full');
 	ad.x0 = sdpvar(n,1,'full');
 
 	max_T_i = -1;
@@ -125,12 +128,17 @@ function [results] = observer_comparison39(varargin)
 		Pi_1{pattern_ind} = sdpvar(2*n*T_i,2*(wd+vd)*T_i+2*n,'full');
 		Pi_2{pattern_ind} = sdpvar(2*n,2*(wd+vd)*T_i+2*n,'full');
 
+		%Lambda_1{pattern_ind} = sdpvar(,'full');
+
+		%Zonotope Variables
+		theta1{pattern_ind} = sdpvar(num_g1*T_i,1,'full');
+		theta2{pattern_ind} = sdpvar(num_g2*T_i,1,'full');
+
 		%Find the maximum T_i
 		if T_i > max_T_i
 			max_T_i = T_i;
 		end
 	end
-	w	= sdpvar(wd*max_T_i,1,'full');
 
 	disp('Optimization variables created.')
 
@@ -144,7 +152,18 @@ function [results] = observer_comparison39(varargin)
 	l_diag_constr = [];
 
 	for pattern_ind = 1 : length(L)
+
+		%Define Pattern-Based Constants
 		T_i = length(L{pattern_ind});
+
+		nu_polyt = Polyhedron(	'A', [	[eye(T_i*wd);-eye(T_i*wd)], zeros(2*T_i*wd,num_g1+2*T_i*vd) ;
+										zeros(2*T_i*vd,T_i*wd), [eye(T_i*vd);-eye(T_i*vd)], zeros(2*T_i*vd,num_g1);
+										zeros(2*dim_Z1,T_i*(wd+vd)) [Z1.G;-Z1.G] ] , ...
+								'b', [	ad.eta_w*ones(2*T_i*wd);
+										ad.eta_v*ones(2*T_i*vd);
+										ones(size(Z1.c,1),1) - Z1.c;
+										ones(size(Z1.c,1),1) - Z1.c]);
+
 		% Creating Constraints
 		% ++++++++++++++++++++
 

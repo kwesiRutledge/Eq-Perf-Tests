@@ -8,7 +8,7 @@ function [varargout] = get_mpc_matrices(varargin)
 	%
 	%	Usage:
 	%		[H,S,C_bar,J,f_bar] = get_mpc_matrices(sys_arr,T)
-	%		[H,S,C_bar,J,E_bar,G_bar] = get_mpc_matrices(sys_arr,T)
+	%		[H,S,C_bar,J,f_bar.E_bar,G_bar] = get_mpc_matrices(sys_arr,T)
 	%		[H,S,C_bar,J,f_bar] = get_mpc_matrices(sys_arr,L)
 	%
 	%	Inputs:
@@ -34,6 +34,11 @@ function [varargout] = get_mpc_matrices(varargin)
 	%		C_bar - ... defines how the state of the system is transmitted to the measurement trajectory.
 	%
 	%		J - 	... defines how the initial state (x(t_0)) affects the system's state trajectory.
+	%
+	%	Assumptions:
+	%		We assume that the piecewise affine systems that are given as input maintain constant dimension of
+	%		their disturbance (w), input (u), etc. That means that if u(t) is a 2 dimensional input at time 1
+	%		then it always is.
 
 	%%%%%%%%%%%%%%%%%%%%%%
 	%% Input Processing %%
@@ -62,70 +67,45 @@ function [varargout] = get_mpc_matrices(varargin)
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 	%Find H, S, and J Matrices
-	H = calc_w_effect_mat(sys.A,T);
-	S = calc_u_effect_mat(sys.A,sys.B,T);
-	J = calc_x0_mat(sys.A,sys.x0,T);
-	f_bar = kron(ones(T+1,1),sys)
+	H = calc_w_effect_mat(sys_arr,L);
+	S = calc_u_effect_mat(sys_arr,L);
+	J = calc_x0_mat(sys_arr,L);
+	
+	%Calculate the big f matrix
+	f_bar = [];
+	for i = 1:length(L)
+		f_bar = [f_bar; sys_arr(L(i)).f];
+	end
 
 	%Calculate Big C Matrix
 	C_at_each_n = {};
-	for i = 1:T
-		if any(m_locs == (i-1))
-			C_at_each_n{i} = zeros(size(sys.C));
-		else
-			C_at_each_n{i} = sys.C;
-		end 
+	for i = 1:length(L)
+		C_at_each_n{i} = sys_arr(L(i)).C; 
 	end
 
-	C_bar = [ blkdiag(C_at_each_n{:}) zeros( size(sys.C) * [ T 0 ; 0 1 ] ) ];
+	C_bar = [ blkdiag(C_at_each_n{:}) zeros( size(sys_arr(1).C) * [ length(L) 0 ; 0 1 ] ) ];
 
 	%%%%%%%%%%%%%%%%%%%%%%
 	%% Optional Outputs %%
 	%%%%%%%%%%%%%%%%%%%%%%
 
-	if nargout >= 5
-		% Check to see if E/B_w or G/C_v exist
-		% If not just error out.
-
-		if (~isfield(sys,'E')) & (~isfield(sys,'B_w')) & (~isa(sys, 'Aff_Dyn'))
-			error('E or B_w does not exist!')
-		end
-
-		if isfield(sys,'B_w') || isa(sys, 'Aff_Dyn')
-			E = sys.B_w;
-		else
-			E = sys.E;
-		end
+	if nargout >= 6
 
 		%Create E_bar
 		E_at_each_n = {};
-		for i = 1:T
-			E_at_each_n{i} = E;
+		for i = 1:length(L)
+			E_at_each_n{i} = sys_arr(L(i)).E;
 		end
 		E_bar = blkdiag(E_at_each_n{:});
 
 	end
 
-	if nargout >= 6
-
-		if ~isfield(sys,'G') & ~isfield(sys,'C_v') & (~isa(sys, 'Aff_Dyn'))
-			error('G or C_v does not exist!')
-		end
-
-		if isfield(sys,'C_v') || isa(sys, 'Aff_Dyn')
-			C_v = sys.C_v;
-		else
-			C_v = sys.G;
-		end
+	if nargout >= 7
 
 		%Create G_bar
 		G_at_each_n = {};
 		for i = 1:T
-			if any(m_locs == (i-1))
-				G_at_each_n{i} = zeros(size(C_v));
-			else
-				G_at_each_n{i} = C_v;
-			end 
+			G_at_each_n{i} = sys_arr(L(i)).C_v;
 		end
 		G_bar = blkdiag(G_at_each_n{:});	
 
@@ -139,12 +119,13 @@ function [varargout] = get_mpc_matrices(varargin)
 	varargout{2} = S;
 	varargout{3} = C_bar;
 	varargout{4} = J;
-
-	if nargout >= 5
-		varargout{5} = E_bar;
-	end
+	varargout{5} = f_bar;
 
 	if nargout >= 6
-		varargout{6} = G_bar;
+		varargout{6} = E_bar;
+	end
+
+	if nargout >= 7
+		varargout{7} = G_bar;
 	end
 end

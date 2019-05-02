@@ -1,6 +1,7 @@
 function [results] = observer_comparison39(varargin)
-	%observer_comparison39.m
+	%observer_comparison40.m
 	%	Finding minimal Zonotopes around the Lane Keeping System
+	%	when the disturbance set is considered to be a zonotope
 
 	%%%%%%%%%%%%%%%
 	%% Constants %%
@@ -130,9 +131,10 @@ function [results] = observer_comparison39(varargin)
 
 		% Dual Variables
 		Pi_1{pattern_ind} = sdpvar(2*n*T_i,2*(wd+vd)*T_i+2*n,'full');
-		Pi_2{pattern_ind} = sdpvar(2*n,2*(wd+vd)*T_i+2*n,'full');
+		Pi_2{pattern_ind} = sdpvar(size(target_set.b,1),2*(wd+vd)*T_i+2*n,'full');
 
-		%Lambda_1{pattern_ind} = sdpvar(,'full');
+		Lambda_1{pattern_ind} = sdpvar(2*n*T_i,T_i*(wd+vd)+dim_Z1,'full');
+		Lambda_2{pattern_ind} = sdpvar(dim_Z2,T_i*(wd+vd)+dim_Z1,'full');
 
 		%Zonotope Variables
 		theta1{pattern_ind} = sdpvar(num_g1*T_i,1,'full');
@@ -160,18 +162,34 @@ function [results] = observer_comparison39(varargin)
 		%Define Pattern-Based Constants
 		T_i = length(L{pattern_ind});
 
+		%Define Zonotope Templates
 		nu_polyt = Polyhedron(	'A', [	[eye(T_i*wd);-eye(T_i*wd)], zeros(2*T_i*wd,num_g1+T_i*vd) ;
 										zeros(2*T_i*vd,T_i*wd), [eye(T_i*vd);-eye(T_i*vd)], zeros(2*T_i*vd,num_g1);
 										zeros(2*dim_Z1,T_i*(wd+vd)) [pinv(Z1.G);-pinv(Z1.G)] ] , ...
 								'b', [	ad.eta_w*ones(2*T_i*wd,1);
 										ad.eta_v*ones(2*T_i*vd,1);
-										alpha1*ones(size(Z1.c,1),1) + pinv(Z1.G)*Z1.c;
-										alpha1*ones(size(Z1.c,1),1) - pinv(Z1.G)*Z1.c]);
+										alpha1*ones(dim_Z1,1) + pinv(Z1.G)*Z1.c;
+										alpha1*ones(dim_Z1,1) - pinv(Z1.G)*Z1.c] );
+
+		nu_zonot.G = [	ad.eta_w*eye(T_i*wd) zeros(T_i*wd,T_i*vd+num_g1) ;
+						zeros(T_i*vd,T_i*wd) ad.eta_v*eye(T_i*vd) zeros(T_i*vd,num_g1) ;
+						zeros(dim_Z1,T_i*(wd+vd)) Z1.G ];
+
+		nu_zonot.c = [	zeros(T_i*(wd+vd),1); Z1.c ];
+
+		%Target Polyt
+		temp_gens = {};
+		for i = 1:T_i
+			temp_gens{i} = Z2.G;
+		end
+		tube_zonot.G = blkdiag(temp_gens{:});
+
+		tube_zonot.c = repmat(Z2.c,T_i,1);
 
 		% Creating Constraints
 		% ++++++++++++++++++++
 
-		[S0,H0,Cm0,xi0m,B_w_big,C_v_big] = create_skaf_n_boyd_matrices(ad,T_i,'missing',find(L{pattern_ind} == 0)-1);
+		[H0,S0,Cm0,J,f_bar,B_w_big,C_v_big] = create_skaf_n_boyd_matrices(ad,T_i,'missing',find(L{pattern_ind} == 0)-1);
 
 		positive_constr = positive_constr + [ Pi_1{pattern_ind} >= 0, Pi_2{pattern_ind} >= 0 ];
 
@@ -181,8 +199,19 @@ function [results] = observer_comparison39(varargin)
 			sel_influenced_states = [ sel_influenced_states ; select_m(i,T_i) ];
 		end
 
-		noise_constrs = noise_constrs + [ Pi_1{pattern_ind} * [ ad.eta_w * ones(2*wd*T_i,1) ; ad.eta_v * ones(2*vd*T_i,1) ; start_set.b ] <= mu2 * ones(2*n*T_i,1) - [eye(n*T_i);-eye(n*T_i)]*sel_influenced_states*H0*r{pattern_ind} ];
-		noise_constrs = noise_constrs + [ Pi_2{pattern_ind} * [ ad.eta_w * ones(2*wd*T_i,1) ; ad.eta_v * ones(2*vd*T_i,1) ; start_set.b ] <= target_set.b - target_set.A*select_m(T_i,T_i)*H0*r{pattern_ind} ];
+		%Create variables to make this look like experiment 39
+		G{pattern_ind} = [ 	(eye(n*(T_i+1))+S0*Q{pattern_ind}*Cm0)*H0*B_w_big ...
+							S0*Q{pattern_ind}*C_v_big ...
+							(eye(n*(T_i+1))+S0*Q{pattern_ind}*Cm0)*J ];
+
+		A = G{pattern_ind};
+
+		b = (eye(n*(T_i+1))+S0*Q{pattern_ind}*Cm0)*H0*f_bar + S0*r{pattern_ind};
+
+		ineq_constrs = ineq_constrs + [ Pi_1{pattern_ind}'*ones(size(Pi_1,1),1) + Lambda_1{pattern_ind}'* [nu_zonot.c; -b + tube_zonot.c ] <= mu2*ones() ];
+
+		noise_constrs = noise_constrs + [ Pi_1{pattern_ind} * nu_polyt.b <= mu2 * ones(2*n*T_i,1) - [eye(n*T_i);-eye(n*T_i)]*sel_influenced_states*H0*r{pattern_ind} ];
+		noise_constrs = noise_constrs + [ Pi_2{pattern_ind} * nu_polyt.b <= target_set.b - target_set.A*select_m(T_i,T_i)*H0*r{pattern_ind} ];
 
 		%Dual relationship to design variables
 		pre_xi = [];
@@ -190,16 +219,12 @@ function [results] = observer_comparison39(varargin)
 			pre_xi = [ pre_xi ; ad.A^i];
 		end
 
-		G{pattern_ind} = [ 	(eye(n*(T_i+1))+H0*Q{pattern_ind}*Cm0)*S0*B_w_big ...
-							H0*Q{pattern_ind}*C_v_big ...
-							(eye(n*(T_i+1))+H0*Q{pattern_ind}*Cm0)*pre_xi ];
-
 		bounded_disturb_matrix = [ [ eye(wd*T_i) ; -eye(wd*T_i) ] zeros(2*wd*T_i,vd*T_i+n) ;
 									zeros(2*vd*T_i,wd*T_i) [ eye(vd*T_i) ; -eye(vd*T_i) ] zeros(2*vd*T_i,n) ;
 									zeros(num_cis_ineqs,(vd+wd)*T_i) start_set.A ];
 
-		dual_equal_constrs = dual_equal_constrs + [Pi_1{pattern_ind} * bounded_disturb_matrix == [eye(n*T_i); -eye(n*T_i)]*sel_influenced_states*G{pattern_ind} ];
-		dual_equal_constrs = dual_equal_constrs + [Pi_2{pattern_ind} * bounded_disturb_matrix == target_set.A*select_m(T_i,T_i)*G{pattern_ind}];
+		dual_equal_constrs = dual_equal_constrs + [Pi_1{pattern_ind} * nu_polyt.A == [eye(n*T_i); -eye(n*T_i)]*sel_influenced_states*G{pattern_ind} ];
+		dual_equal_constrs = dual_equal_constrs + [Pi_2{pattern_ind} * nu_polyt.A == target_set.A*select_m(T_i,T_i)*G{pattern_ind}];
 
 		%Lower Diagonal Constraint
 		for bl_row_num = 1 : T_i-1
@@ -279,7 +304,7 @@ function [results] = observer_comparison39(varargin)
 	%%%%%%%%%%%%%
 
 	%Simulate
-	[ ctrl_sim1, ~ ] = oc39_contr1.simulate_n_runs( ad , M1 , num_runs )
+	[ ctrl_sim1, ~ ] = oc39_contr1.simulate_n_runs( ad , M1 , num_runs );
 
 	ctrl_sim1_mod = [];
 	for ind = 1:length(ctrl_sim1)

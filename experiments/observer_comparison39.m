@@ -113,10 +113,10 @@ function [results] = observer_comparison39(varargin)
 	dim_Z2 = size(Z2.G,1);
 	num_cis_ineqs = size(lk_inv_set.A,1);
 
-	%Select matrix
+    %Select matrix
 	select_m = @(t,T_r) [zeros(n,t*n) eye(n) zeros(n,(T_r-t)*n) ];
 
-	%+++++++++++++++++++++++++++++
+   	%+++++++++++++++++++++++++++++
 	%Create Optimization Variables
 	mu2 = sdpvar(1,1,'full');
 	ad.x0 = sdpvar(n,1,'full');
@@ -129,8 +129,8 @@ function [results] = observer_comparison39(varargin)
 		r{pattern_ind} = sdpvar(m*T_i,1,'full');
 
 		% Dual Variables
-		Pi_1{pattern_ind} = sdpvar(2*n*T_i,2*(wd+vd)*T_i+2*n,'full');
-		Pi_2{pattern_ind} = sdpvar(2*n,2*(wd+vd)*T_i+2*n,'full');
+		Pi_1{pattern_ind} = sdpvar(2*n*T_i,2*(wd+vd)*T_i+size(start_set.A,1),'full');
+		Pi_2{pattern_ind} = sdpvar(2*n,2*(wd+vd)*T_i+size(start_set.A,1),'full');
 
 		%Lambda_1{pattern_ind} = sdpvar(,'full');
 
@@ -160,13 +160,20 @@ function [results] = observer_comparison39(varargin)
 		%Define Pattern-Based Constants
 		T_i = length(L{pattern_ind});
 
-		nu_polyt = Polyhedron(	'A', [	[eye(T_i*wd);-eye(T_i*wd)], zeros(2*T_i*wd,num_g1+T_i*vd) ;
-										zeros(2*T_i*vd,T_i*wd), [eye(T_i*vd);-eye(T_i*vd)], zeros(2*T_i*vd,num_g1);
-										zeros(2*dim_Z1,T_i*(wd+vd)) [pinv(Z1.G);-pinv(Z1.G)] ] , ...
+		nu_polyt = Polyhedron(	'A', [	[eye(T_i*wd);-eye(T_i*wd)], zeros(2*T_i*wd,size(start_set.A,2)+T_i*vd) ;
+										zeros(2*T_i*vd,T_i*wd), [eye(T_i*vd);-eye(T_i*vd)], zeros(2*T_i*vd,size(start_set.A,2));
+										zeros(size(start_set.A,1),T_i*(wd+vd)) start_set.A ] , ...
 								'b', [	ad.eta_w*ones(2*T_i*wd,1);
 										ad.eta_v*ones(2*T_i*vd,1);
-										alpha1*ones(size(Z1.c,1),1) + pinv(Z1.G)*Z1.c;
-										alpha1*ones(size(Z1.c,1),1) - pinv(Z1.G)*Z1.c]);
+										start_set.b]);
+
+		% nu_polyt = Polyhedron(	'A', [	[eye(T_i*wd);-eye(T_i*wd)], zeros(2*T_i*wd,num_g1+T_i*vd) ;
+		% 								zeros(2*T_i*vd,T_i*wd), [eye(T_i*vd);-eye(T_i*vd)], zeros(2*T_i*vd,num_g1);
+		% 								zeros(2*dim_Z1,T_i*(wd+vd)) [Z1.G;-Z1.G] ] , ...
+		% 						'b', [	ad.eta_w*ones(2*T_i*wd,1);
+		% 								ad.eta_v*ones(2*T_i*vd,1);
+		% 								ones(size(Z1.c,1),1) - Z1.c;
+		% 								ones(size(Z1.c,1),1) - Z1.c]);
 
 		% Creating Constraints
 		% ++++++++++++++++++++
@@ -176,13 +183,13 @@ function [results] = observer_comparison39(varargin)
 		positive_constr = positive_constr + [ Pi_1{pattern_ind} >= 0, Pi_2{pattern_ind} >= 0 ];
 
 		%Select all influenced states
-		sel_influenced_states = [];
+		R_0T = [];
 		for i = 1 : T_i
-			sel_influenced_states = [ sel_influenced_states ; select_m(i,T_i) ];
+			R_0T = [ R_0T ; select_m(i,T_i) ];
 		end
 
-		noise_constrs = noise_constrs + [ Pi_1{pattern_ind} * [ ad.eta_w * ones(2*wd*T_i,1) ; ad.eta_v * ones(2*vd*T_i,1) ; start_set.b ] <= mu2 * ones(2*n*T_i,1) - [eye(n*T_i);-eye(n*T_i)]*sel_influenced_states*H0*r{pattern_ind} ];
-		noise_constrs = noise_constrs + [ Pi_2{pattern_ind} * [ ad.eta_w * ones(2*wd*T_i,1) ; ad.eta_v * ones(2*vd*T_i,1) ; start_set.b ] <= target_set.b - target_set.A*select_m(T_i,T_i)*H0*r{pattern_ind} ];
+		noise_constrs = noise_constrs + [ Pi_1{pattern_ind} * nu_polyt.b <= mu2 * ones(2*n*T_i,1) - [eye(n*T_i);-eye(n*T_i)]*R_0T*H0*r{pattern_ind} ];
+		noise_constrs = noise_constrs + [ Pi_2{pattern_ind} * nu_polyt.b <= M1*ones(2*n,1) - [eye(n);-eye(n)]*select_m(T_i,T_i)*H0*r{pattern_ind} ];
 
 		%Dual relationship to design variables
 		pre_xi = [];
@@ -194,12 +201,12 @@ function [results] = observer_comparison39(varargin)
 							H0*Q{pattern_ind}*C_v_big ...
 							(eye(n*(T_i+1))+H0*Q{pattern_ind}*Cm0)*pre_xi ];
 
-		bounded_disturb_matrix = [ [ eye(wd*T_i) ; -eye(wd*T_i) ] zeros(2*wd*T_i,vd*T_i+n) ;
-									zeros(2*vd*T_i,wd*T_i) [ eye(vd*T_i) ; -eye(vd*T_i) ] zeros(2*vd*T_i,n) ;
-									zeros(num_cis_ineqs,(vd+wd)*T_i) start_set.A ];
+		% bounded_disturb_matrix = [ [ eye(wd*T_i) ; -eye(wd*T_i) ] zeros(2*wd*T_i,vd*T_i+n) ;
+		% 							zeros(2*vd*T_i,wd*T_i) [ eye(vd*T_i) ; -eye(vd*T_i) ] zeros(2*vd*T_i,n) ;
+		% 							zeros(num_cis_ineqs,(vd+wd)*T_i) start_set.A ];
 
-		dual_equal_constrs = dual_equal_constrs + [Pi_1{pattern_ind} * bounded_disturb_matrix == [eye(n*T_i); -eye(n*T_i)]*sel_influenced_states*G{pattern_ind} ];
-		dual_equal_constrs = dual_equal_constrs + [Pi_2{pattern_ind} * bounded_disturb_matrix == target_set.A*select_m(T_i,T_i)*G{pattern_ind}];
+		dual_equal_constrs = dual_equal_constrs + [Pi_1{pattern_ind} * nu_polyt.A == [eye(n*T_i); -eye(n*T_i)]*R_0T*G{pattern_ind} ];
+		dual_equal_constrs = dual_equal_constrs + [Pi_2{pattern_ind} * nu_polyt.A == [eye(n);-eye(n)]*select_m(T_i,T_i)*G{pattern_ind}];
 
 		%Lower Diagonal Constraint
 		for bl_row_num = 1 : T_i-1

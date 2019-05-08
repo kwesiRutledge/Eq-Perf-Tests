@@ -124,26 +124,7 @@ function [results] = observer_comparison39(varargin)
 
 	max_T_i = -1;
 	for pattern_ind = 1 : length(L)
-		T_i = length(L{pattern_ind});
-		% Feedback Variables
-		Q{pattern_ind} = sdpvar(m*T_i,p*T_i,'full');
-		r{pattern_ind} = sdpvar(m*T_i,1,'full');
-
-		% Dual Variables
-		Pi_1{pattern_ind} = sdpvar(2*n*T_i,2*(wd+vd)*T_i+2*n,'full');
-		Pi_2{pattern_ind} = sdpvar(size(target_set.b,1),2*(wd+vd)*T_i+2*n,'full');
-
-		Lambda_1{pattern_ind} = sdpvar(2*n*T_i,T_i*(wd+vd)+dim_Z1,'full');
-		Lambda_2{pattern_ind} = sdpvar(dim_Z2,T_i*(wd+vd)+dim_Z1,'full');
-
-		%Zonotope Variables
-		theta1{pattern_ind} = sdpvar(num_g1*T_i,1,'full');
-		theta2{pattern_ind} = sdpvar(num_g2*T_i,1,'full');
-
-		%Find the maximum T_i
-		if T_i > max_T_i
-			max_T_i = T_i;
-		end
+		
 	end
 
 	disp('Optimization variables created.')
@@ -156,9 +137,13 @@ function [results] = observer_comparison39(varargin)
 	positive_constr = [];
 	noise_constrs = [];
 	l_diag_constr = [];
+	ineq_constrs = []; eq_constrs = [];
 
 	for pattern_ind = 1 : length(L)
 
+        %% Defining Constants
+        % +++++++++++++++++++
+        
 		%Define Pattern-Based Constants
 		T_i = length(L{pattern_ind});
 
@@ -186,10 +171,40 @@ function [results] = observer_comparison39(varargin)
 
 		tube_zonot.c = repmat(Z2.c,T_i,1);
 
+        % Creating Variables
+        % ++++++++++++++++++
+        
+        T_i = length(L{pattern_ind});
+		% Feedback Variables
+		Q{pattern_ind} = sdpvar(m*T_i,p*T_i,'full');
+		r{pattern_ind} = sdpvar(m*T_i,1,'full');
+
+		% Dual Variables
+		Pi_1{pattern_ind} = sdpvar(2*size(nu_zonot.G,1), size(nu_zonot.G,1)+size(tube_zonot.G,1),'full');
+        Pi_2{pattern_ind} = sdpvar(2*size(nu_zonot.G,1), size(nu_zonot.G,1)+size(tube_zonot.G,1),'full');
+		Pi_3{pattern_ind} = sdpvar(2*size(nu_zonot.G,1), size(nu_zonot.G,1)+size(Z2.G,1),'full');
+
+		Lambda_1{pattern_ind} = sdpvar(size(nu_zonot.G,1)+size(tube_zonot.G,1), size(Pi_1{pattern_ind},2),'full');
+        Lambda_2{pattern_ind} = sdpvar(size(nu_zonot.G,1)+size(tube_zonot.G,1), size(Pi_1{pattern_ind},2),'full');
+		Lambda_3{pattern_ind} = sdpvar(dim_Z2,T_i*(wd+vd)+dim_Z1,'full');
+
+		%Zonotope Variables
+		theta1{pattern_ind} = sdpvar(num_g1*T_i,1,'full');
+		theta2{pattern_ind} = sdpvar(num_g2*T_i,1,'full');
+
+		%Find the maximum T_i
+		if T_i > max_T_i
+			max_T_i = T_i;
+		end
+        
 		% Creating Constraints
 		% ++++++++++++++++++++
 
-		[H0,S0,Cm0,J,f_bar,B_w_big,C_v_big] = create_skaf_n_boyd_matrices(ad,T_i,'missing',find(L{pattern_ind} == 0)-1);
+        ad_missing = ad;
+        ad_missing.C = zeros(size(ad.C));
+        ad_missing.C_v = zeros(size(ad.C_v));
+        
+		[H0,S0,Cm0,J,f_bar,B_w_big,C_v_big] = get_mpc_matrices([ad,ad_missing],L{pattern_ind}+1);
 
 		positive_constr = positive_constr + [ Pi_1{pattern_ind} >= 0, Pi_2{pattern_ind} >= 0 ];
 
@@ -204,15 +219,27 @@ function [results] = observer_comparison39(varargin)
 							S0*Q{pattern_ind}*C_v_big ...
 							(eye(n*(T_i+1))+S0*Q{pattern_ind}*Cm0)*J ];
 
-		A = G{pattern_ind};
+		clear A b n1 n2
 
-		b = (eye(n*(T_i+1))+S0*Q{pattern_ind}*Cm0)*H0*f_bar + S0*r{pattern_ind};
+		A = sel_influenced_states*G{pattern_ind};
 
-		ineq_constrs = ineq_constrs + [ Pi_1{pattern_ind}'*ones(size(Pi_1,1),1) + Lambda_1{pattern_ind}'* [nu_zonot.c; -b + tube_zonot.c ] <= mu2*ones() ];
+		b = sel_influenced_states*((eye(n*(T_i+1))+S0*Q{pattern_ind}*Cm0)*H0*f_bar + S0*r{pattern_ind});
+
+		n1 = size(nu_zonot.G,2); dim_nu = size(nu_zonot.G,1);
+		n2 = size(tube_zonot.G,2); dim_tube = size(tube_zonot.G,1);
+
+		ineq_constrs = ineq_constrs + [ Pi_1{pattern_ind}'*ones(size(Pi_1{pattern_ind},1),1) + Lambda_1{pattern_ind}'* [nu_zonot.c; -b + tube_zonot.c ] <= mu2*ones(size(tube_zonot,2),1) ];
+		ineq_constrs = ineq_constrs + [ Pi_2{pattern_ind}'*ones(size(Pi_2{pattern_ind},1),1) + Lambda_2{pattern_ind}'* [nu_zonot.c; -b + tube_zonot.c ] <= mu2*ones(size(tube_zonot,2),1) ];
+
+		eq_constrs = eq_constrs + [ [zeros(n1,n*T_i), eye(n1), zeros(n1,num_g2*T_i); zeros(n1,n*T_i), -eye(n1), zeros(n1,num_g2*T_i)]'*Pi_1{pattern_ind} + [eye(size(A,2)),-nu_zonot.G,zeros(dim_nu,n2); A,zeros(size(A,1),n1),tube_zonot.G]'*Lambda_1{pattern_ind} == [zeros(n2,dim_tube),zeros(n2,n1),eye(n2)]'];
 
 		noise_constrs = noise_constrs + [ Pi_1{pattern_ind} * nu_polyt.b <= mu2 * ones(2*n*T_i,1) - [eye(n*T_i);-eye(n*T_i)]*sel_influenced_states*H0*r{pattern_ind} ];
 		noise_constrs = noise_constrs + [ Pi_2{pattern_ind} * nu_polyt.b <= target_set.b - target_set.A*select_m(T_i,T_i)*H0*r{pattern_ind} ];
 
+        b = select_m(T_i,T_i)*((eye(n*(T_i+1))+S0*Q{pattern_ind}*Cm0)*H0*f_bar + S0*r{pattern_ind});
+        
+        ineq_constrs = ineq_constrs + [ Pi_3{pattern_ind}'*ones(size(Pi_3{pattern_ind},1),1) + Lambda_3{pattern_ind}'* [nu_zonot.c; -b + Z2.c ] <= ones(size(tube_zonot,2),1) ];
+        
 		%Dual relationship to design variables
 		pre_xi = [];
 		for i = 0:T_i

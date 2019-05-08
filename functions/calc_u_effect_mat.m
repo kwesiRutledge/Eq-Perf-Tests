@@ -7,20 +7,20 @@ function [S] = calc_u_effect_mat(varargin)
 	%
 	%	Usage:
 	%		S = calc_u_effect_mat(sys.A,sys.B,T);
-	%		S = calc_u_effect_mat(sys_arr,L);
+	%		S = calc_u_effect_mat(sys_arr,sigma);
 
 	%Select which version of the system to use by checking the type of the first argument.
 	if isa(varargin{1},'Aff_Dyn')
 
 		%Input Processing
 		sys_arr = varargin{1};
-		L = varargin{2};
+		sig = varargin{2};
 
 		%Constants
 		n = size(sys_arr(1).A,1);
 		m = size(sys_arr(1).B,2);
 
-		T = length(L);
+		T = length(sig);
 
 		S = zeros(n*(T+1),m*T);
 
@@ -28,9 +28,9 @@ function [S] = calc_u_effect_mat(varargin)
 
 		for i = 1:T
 			if i == 1 
-				nonzero_part = [ sys_arr(L(i)).B ];
+				nonzero_part = [ sys_arr(sig(i)).B ];
 			else
-				nonzero_part = [  sys_arr(L(i-1)).A*nonzero_part, sys_arr(L(i)).B ];
+				nonzero_part = [  sys_arr(sig(i)).A*nonzero_part, sys_arr(sig(i)).B ];
 			end
 
 			%Update G Matrix

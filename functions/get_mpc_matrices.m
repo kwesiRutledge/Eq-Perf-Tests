@@ -8,8 +8,8 @@ function [varargout] = get_mpc_matrices(varargin)
 	%
 	%	Usage:
 	%		[H,S,C_bar,J,f_bar] = get_mpc_matrices(sys_arr,T)
-	%		[H,S,C_bar,J,f_bar.E_bar,G_bar] = get_mpc_matrices(sys_arr,T)
-	%		[H,S,C_bar,J,f_bar] = get_mpc_matrices(sys_arr,L)
+	%		[H,S,C_bar,J,f_bar,B_w_bar,C_v_bar] = get_mpc_matrices(sys_arr,T)
+	%		[H,S,C_bar,J,f_bar] = get_mpc_matrices(sys_arr,sigma)
 	%
 	%	Inputs:
 	%		sys_arr - 	An array of structs, each containing system matrices and an initial 
@@ -20,9 +20,11 @@ function [varargout] = get_mpc_matrices(varargin)
 	%					When T is given (i.e. a single integer is given as the second input),
 	%					it is assumed that the switching sequence is: 
 	%		
-	%		L -			This is the sequence of discrete state values which determines the
-	%					the affine update rule that is used in the 
-	%		
+	%		sigma -		An array of integers.
+    %                   This should be a single sequence of integer values
+    %                   which defines the value of the discrete state at
+    %                   each time state (and thus which dynamics object in
+    %                   the sys_arr should be used).
 	%
 	%	Outputs:
 	%		H - 	This is the matrix which defines how the process disturbances (w(t)) affect the
@@ -49,7 +51,7 @@ function [varargout] = get_mpc_matrices(varargin)
 	end
 
 	sys_arr = varargin{1};
-	L 		= varargin{2};
+	sigma 	= varargin{2};
 
 	%Verify that all systems in the system array are Aff_Dyn objects
 	for sys_num = 1:length(sys_arr)
@@ -58,8 +60,8 @@ function [varargout] = get_mpc_matrices(varargin)
 		end
 	end
 
-	if isscalar(L)
-		L = ones(L,1);
+	if isscalar(sigma)
+		sigma = ones(sigma,1);
 	end
 
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -67,23 +69,23 @@ function [varargout] = get_mpc_matrices(varargin)
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 	%Find H, S, and J Matrices
-	H = calc_w_effect_mat(sys_arr,L);
-	S = calc_u_effect_mat(sys_arr,L);
-	J = calc_x0_mat(sys_arr,L);
+	H = calc_w_effect_mat(sys_arr,sigma);
+	S = calc_u_effect_mat(sys_arr,sigma);
+	J = calc_x0_mat(sys_arr,sigma);
 	
 	%Calculate the big f matrix
 	f_bar = [];
-	for i = 1:length(L)
-		f_bar = [f_bar; sys_arr(L(i)).f];
+	for i = 1:length(sigma)
+		f_bar = [f_bar; sys_arr(sigma(i)).f];
 	end
 
 	%Calculate Big C Matrix
 	C_at_each_n = {};
-	for i = 1:length(L)
-		C_at_each_n{i} = sys_arr(L(i)).C; 
+	for i = 1:length(sigma)
+		C_at_each_n{i} = sys_arr(sigma(i)).C; 
 	end
 
-	C_bar = [ blkdiag(C_at_each_n{:}) zeros( size(sys_arr(1).C) * [ length(L) 0 ; 0 1 ] ) ];
+	C_bar = [ blkdiag(C_at_each_n{:}) zeros( size(sys_arr(1).C) * [ length(sigma) 0 ; 0 1 ] ) ];
 
 	%%%%%%%%%%%%%%%%%%%%%%
 	%% Optional Outputs %%
@@ -93,10 +95,10 @@ function [varargout] = get_mpc_matrices(varargin)
 
 		%Create E_bar
 		E_at_each_n = {};
-		for i = 1:length(L)
-			E_at_each_n{i} = sys_arr(L(i)).E;
-		end
-		E_bar = blkdiag(E_at_each_n{:});
+		for i = 1:length(sigma)
+			E_at_each_n{i} = sys_arr(sigma(i)).B_w;
+        end
+        B_w_bar = blkdiag(E_at_each_n{:});
 
 	end
 
@@ -104,10 +106,10 @@ function [varargout] = get_mpc_matrices(varargin)
 
 		%Create G_bar
 		G_at_each_n = {};
-		for i = 1:T
-			G_at_each_n{i} = sys_arr(L(i)).C_v;
+		for i = 1:length(sigma)
+			G_at_each_n{i} = sys_arr(sigma(i)).C_v;
 		end
-		G_bar = blkdiag(G_at_each_n{:});	
+		C_v_bar = blkdiag(G_at_each_n{:});	
 
 	end
 
@@ -122,10 +124,10 @@ function [varargout] = get_mpc_matrices(varargin)
 	varargout{5} = f_bar;
 
 	if nargout >= 6
-		varargout{6} = E_bar;
+		varargout{6} = B_w_bar;
 	end
 
 	if nargout >= 7
-		varargout{7} = G_bar;
+		varargout{7} = C_v_bar;
 	end
 end

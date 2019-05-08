@@ -7,7 +7,7 @@ function [G] = calc_w_effect_mat(varargin)
 	%	
 	%	Usage:
 	%		H = calc_w_effect_mat(A,T)
-	%		H = calc_w_effect_mat(sys_arr,L)
+	%		H = calc_w_effect_mat(sys_arr,sigma)
 	%
 
 	%Depending on whether or not the first input is an 'Aff_Dyn' object, do different things.
@@ -18,11 +18,11 @@ function [G] = calc_w_effect_mat(varargin)
 
 		%Input Processing
 		sys_arr = varargin{1};
-		L = varargin{2};
+		sig = varargin{2};
 
 		%Constants
 		n = size(sys_arr(1).A,1);
-		T = length(L);
+		T = length(sig);
 
 		G = zeros(n*(T+1),n*T);
 
@@ -31,8 +31,10 @@ function [G] = calc_w_effect_mat(varargin)
 		for i = 1:T
 			if i == 1 
 				nonzero_part = [ eye(n) ];
-			else
-				nonzero_part = [  sys_arr(L(i-1)).A*nonzero_part, eye(n) ];
+            else
+                %Note the integer indexing the word sigma starts from 2 as
+                %defined in Skaf et. al.'s original work.
+				nonzero_part = [  sys_arr(sig(i)).A*nonzero_part, eye(n) ];
 			end
 
 			%Update G Matrix

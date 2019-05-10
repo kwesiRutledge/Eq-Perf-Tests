@@ -1,7 +1,92 @@
-function [results] = observer_comparison39(varargin)
-	%observer_comparison40.m
+function [results] = observer_comparison41(varargin)
+	%observer_comparison41.m
 	%	Finding minimal Zonotopes around the Lane Keeping System
 	%	when the disturbance set is considered to be a zonotope
+
+	%%%%%%%%%%%%%%%%%%%%%
+	%% Experiment 41.1 %%
+	%%%%%%%%%%%%%%%%%%%%%
+
+	%For two zonotopes with dim=num_g identify the smallest enclosing zonotope.
+
+	%% Constants
+
+	%Define the in-body (the zonotope we aim to enclose)
+	Z_in.G = [ [1;2;1]*(1/norm(5)) [1;1;1]*(1/norm(2)) [0;2;2]*(1/norm(8)) ];
+	Z_in.c = zeros(3,1);
+	Z_in.dim = 3;
+	Z_in.num_g = size(Z_in.G,2);
+
+	Z_circ.G = [ [2;3]*(1/norm(13)) [1;-3]*(1/norm(10))];
+	Z_circ.c = zeros(2,1);
+	Z_circ.dim = 2;
+	Z_circ.num_g = size(Z_circ.G,2);
+
+	to_poly = @(G,c) Polyhedron('A', [pinv(G);-pinv(G)] , 'b' , [pinv(G)*c + ones(size(G,2),1);-pinv(G)*c + ones(size(G,2),1)] );
+
+	figure;
+	subplot(1,2,1)
+	plot(to_poly(Z_in.G,Z_in.c))
+	title('''Inbody'' in Experiment 41.1')
+
+	subplot(1,2,2)
+	plot(to_poly(Z_circ.G,Z_circ.c))
+	title('Circumbody in Experiment 41.1')
+
+	figure;
+	subplot(1,2,1)
+	temp_poly = to_poly(Z_in.G,Z_in.c);
+	plot(temp_poly.slice(3,0))
+	title('The slice of in-body that we will contain')
+
+	subplot(1,2,2)
+	plot([eye(2) zeros(2,1)]*temp_poly)
+	title('Projection of in-body into 2d')
+
+	%Define Projection
+	A = [eye(Z_circ.dim) zeros(Z_circ.dim,1)];
+	b = ones(Z_circ.dim,1); %zeros(Z_circ.dim,1);
+
+	%Attempt to find the minimum volume zonotope that includes the projected cube
+
+	%% Optimization
+
+	theta_2 = sdpvar(1,1,'full');
+
+	Nu1 = sdpvar(Z_in.dim, 2, 'full')
+	Nu2 = sdpvar(Z_circ.dim, 2, 'full');
+	Lambda1 = sdpvar( 2*Z_in.dim , 2 , 'full' );
+
+	constr_contain1 = [ Nu1'*Z_in.c - Nu2'*(b-Z_circ.c) + Lambda1'*ones(2*Z_in.dim,1) <= theta_2*ones(2,1) ];
+	constr_contain1 = constr_contain1 + [ [zeros(Z_circ.num_g,Z_in.dim+Z_in.num_g) eye(Z_circ.num_g)] == Nu1'*[eye(Z_in.dim) -Z_in.G zeros(Z_in.dim,Z_circ.num_g)] + ...
+																											Nu2'*[A zeros(Z_circ.dim,Z_in.num_g) -Z_circ.G] + ...
+																											Lambda1'*[zeros(Z_in.num_g*2,Z_in.dim) [eye(Z_in.num_g); -eye(Z_in.num_g) ] zeros(Z_in.num_g*2,Z_circ.num_g) ] ];
+
+	Nu3 = sdpvar(Z_in.dim, 2, 'full');
+	Nu4 = sdpvar(Z_circ.dim, 2, 'full');
+	Lambda2 = sdpvar( 2*Z_in.dim , 2 , 'full' );
+
+	constr_contain2 = [Nu3'*Z_in.c - Nu4'*(b-Z_circ.c) + Lambda2'*ones(2*Z_in.dim,1) <= theta_2*ones(2,1)];
+	constr_contain2 = constr_contain2 + [ - [zeros(Z_circ.num_g,Z_in.dim+Z_in.num_g) eye(Z_circ.num_g)] == Nu3'*[eye(Z_in.dim) -Z_in.G zeros(Z_in.dim,Z_circ.num_g)] + ...
+																											Nu4'*[A zeros(Z_circ.dim,Z_in.num_g) -Z_circ.G] + ...
+																											Lambda2'*[zeros(Z_in.num_g*2,Z_in.dim) [eye(Z_in.num_g); -eye(Z_in.num_g) ] zeros(Z_in.num_g*2,Z_circ.num_g) ] ];
+
+
+	pos_constr = [Lambda1 >= 0] + [Lambda2 >= 0];
+	%Call Optimizer
+
+	ops = sdpsettings('verbose',1,'debug',1);
+	optim1 = optimize(constr_contain1+constr_contain2+pos_constr, theta_2 , ops);
+
+	%% Analyze Results
+	figure;
+	hold on;
+	plot(to_poly(Z_circ.G*value(theta_2),Z_circ.c),'Color','g')
+	plot(A*temp_poly+b)
+
+	pause;
+
+	clear Nu1 Nu2 Nu3 Nu4 Lambda1 Lambda2 
 
 	%%%%%%%%%%%%%%%
 	%% Constants %%

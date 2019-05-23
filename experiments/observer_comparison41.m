@@ -13,11 +13,13 @@ function [results] = observer_comparison41(varargin)
 
 	%Define the in-body (the zonotope we aim to enclose)
 	Z_in.G = [ [1;2;1]*(1/norm(5)) [1;1;1]*(1/norm(2)) [0;2;2]*(1/norm(8)) ];
+    %Z_in.G = [ [1;2;1]*(1/norm(5)) [1;1;1]*(1/norm(3)) [0;2;2]*(1/norm(8)) [-1;0;1]*(1/norm(2)) ];
 	Z_in.c = zeros(3,1);
 	Z_in.dim = 3;
 	Z_in.num_g = size(Z_in.G,2);
 
-	Z_circ.G = [ [2;3]*(1/norm(13)) [1;-3]*(1/norm(10))];
+	Z_circ.G = [ [2;3]*(1/norm([2;3])) [1;-3]*(1/norm([1;-3]))];
+	%Z_circ.G = [ [2;3]*(1/norm([2;3])) [1;-3]*(1/norm([1;-3])) [1;1]*norm([1;1]) ];
 	Z_circ.c = zeros(2,1);
 	Z_circ.dim = 2;
 	Z_circ.num_g = size(Z_circ.G,2);
@@ -35,7 +37,7 @@ function [results] = observer_comparison41(varargin)
 
 	figure;
 	subplot(1,2,1)
-	temp_poly = to_poly(Z_in.G,Z_in.c);
+	temp_poly = to_poly_v2(Z_in.G,Z_in.c);
 	plot(temp_poly.slice(3,0))
 	title('The slice of in-body that we will contain')
 
@@ -53,20 +55,20 @@ function [results] = observer_comparison41(varargin)
 
 	theta_2 = sdpvar(1,1,'full');
 
-	Nu1 = sdpvar(Z_in.dim, 2, 'full')
-	Nu2 = sdpvar(Z_circ.dim, 2, 'full');
-	Lambda1 = sdpvar( 2*Z_in.dim , 2 , 'full' );
+	Nu1 = sdpvar(Z_in.dim, Z_circ.num_g, 'full')
+	Nu2 = sdpvar(Z_circ.dim, Z_circ.num_g, 'full');
+	Lambda1 = sdpvar( 2*Z_in.num_g , Z_circ.num_g , 'full' );
 
-	constr_contain1 = [ Nu1'*Z_in.c - Nu2'*(b-Z_circ.c) + Lambda1'*ones(2*Z_in.dim,1) <= theta_2*ones(2,1) ];
-	constr_contain1 = constr_contain1 + [ [zeros(Z_circ.num_g,Z_in.dim+Z_in.num_g) eye(Z_circ.num_g)] == Nu1'*[eye(Z_in.dim) -Z_in.G zeros(Z_in.dim,Z_circ.num_g)] + ...
+	constr_contain1 = [ Nu1'*Z_in.c - Nu2'*(b-Z_circ.c) + Lambda1'*ones(2*Z_in.num_g,1) <= theta_2*ones(Z_circ.num_g,1) ];
+	constr_contain1 = constr_contain1 + [ [zeros(Z_circ.num_g,Z_in.dim+Z_in.num_g) eye(Z_circ.num_g)] == Nu1'*[eye(Z_in.dim), -Z_in.G, zeros(Z_in.dim,Z_circ.num_g)] + ...
 																											Nu2'*[A zeros(Z_circ.dim,Z_in.num_g) -Z_circ.G] + ...
 																											Lambda1'*[zeros(Z_in.num_g*2,Z_in.dim) [eye(Z_in.num_g); -eye(Z_in.num_g) ] zeros(Z_in.num_g*2,Z_circ.num_g) ] ];
 
-	Nu3 = sdpvar(Z_in.dim, 2, 'full');
-	Nu4 = sdpvar(Z_circ.dim, 2, 'full');
-	Lambda2 = sdpvar( 2*Z_in.dim , 2 , 'full' );
+	Nu3 = sdpvar(Z_in.dim, Z_circ.num_g, 'full');
+	Nu4 = sdpvar(Z_circ.dim, Z_circ.num_g, 'full');
+	Lambda2 = sdpvar( 2*Z_in.num_g , Z_circ.num_g , 'full' );
 
-	constr_contain2 = [Nu3'*Z_in.c - Nu4'*(b-Z_circ.c) + Lambda2'*ones(2*Z_in.dim,1) <= theta_2*ones(2,1)];
+	constr_contain2 = [Nu3'*Z_in.c - Nu4'*(b-Z_circ.c) + Lambda2'*ones(2*Z_in.num_g,1) <= theta_2*ones(Z_circ.num_g,1)];
 	constr_contain2 = constr_contain2 + [ - [zeros(Z_circ.num_g,Z_in.dim+Z_in.num_g) eye(Z_circ.num_g)] == Nu3'*[eye(Z_in.dim) -Z_in.G zeros(Z_in.dim,Z_circ.num_g)] + ...
 																											Nu4'*[A zeros(Z_circ.dim,Z_in.num_g) -Z_circ.G] + ...
 																											Lambda2'*[zeros(Z_in.num_g*2,Z_in.dim) [eye(Z_in.num_g); -eye(Z_in.num_g) ] zeros(Z_in.num_g*2,Z_circ.num_g) ] ];
@@ -81,16 +83,31 @@ function [results] = observer_comparison41(varargin)
 	%% Analyze Results
 	figure;
 	hold on;
-	plot(to_poly(Z_circ.G*value(theta_2),Z_circ.c),'Color','g')
+	plot(to_poly_v2(Z_circ.G*value(theta_2),Z_circ.c),'Color','g')
 	plot(A*temp_poly+b)
+
+	res1 = value(theta_2);
 
 	pause;
 
 	clear Nu1 Nu2 Nu3 Nu4 Lambda1 Lambda2 
 
-	%%%%%%%%%%%%%%%
-	%% Constants %%
-	%%%%%%%%%%%%%%%
+	%Attempt to duplicate the results using a simplified function.
+
+	%Call optimizer
+	CG = constr_gen();
+	[dual_vars,constrs] = CG.get_zonot_inclusion_constr(Z_in,Z_circ,A,b,theta_2);
+	optim2 = optimize( constrs , theta_2, ops);
+
+	res2 = value(theta_2);
+
+	pause;
+
+	%%%%%%%%%%%%%%%%%%%%%
+	%% Experiment 41.2 %%
+	%%%%%%%%%%%%%%%%%%%%%
+
+	%% Constants
 
 	dt = 0.01;
 

@@ -17,12 +17,14 @@ classdef Aff_Dyn
 		C_v;
 		eta_w;
 		eta_v;
+		P_w;
+		P_v;
 		x0;
 	end
 
 	methods
 		%Constructor
-		function ad = Aff_Dyn(A, B, f , C, eta_w , eta_v, B_w , C_v)
+		function ad = Aff_Dyn(A, B, f , C, w_info , v_info, B_w , C_v)
 
 			%Constants
 			allowed_nargins = [ 4 , 6 , 8 ];
@@ -53,13 +55,29 @@ classdef Aff_Dyn
 			case 6
 				ad.B_w = eye(n);
 				ad.C_v = eye(p);
-				ad.eta_w = eta_w;
-				ad.eta_v = eta_v;
+				if isa(w_info,'Polyhedron')
+					ad.eta_w = NaN;
+					ad.eta_v = NaN;
+
+					ad.P_w = w_info;
+					ad.P_v = v_info;
+				else
+					ad.eta_w = eta_w;
+					ad.eta_v = eta_v;
+				end
 			case 8
 				ad.B_w = B_w;
 				ad.C_v = C_v;
-				ad.eta_w = eta_w;
-				ad.eta_v = eta_v;
+				if isa(w_info,'Polyhedron')
+					ad.eta_w = NaN;
+					ad.eta_v = NaN;
+
+					ad.P_w = w_info;
+					ad.P_v = v_info;
+				else
+					ad.eta_w = eta_w;
+					ad.eta_v = eta_v;
+				end
 			end
 
 		end

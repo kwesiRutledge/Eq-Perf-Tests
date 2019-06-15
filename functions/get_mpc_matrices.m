@@ -53,6 +53,10 @@ function [varargout] = get_mpc_matrices(varargin)
 	sys_arr = varargin{1};
 	sigma 	= varargin{2};
 
+	if iscell(sigma)
+		error(['Do not give input word sigma as a cell array.'])
+	end
+
 	%Verify that all systems in the system array are Aff_Dyn objects
 	for sys_num = 1:length(sys_arr)
 		if ~isa(sys_arr,'Aff_Dyn')
@@ -71,7 +75,7 @@ function [varargout] = get_mpc_matrices(varargin)
 	%Find H, S, and J Matrices
 	H = calc_w_effect_mat(sys_arr,sigma);
 	S = calc_u_effect_mat(sys_arr,sigma);
-	J = calc_x0_mat(sys_arr,sigma);
+	J = calc_J_mat(sys_arr,sigma);
 	
 	%Calculate the big f matrix
 	f_bar = [];

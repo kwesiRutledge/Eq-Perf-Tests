@@ -7,9 +7,9 @@ function [varargout] = get_mpc_matrices(varargin)
 	%		- A system with unique disturbance matrices as being part of the switched system
 	%
 	%	Usage:
-	%		[H,S,C_bar,J,f_bar] = get_mpc_matrices(sys_arr,T)
-	%		[H,S,C_bar,J,f_bar,B_w_bar,C_v_bar] = get_mpc_matrices(sys_arr,T)
-	%		[H,S,C_bar,J,f_bar] = get_mpc_matrices(sys_arr,sigma)
+	%		[H,S,C_bar,J,f_bar] = get_mpc_matrices(sys_arr,'time_horizon',T)
+	%		[H,S,C_bar,J,f_bar,B_w_bar,C_v_bar] = get_mpc_matrices(sys_arr,'time_horizon',T)
+	%		[H,S,C_bar,J,f_bar] = get_mpc_matrices(sys_arr,'word',sigma)
 	%
 	%	Inputs:
 	%		sys_arr - 	An array of structs, each containing system matrices and an initial 
@@ -46,12 +46,13 @@ function [varargout] = get_mpc_matrices(varargin)
 	%% Input Processing %%
 	%%%%%%%%%%%%%%%%%%%%%%
 
-	if (nargin ~= 2)
+	if (nargin ~= 3)
 		error(['Inappropriate number of arguments. (Received ' num2str(nargin) ')'])
 	end
 
 	sys_arr = varargin{1};
-	sigma 	= varargin{2};
+	in_str  = varargin{2};
+	sigma 	= varargin{3};
 
 	if iscell(sigma)
 		error(['Do not give input word sigma as a cell array.'])
@@ -64,8 +65,13 @@ function [varargout] = get_mpc_matrices(varargin)
 		end
 	end
 
-	if isscalar(sigma)
+	switch in_str
+	case 'time_horizon'
 		sigma = ones(sigma,1);
+	case 'word'
+		sigma; %Do nothing
+	otherwise
+		error('Unexpected input string. Available options: ''time_horizon'' and ''word''.')
 	end
 
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%

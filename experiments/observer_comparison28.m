@@ -134,7 +134,7 @@ function [ results ] = observer_comparison28( varargin )
 	figure;
 	bar_heights = [ M1 pb_opt3.M2*ones(1,T-1) M1];
 
-	subplot(1,2,1)
+	subplot(1,2,2)
 	hold on;
 	bar([0:T],bar_heights,'w')
 	plot([0:T],reshape(pb3_sim_norm_mod,T+1,num_runs));
@@ -156,7 +156,7 @@ function [ results ] = observer_comparison28( varargin )
 
 	bar_heights = [ M1 pb_opt4.M2*ones(1,T-1) M1];
 
-	subplot(1,2,2);
+	subplot(1,2,1);
 	hold on;
 	bar([0:T],bar_heights,'w')
 	plot([0:T],reshape(pb4_sim_norm_mod,T+1,num_runs));
@@ -166,6 +166,9 @@ function [ results ] = observer_comparison28( varargin )
 	ylabel('$||x(t)-\hat{x}(t)||_{\infty}$','Interpreter','latex','FontSize',fs)
 	title('(Pseudo) Time-Based Observer with Minimized M_2')
 	disp('Plotted time-based solution.')
+
+	saveas(gcf,'results/pb_vs_tb_oc28','epsc')
+	saveas(gcf,'results/pb_vs_tb_oc28','png')
 
 	%%%%%%%%%%%%%%%%%%%%
 	%% Saving Results %%

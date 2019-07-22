@@ -22,7 +22,7 @@ if strcmp(getenv('USER'),'kwesirutledge') %Suggests the laptop is in use
                     warning('MPT3 Toolbox does not appear in path! Attempting one method to fix this...')
                     try
                         %Add All MPT Toolbox folders AND subfolders to path.
-                        addpath(genpath([ '../../' 'tbxmanager/toolboxes/mpt/3.1.8/all/mpt3-3_1_8/mpt']) )
+                        addpath(genpath([ '../../' 'toolboxes/tbxmanager/toolboxes/mpt/3.1.8/all/mpt3-3_1_8/mpt']) )
                         Polyhedron()
                     catch
                         error('MPT3 not added to path.')
@@ -35,7 +35,7 @@ if strcmp(getenv('USER'),'kwesirutledge') %Suggests the laptop is in use
                 catch
                     warning('YALMIP does not appear in path! Attempting one method to fix this...');
                     try
-                        addpath(genpath([ '../../' 'YALMIP-master' ]));
+                        addpath(genpath([ '../../' 'toolboxes/YALMIP-master' ]));
                         b = sdpvar(1,1,'full');
                     catch
                         error('YALMIP not added to path.')

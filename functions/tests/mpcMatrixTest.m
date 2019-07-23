@@ -54,7 +54,8 @@ temp_sys_arr = [ Aff_Dyn(A1,B,f,C), Aff_Dyn(A2,B,f,C), Aff_Dyn(A3,B,f,C) ];
 L = [1,2,3,1];
 H = calc_w_effect_mat(temp_sys_arr,L);
 assert(isequal(H(end-1:end,1:2),zeros(2)))
-assert(isequal(H(end-3:end-2,3:4),A2))
+assert(isequal(H(5:6,1:2),A2))
+assert(isequal(H(end-1:end,end-3:end-2),A1))
 
 %% Test 4: Generating S from a struct
 
@@ -160,7 +161,7 @@ f = [1;2];
 temp_sys_arr = [ Aff_Dyn(A1,B,f,C), Aff_Dyn(A2,B,f,C), Aff_Dyn(A3,B,f,C) ];
 L = [1,2,3];
 T = length(L);
-[H,S,C_bar,J,f_bar] = get_mpc_matrices(temp_sys_arr,T)
+[H,S,C_bar,J,f_bar] = get_mpc_matrices(temp_sys_arr,'time_horizon',T);
 
 assert(isequal(size(f_bar),[2*T,1]))
 
@@ -179,9 +180,9 @@ f = [1;2];
 temp_sys_arr = [ Aff_Dyn(A1,B,f,C), Aff_Dyn(A2,B,f,C), Aff_Dyn(A3,B,f,C) ];
 L = [1,2,3];
 T = length(L);
-[H,S,C_bar,J,f_bar] = get_mpc_matrices(temp_sys_arr,T);
+[H,S,C_bar,J,f_bar] = get_mpc_matrices(temp_sys_arr,'word',L);
 
-assert(isequal(J(end-1:end),zeros(2,1)))
+assert(isequal(J(end-1:end,:),zeros(2)))
 
 %% Test 8c: Full get_mpc_matrices test (Part c)
 
@@ -198,6 +199,6 @@ f = [1;2];
 temp_sys_arr = [ Aff_Dyn(A1,B,f,C), Aff_Dyn(A2,B,f,C), Aff_Dyn(A3,B,f,C) ];
 L = [1,2,3];
 temp_sys_arr(L(1)).x0 = [0;1];
-[H,S,C_bar,J,f_bar] = get_mpc_matrices(temp_sys_arr,L);
+[H,S,C_bar,J,f_bar] = get_mpc_matrices(temp_sys_arr,'word',L);
 
-assert(isequal(J(end-3:end-2,1),A2*A1*[0;1]));
+assert(isequal(J(end-3:end-2,:),A2*A1));

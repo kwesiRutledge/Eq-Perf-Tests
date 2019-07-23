@@ -30,7 +30,7 @@ function [J] = calc_J_mat(varargin)
 		%Creating matrix
 		J = eye(n);
 
-		for i = 1:length(sig)-1
+		for i = 1:length(sig)
 			J = [J; sys_arr(sig(i)).A*J(end-n+1:end,:)];
 		end
 

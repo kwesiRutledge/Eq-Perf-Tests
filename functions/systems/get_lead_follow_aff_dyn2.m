@@ -23,7 +23,7 @@ function [dyn_cont, dyn_disc,foll_offsets] = get_lead_follow_aff_dyn2(varargin)
 		if nargin > 3
 			scrolling_idx = 4;
 			while scrolling_idx < nargin	
-				switch varargin{curr_idx}
+				switch varargin{scrolling_idx}
 				case 'disturb_info'
 					eta_w = varargin{scrolling_idx+1};
 					eta_v = varargin{scrolling_idx+2};

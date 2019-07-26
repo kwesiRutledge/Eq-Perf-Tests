@@ -72,31 +72,27 @@ function [dyn_cont, dyn_disc,foll_offsets] = get_lead_follow_aff_dyn3(varargin)
 	foll_cube.offsets = [foll_cube.offsets; kron(linspace(r/2,-r/2,foll_cube.dim_y),ones(1,foll_cube.dim_x))];
 
 	%% Create Continuous Time System
-	n = (foll_cube.n+1)*2;
+	n = (foll_cube.n)*2;
 	p = n;
 	A = zeros(n);
 
-	subB = [];
-	for block_idx = 1:foll_cube.dim_y
-		for in_row_idx = 1:foll_cube.dim_x
-			if in_row_idx == 2
-				subB(1+(block_idx-1)*foll_cube.dim_x+in_row_idx,1) = -1;
-			elseif in_row_idx > 2
-				subB(1+(block_idx-1)*foll_cube.dim_x+in_row_idx,(block_idx-1)*foll_cube.dim_x+in_row_idx) = -1;
-			end
-			%Always add this.
-			subB(1+(block_idx-1)*foll_cube.dim_x+in_row_idx,(block_idx-1)*foll_cube.dim_x+in_row_idx) = 1;
+	B = eye(n);
+	for cube_idx = 1:n
+		col_idx = rem(cube_idx,foll_cube.dim_x);
+		if col_idx ~= 1
+			B(cube_idx,cube_idx-1) = -1;
 		end
 	end
 
-	B = kron(eye(2),subB);
-
 	%Create disturbance matrix by using information about where the rows begin and end.
 	B_w = zeros(n,2);
-	B_w(1,1) = 1; B_w(1+foll_cube.n+1,2) = 1;
-	for row_idx = 1:foll_cube.dim_y
-		B_w(1+(row_idx-1)*foll_cube.dim_x+1,1) = -1;
-		B_w(1+foll_cube.n+1+(row_idx-1)*foll_cube.dim_x+1,2) = -1;
+	for cube_idx = 1:n
+		col_idx = rem(cube_idx,foll_cube.dim_x);
+		xy_ind = ceil(cube_idx/(foll_cube.n));
+
+		if col_idx == 1
+			B_w(cube_idx,xy_ind) = -1;
+		end
 	end
 
 	%% Create Discrete Time System

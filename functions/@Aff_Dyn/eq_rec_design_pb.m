@@ -67,8 +67,10 @@ case 'Feasible Set'
 
 case 'Min_M2'
 
-	if nargin < 4
-		error('Not enough inputs for Min_M2 mode.')
+    allowable_nargins = [4];
+    
+	if ~any(nargin == allowable_nargins)
+		error(['Incorrect number of inputs given for Min_M2 mode. Received ' num2str(nargin) ' expected: ' num2str(allowable_nargins)])
 	end
 
 	M1 = varargin{3};
@@ -151,6 +153,11 @@ for pattern_ind = 1 : length(L)
 end
 w	= sdpvar(wd*max_T_i,1,'full');
 
+ad_prime = ad;
+ad_prime.C = zeros(size(ad.C));
+
+ad_arr = [ad_prime,ad];
+
 shared_Q_constrs = []; shared_r_constrs = [];
 dual_equal_constrs = [];
 positive_constr = [];
@@ -162,7 +169,7 @@ for pattern_ind = 1 : length(L)
 	% Creating Constraints
 	% ++++++++++++++++++++
 
-	[S0,H0,Cm0,xi0m,B_w_big,C_v_big] = create_skaf_n_boyd_matrices(ad,T_i,'missing',find(L{pattern_ind} == 0)-1);
+	[H0,S0,Cm0,J0,f_bar,B_w_big,C_v_big] = get_mpc_matrices(ad_arr,'word',L{pattern_ind}+1);
 
 	positive_constr = positive_constr + [ Pi_1{pattern_ind} >= 0, Pi_2{pattern_ind} >= 0 ];
 
@@ -172,18 +179,18 @@ for pattern_ind = 1 : length(L)
 		sel_influenced_states = [ sel_influenced_states ; select_m(i,T_i) ];
 	end
 
-	noise_constrs = noise_constrs + [ Pi_1{pattern_ind} * [ ad.eta_w * ones(2*wd*T_i,1) ; ad.eta_v * ones(2*p*T_i,1) ; M1 * ones(2*n,1) ] <= M2 * ones(2*n*T_i,1) - [eye(n*T_i);-eye(n*T_i)]*sel_influenced_states*H0*r{pattern_ind} ];
-	noise_constrs = noise_constrs + [ Pi_2{pattern_ind} * [ ad.eta_w * ones(2*wd*T_i,1) ; ad.eta_v * ones(2*p*T_i,1) ; M1 * ones(2*n,1) ] <= M1 * ones(2*n,1) - [eye(n);-eye(n)]*select_m(T_i,T_i)*H0*r{pattern_ind} ];
+	noise_constrs = noise_constrs + [ Pi_1{pattern_ind} * [ ad.eta_w * ones(2*wd*T_i,1) ; ad.eta_v * ones(2*p*T_i,1) ; M1 * ones(2*n,1) ] <= M2 * ones(2*n*T_i,1) - [eye(n*T_i);-eye(n*T_i)]*sel_influenced_states*(S0*r{pattern_ind}+(eye(n*(T_i+1))+S0*Q{pattern_ind}*Cm0)*H0*f_bar) ];
+	noise_constrs = noise_constrs + [ Pi_2{pattern_ind} * [ ad.eta_w * ones(2*wd*T_i,1) ; ad.eta_v * ones(2*p*T_i,1) ; M1 * ones(2*n,1) ] <= M1 * ones(2*n,1) - [eye(n);-eye(n)]*select_m(T_i,T_i)*(S0*r{pattern_ind}+(eye(n*(T_i+1))+S0*Q{pattern_ind}*Cm0)*H0*f_bar) ];
 
 	%Dual relationship to design variables
-	pre_xi = [];
-	for i = 0:T_i
-		pre_xi = [ pre_xi ; ad.A^i];
-	end
+	% pre_xi = [];
+	% for i = 0:T_i
+	% 	pre_xi = [ pre_xi ; ad.A^i];
+	% end
 
-	G{pattern_ind} = [ 	(eye(n*(T_i+1))+H0*Q{pattern_ind}*Cm0)*S0*B_w_big ...
-						H0*Q{pattern_ind}*C_v_big ...
-						(eye(n*(T_i+1))+H0*Q{pattern_ind}*Cm0)*pre_xi ];
+	G{pattern_ind} = [ 	(eye(n*(T_i+1))+S0*Q{pattern_ind}*Cm0)*H0*B_w_big ...
+						S0*Q{pattern_ind}*C_v_big ...
+						(eye(n*(T_i+1))+S0*Q{pattern_ind}*Cm0)*J0 ];
 
 	bounded_disturb_matrix = [ [ eye(wd*T_i) ; -eye(wd*T_i) ] zeros(2*wd*T_i,vd*T_i+n) ;
 								zeros(2*vd*T_i,wd*T_i) [ eye(vd*T_i) ; -eye(vd*T_i) ] zeros(2*vd*T_i,n) ;
@@ -239,12 +246,12 @@ else
 	for pattern_ind = 1 : length(L)
 		T_i = length(L{pattern_ind});
 		%Get Parameters
-		[S0,H0,Cm0,~,B_w_big,C_v_big] = create_skaf_n_boyd_matrices(ad,T_i,'missing',find(L{pattern_ind} == 0)-1);
+		[H0,S0,Cm0,J0,f_bar,B_w_big,C_v_big] = get_mpc_matrices(ad_arr,'word',L{pattern_ind}+1);
 
 		Q_set{pattern_ind} = value(Q{pattern_ind});
 		r_set{pattern_ind} = value(r{pattern_ind});
-		F_set{pattern_ind} = value( (inv(value(eye(size(H0,2)) + Q{pattern_ind}*Cm0*H0)) ) * Q{pattern_ind});
-		u0_set{pattern_ind} = value( inv(value(eye(size(H0,2)) + Q{pattern_ind}*Cm0*H0)) * r{pattern_ind} );
+		F_set{pattern_ind} = value( (inv(value(eye(size(S0,2)) + Q{pattern_ind}*Cm0*S0)) ) * Q{pattern_ind});
+		u0_set{pattern_ind} = value( inv(value(eye(size(S0,2)) + Q{pattern_ind}*Cm0*S0)) * r{pattern_ind} );
 		
 		%Fix up F and u0 to avoid NaN
 		F_set{pattern_ind}( isnan(F_set{pattern_ind}) ) = 0;

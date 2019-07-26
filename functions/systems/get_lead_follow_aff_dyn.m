@@ -3,6 +3,7 @@ function [dyn_cont, dyn_disc] = get_lead_follow_aff_dyn(varargin)
 	%Summary:
 	%	Returns the continuous and discretized dynamics of the leader-follower system
 	%	proposed by Necmiye in a meeting on June 27.
+	%
 	%Usage:
 	%	[dyn_cont,dyn_disc] = get_lead_follow_aff_dyn(xdim,ydim,dt)
 	%	[dyn_cont,dyn_disc] = get_lead_follow_aff_dyn(xdim,ydim,dt, eta_w, eta_v)

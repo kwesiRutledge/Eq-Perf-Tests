@@ -114,7 +114,10 @@ classdef constr_gen
 				else
 					error('Unrecognized input types for M1 and M2.')
 				end
-			else
+			elseif strcmp(in_str,'Minimize M2')
+				if isa(M1,'Polyhedron')
+					error('Only accepts scalar values for the value of M1 as a scalar for the hyperbox.')
+				end
 				P_M1 = M1 * unit_box;
 				P_M2 = unit_box;
 			end
@@ -151,8 +154,8 @@ classdef constr_gen
 					S0*Q*C_v_big ...
 					(eye(n*(T_i+1))+S0*Q*Cm0)*J0 ];
 
-			bounded_disturb_matrix = [ 	P_wT.A zeros(size(P_wT.A,1),vd*T_i+n) ;
-										zeros(size(P_vT.A,1),size(P_wT.A,2)) P_vT.A zeros(size(P_vT.A,1),n) ;
+			bounded_disturb_matrix = [ 	P_wT.A, zeros(size(P_wT.A,1),vd*T_i+n) ;
+										zeros(size(P_vT.A,1),size(P_wT.A,2)), P_vT.A, zeros(size(P_vT.A,1),n) ;
 										zeros(size(P_M1.A,1),(vd+wd)*T_i) P_M1.A ];
 			switch in_str
 			case 'Feasible Set'
@@ -167,6 +170,162 @@ classdef constr_gen
 
 				constraints = constraints + [Pi1 * bounded_disturb_matrix == prod_M2.A*sel_influenced_states*G ];
 				constraints = constraints + [Pi2 * bounded_disturb_matrix == P_M1.A*select_m(T_i,T_i)*G];
+			otherwise
+				error('Unknown problem type.')
+			end
+
+		end
+
+		function [ constraints ] = get_fr_constr(varargin)
+			%get_er_constr()
+			%Description:
+			%	Uses the appropriate dual variables (Pi1 and Pi2) along with the controller parameters
+			%	(Q and r) to create the constraints corresponding to Equalized Recovery.
+			%
+			%Usage:
+			%	constraints = cg.get_er_constr(ad_arr,sigma_i,Pi1,Pi2,Q,r,in_str,M1,M2,M3)
+			%	constraints = cg.get_er_constr(ad_arr,sigma_i,Pi1,Pi2,Q,r,'Feasible Set',M1,M2,M3)
+			%	constraints = cg.get_er_constr(ad_arr,sigma_i,Pi1,Pi2,Q,r,'Feasible Set',P_M1,P_M2,P_M3)
+			%	constraints = cg.get_er_constr(ad_arr,sigma_i,Pi1,Pi2,Q,r,'Minimize M2',M1,mu2,M3)
+            %   constraints = cg.get_er_constr(ad_arr,sigma_i,Pi1,Pi2,Q,r,'Minimize M3',M1,M2,mu3)
+            %   constraints = cg.get_er_constr(ad_arr,sigma_i,Pi1,Pi2,Q,r,'Minimize Z2',Z1,mu2,Z3)
+			%
+			%Inputs:
+			%	Q:	The "Q" variable in Q-Parameterization. Together with r, this defines a set of feedbacks
+			%		(F,u_0) which can be determined by a nonlinear change of variables.
+			%	r:	The "r" variable in Q-Parameterization. See note on Q.
+
+			%%%%%%%%%%%%%%%%%%%%%%
+			%% Input Processing %%
+			%%%%%%%%%%%%%%%%%%%%%%
+
+			cg = varargin{1};
+			ad_arr = varargin{2};
+			sigma_i = varargin{3};
+			Pi1 = varargin{4};
+			Pi2 = varargin{5};
+			Q = varargin{6};
+			r = varargin{7};
+			in_str = varargin{8};
+
+			switch in_str
+			case 'Feasible Set'
+				M1 = varargin{9};
+				M2 = varargin{10};
+				M3 = varargin{11};
+			case 'Minimize M2'
+				M1 = varargin{9};
+				mu2 = varargin{10};
+				M3 = varargin{11};
+			case 'Minimize M3'
+				M1 = varargin{9};
+				M2 = varargin{10};
+				mu3 = varargin{11};
+			case 'Minimize Z2'
+				Z1 = varargin{9};
+				mu2 = varargin{10};
+				Z3 = varargin{10};
+			otherwise
+				error('Unrecognized input string/type of equalized recovery problem.')
+			end
+
+			%%%%%%%%%%%%%%%
+			%% Constants %%
+			%%%%%%%%%%%%%%%
+
+			n = size(ad_arr(1).A,1);
+			vd = size(ad_arr(1).C_v,2);
+			wd = size(ad_arr(1).B_w,2);
+
+			unit_box = Polyhedron('lb',-ones(1,n),'ub',ones(1,n));
+
+			switch in_str
+			case 'Feasible Set'
+				if isa(M1,'Polyhedron') && isa(M2,'Polyhedron') && isa(M3,'Polyhedron')
+					P_M1 = M1;
+					P_M2 = M2;
+					P_M3 = M3;
+	            elseif isscalar(M1) && isscalar(M2) && isscalar(M3)
+					P_M1 = M1 * unit_box;
+					P_M2 = M2 * unit_box;
+					P_M3 = M3 * unit_box;
+				else
+					error('Unrecognized input types for M1, M2, and M3.')
+				end
+			case 'Minimize M2'
+				if isscalar(M1) && isscalar(M3)
+					P_M1 = M1 * unit_box;
+					P_M2 =  unit_box;
+					P_M3 = M3 * unit_box;
+				else
+					error('Unrecognized input types for M1 and M3.')
+				end
+			case 'Minimize M3'
+				if isscalar(M1) && isscalar(M2)
+					P_M1 = M1 * unit_box;
+					P_M2 = M2 * unit_box;
+					P_M3 = unit_box;
+				else
+					error('Unrecognized input types for M1 and M2.')
+				end
+			otherwise
+				error('Unexpected input string.')
+			end
+				
+			T_i = length(sigma_i);
+
+			%Select matrix
+			select_m = @(t,T_r) [zeros(n,t*n) eye(n) zeros(n,(T_r-t)*n) ];
+
+			sel_influenced_states = [];
+			prod_M2 = 1;
+			for i = 1 : T_i
+				%Select all influenced states
+				sel_influenced_states = [ sel_influenced_states ; select_m(i,T_i) ];
+				%Create product for M2
+				prod_M2 = prod_M2*P_M2;
+			end
+
+			%%%%%%%%%%%%%%%%%%%%%%%%%%
+			%% Creating Constraints %%
+			%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+			constraints = [];
+            
+			%Get Special Matrices
+			[H0,S0,Cm0,J0,f_bar,B_w_big,C_v_big] = get_mpc_matrices(ad_arr,'word',sigma_i);
+			P_wT = 1; P_vT = 1;
+			for t_idx = 1:T_i
+				P_wT = P_wT*ad_arr(sigma_i(t_idx)).P_w;
+				P_vT = P_vT*ad_arr(sigma_i(t_idx)).P_v;
+			end
+
+			G = [ 	(eye(n*(T_i+1))+S0*Q*Cm0)*H0*B_w_big ...
+					S0*Q*C_v_big ...
+					(eye(n*(T_i+1))+S0*Q*Cm0)*J0 ];
+
+			bounded_disturb_matrix = [ 	P_wT.A zeros(size(P_wT.A,1),vd*T_i+n) ;
+										zeros(size(P_vT.A,1),size(P_wT.A,2)) P_vT.A zeros(size(P_vT.A,1),n) ;
+										zeros(size(P_M1.A,1),(vd+wd)*T_i) P_M1.A ];
+			switch in_str
+			case 'Feasible Set'
+				constraints = constraints + [ Pi1 * [ P_wT.b ; P_vT.b ; P_M1.b ] <= prod_M2.b - prod_M2.A*sel_influenced_states*(S0*r+(eye(n*(T_i+1))+S0*Q*Cm0)*H0*f_bar) ];
+				constraints = constraints + [ Pi2 * [ P_wT.b ; P_vT.b ; P_M1.b ] <= P_M3.b - P_M3.A*select_m(T_i,T_i)*(S0*r+(eye(n*(T_i+1))+S0*Q*Cm0)*H0*f_bar) ];
+
+				constraints = constraints + [Pi1 * bounded_disturb_matrix == prod_M2.A*sel_influenced_states*G ];
+				constraints = constraints + [Pi2 * bounded_disturb_matrix == P_M3.A*select_m(T_i,T_i)*G];
+			case 'Minimize M2'
+				constraints = constraints + [ Pi1 * [ P_wT.b ; P_vT.b ; P_M1.b ] <= mu2*prod_M2.b - prod_M2.A*sel_influenced_states*(S0*r+(eye(n*(T_i+1))+S0*Q*Cm0)*H0*f_bar) ];
+				constraints = constraints + [ Pi2 * [ P_wT.b ; P_vT.b ; P_M1.b ] <= P_M3.b - P_M3.A*select_m(T_i,T_i)*(S0*r+(eye(n*(T_i+1))+S0*Q*Cm0)*H0*f_bar) ];
+
+				constraints = constraints + [Pi1 * bounded_disturb_matrix == prod_M2.A*sel_influenced_states*G ];
+				constraints = constraints + [Pi2 * bounded_disturb_matrix == P_M3.A*select_m(T_i,T_i)*G];
+			case 'Minimize M3'
+				constraints = constraints + [ Pi1 * [ P_wT.b ; P_vT.b ; P_M1.b ] <= prod_M2.b - prod_M2.A*sel_influenced_states*(S0*r+(eye(n*(T_i+1))+S0*Q*Cm0)*H0*f_bar) ];
+				constraints = constraints + [ Pi2 * [ P_wT.b ; P_vT.b ; P_M1.b ] <= mu3*P_M3.b - P_M3.A*select_m(T_i,T_i)*(S0*r+(eye(n*(T_i+1))+S0*Q*Cm0)*H0*f_bar) ];
+
+				constraints = constraints + [Pi1 * bounded_disturb_matrix == prod_M2.A*sel_influenced_states*G ];
+				constraints = constraints + [Pi2 * bounded_disturb_matrix == P_M3.A*select_m(T_i,T_i)*G];
 			otherwise
 				error('Unknown problem type.')
 			end

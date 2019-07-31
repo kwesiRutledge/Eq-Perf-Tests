@@ -44,7 +44,21 @@ function [opt_out, contr] = rec_synthesis( varargin )
 		M3 = varargin{7};
 		L = varargin{8};
 		curr_idx = 9;
-
+	elseif strcmp(rec_type,'Free') && strcmp(prob_type,'Minimize M2')
+		M1 = varargin{5};
+		M3 = varargin{6};
+		L = varargin{7};
+		curr_idx = 8;
+	elseif strcmp(rec_type,'Free') && strcmp(prob_type,'Minimize M3')
+		M1 = varargin{5};
+		M2 = varargin{6};
+		L = varargin{7};
+		curr_idx = 8;
+	elseif strcmp(rec_type,'Free') && strcmp(prob_type,'Minimize Z3')
+		Z1 = varargin{5};
+		Z2 = varargin{6};
+		L = varargin{7};
+		curr_idx = 8;
 	end
 
 	if curr_idx < nargin
@@ -70,7 +84,7 @@ function [opt_out, contr] = rec_synthesis( varargin )
 	vd = size(ad.C_v,2);
 
 	%Select matrix
-	select_m = @(t,T_r) [zeros(n,t*n) eye(n) zeros(n,(T_r-t)*n) ];
+	select_m = @(t,T_r) [zeros(n,t*n), eye(n), zeros(n,(T_r-t)*n) ];
 
 	%Create 'Switching' System for Missing Data and Not Modes
 	ad_prime = ad;
@@ -227,7 +241,106 @@ function [opt_out, contr] = rec_synthesis( varargin )
 		else
 			error('Unrecognized value for prefix_flag. Can only choose: ''prefix'' or ''time''.')
 		end
-	case 'Min_M2'
+	case 'Free'
+		%Create Objective
+		mu2 = sdpvar(1,1,'full');
+		mu3 = sdpvar(1,1,'full');
+
+		switch prob_type
+		case 'Feasible Set'
+			obj_fcn = [];
+		case {'Minimize M2','Minimize Z2'}
+			obj_fcn = mu2;
+		case 'Minimize M3'
+			obj_fcn = mu3;
+		end
+
+		if strcmp(prefix_flag,'prefix')
+
+			%Creating Optimization Variables
+			max_T_i = -1;
+			for pattern_ind = 1 : length(L)
+				T_i = length(L{pattern_ind});
+				% Feedback Variables
+				Q{pattern_ind} = sdpvar(m*T_i,p*T_i,'full');
+				r{pattern_ind} = sdpvar(m*T_i,1,'full');
+
+				% Dual Variables
+				Pi_1{pattern_ind} = sdpvar(2*n*T_i,2*(wd+vd)*T_i+2*n,'full');
+				Pi_2{pattern_ind} = sdpvar(2*n,2*(wd+vd)*T_i+2*n,'full');
+				if exist('Pu')
+					if isa(M1,'Polyhedron')
+						Pi_3{pattern_ind} = sdpvar(T_i*size(Pu.A,1),T_i*(size(ad.P_w.A,1)+size(ad.P_v.A,1))+size(M1.A,1),'full');
+					else
+						Pi_3{pattern_ind} = sdpvar(T_i*size(Pu.A,1),T_i*(size(ad.P_w.A,1)+size(ad.P_v.A,1))+2*n,'full');
+					end
+				end
+
+				%Find the maximum T_i
+				if T_i > max_T_i
+					max_T_i = T_i;
+				end
+			end
+		
+			for pattern_ind = 1 : length(L)
+
+				positive_constr = positive_constr + [ Pi_1{pattern_ind} >= 0, Pi_2{pattern_ind} >= 0 ];
+
+				switch prob_type
+				case 'Feasible Set'
+					dual_constrs = dual_constrs + cg.get_fr_constr(ad_arr,L{pattern_ind}+1, ...
+																	Pi_1{pattern_ind},Pi_2{pattern_ind}, ...
+																	Q{pattern_ind},r{pattern_ind}, ...
+																	'Feasible Set', M1 , M2 , M3 );
+				case 'Minimize M2'
+					dual_constrs = dual_constrs + cg.get_fr_constr(ad_arr,L{pattern_ind}+1, ...
+																	Pi_1{pattern_ind},Pi_2{pattern_ind}, ...
+																	Q{pattern_ind},r{pattern_ind}, ...
+																	'Minimize M2', M1 , mu2 , M3 );
+				case 'Minimize M3'
+					dual_constrs = dual_constrs + cg.get_fr_constr(ad_arr,L{pattern_ind}+1, ...
+																	Pi_1{pattern_ind},Pi_2{pattern_ind}, ...
+																	Q{pattern_ind},r{pattern_ind}, ...
+																	'Minimize M3', M1 , M2 , mu3 );
+				otherwise
+					error('Unrecognized problem type. Cannot create dual constraints.')
+				end
+
+				if exist('Pu')
+					%If there exist limits on the input that we can give, then introduce that constraint as well.
+					dual_constrs = dual_constrs + cg.get_input_constr(ad_arr,L{pattern_ind}+1, ...
+																		Pi_3{pattern_ind}, Q{pattern_ind}, r{pattern_ind}, ...
+																		M1,Pu);
+				end
+
+				%Lower Diagonal Constraint
+				for bl_row_num = 1 : T_i-1
+					l_diag_constr = l_diag_constr + [ Q{pattern_ind}(	[(bl_row_num-1)*m+1:bl_row_num*m], ...
+																		[bl_row_num*p+1:end] ) == 0 ];
+				end
+
+				%Awd joint constraints for all 
+				for patt_i = pattern_ind+1:length(L)
+					%Match
+					p1 = L{pattern_ind};
+					p2 = L{patt_i};
+					%Truncate one if necessary.
+					if length(p1) < length(p2)
+						p2 = p2(1:length(p1));
+					elseif length(p1) > length(p2)
+						p1 = p1(1:length(p2));
+					end
+					% Add xor
+					p_overlap = bitxor(p1,p2);
+					%Bit at which things end up being different
+					ind_identical = find(p_overlap,1) - 1;
+					%Awd constraints
+					prefix_constrs = prefix_constrs +  [Q{pattern_ind}( [1:ind_identical*m] , [1:ind_identical*p] ) == Q{patt_i}( [1:ind_identical*m] , [1:ind_identical*p] )];
+					prefix_constrs = prefix_constrs +  [r{pattern_ind}( [1:ind_identical*m] ) == r{patt_i}([1:ind_identical*m]) ];
+				end
+			end
+		end
+
 	otherwise
 		error('We currently do not support any additional problem types.')
 	end

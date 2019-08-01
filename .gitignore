@@ -1,0 +1,10 @@
+# ignore all image files
+*.png
+*.svg
+*.eps
+
+#ignore spurious directories
+functions/@constr_gen/.ipynb_checkpoints/
+
+#ignore this weird temprorary file DS_Store
+.DS_Store

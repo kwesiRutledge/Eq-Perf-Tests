@@ -169,6 +169,7 @@ function [opt_out, contr] = rec_synthesis( varargin )
 					dual_constrs = dual_constrs + cg.get_input_constr(ad_arr,L{pattern_ind}+1, ...
 																		Pi_3{pattern_ind}, Q{pattern_ind}, r{pattern_ind}, ...
 																		M1,Pu);
+					positive_constr = positive_constr + [Pi_3{pattern_ind} >= 0];
 				end
 
 				%Lower Diagonal Constraint
@@ -203,6 +204,16 @@ function [opt_out, contr] = rec_synthesis( varargin )
 
 			warning('This flag combination is untested!')
 
+			%Create Objective
+			mu2 = sdpvar(1,1,'full');
+
+			switch prob_type
+			case 'Feasible Set'
+				obj_fcn = [];
+			case 'Minimize M2'
+				obj_fcn = mu2;
+			end
+
 			T = length(L{1});
 			L_star = ones(1,T);
 		    for sig_i = 1:length(L)
@@ -211,6 +222,13 @@ function [opt_out, contr] = rec_synthesis( varargin )
 
 			Pi_1 = sdpvar(2*n*T,2*(wd+vd)*T+2*n,'full');
 			Pi_2 = sdpvar(2*n,2*(wd+vd)*T+2*n,'full');
+			if exist('Pu')
+				if isa(M1,'Polyhedron')
+					Pi_3 = sdpvar(T*size(Pu.A,1),T*(size(ad.P_w.A,1)+size(ad.P_v.A,1))+size(M1.A,1),'full');
+				else
+					Pi_3 = sdpvar(T*size(Pu.A,1),T*(size(ad.P_w.A,1)+size(ad.P_v.A,1))+2*n,'full');
+				end
+			end
 
 			% Feedback Variables
 			Q = sdpvar(m*T,p*T,'full');
@@ -230,9 +248,26 @@ function [opt_out, contr] = rec_synthesis( varargin )
 
 			positive_constr = positive_constr + [ Pi_1 >= 0, Pi_2 >= 0 ];
 
-			dual_constrs = dual_constrs + cg.get_er_constr(ad_arr,L_star+1, ...
-																Pi_1,Pi_2, Q,r, ...
-																'Feasible Set', M1 , M2 );
+			switch prob_type
+				case 'Feasible Set'
+					dual_constrs = dual_constrs + cg.get_er_constr(ad_arr,L_star+1, ...
+																	Pi_1,Pi_2, Q, r, ...
+																	'Feasible Set', M1 , M2 );
+				case 'Minimize M2'
+					dual_constrs = dual_constrs + cg.get_er_constr(ad_arr,L_star+1, ...
+																	Pi_1,Pi_2, Q,r, ...
+																	'Minimize M2', M1 , mu2 );
+				otherwise
+					error('Unrecognized problem type. Cannot create dual constraints.')
+				end
+
+				if exist('Pu')
+					%If there exist limits on the input that we can give, then introduce that constraint as well.
+					dual_constrs = dual_constrs + cg.get_input_constr(ad_arr,L_star+1, ...
+																		Pi_3, Q, r, ...
+																		M1,Pu);
+					positive_constr = positive_constr + [Pi_3 >= 0];
+				end
 
 			%Lower Diagonal Constraint
 			for bl_row_num = 1 : T-1
@@ -311,6 +346,7 @@ function [opt_out, contr] = rec_synthesis( varargin )
 					dual_constrs = dual_constrs + cg.get_input_constr(ad_arr,L{pattern_ind}+1, ...
 																		Pi_3{pattern_ind}, Q{pattern_ind}, r{pattern_ind}, ...
 																		M1,Pu);
+					positive_constr = positive_constr + [Pi_3{pattern_ind} >= 0];
 				end
 
 				%Lower Diagonal Constraint
@@ -338,6 +374,80 @@ function [opt_out, contr] = rec_synthesis( varargin )
 					prefix_constrs = prefix_constrs +  [Q{pattern_ind}( [1:ind_identical*m] , [1:ind_identical*p] ) == Q{patt_i}( [1:ind_identical*m] , [1:ind_identical*p] )];
 					prefix_constrs = prefix_constrs +  [r{pattern_ind}( [1:ind_identical*m] ) == r{patt_i}([1:ind_identical*m]) ];
 				end
+			end
+
+		elseif strcmp(prefix_flag,'time')
+
+			warning('This flag combination is untested!')
+
+			%Create Objective
+			mu2 = sdpvar(1,1,'full');
+			mu3 = sdpvar(1,1,'full');
+
+			switch prob_type
+			case 'Feasible Set'
+				obj_fcn = [];
+			case 'Minimize M2'
+				obj_fcn = mu2;
+			case 'Minimize M3'
+				obj_fcn = mu3;
+			end
+
+			T = length(L{1});
+			L_star = ones(1,T);
+		    for sig_i = 1:length(L)
+				L_star = bitand(L_star,L{sig_i});
+			end
+
+			Pi_1 = sdpvar(2*n*T,2*(wd+vd)*T+2*n,'full');
+			Pi_2 = sdpvar(2*n,2*(wd+vd)*T+2*n,'full');
+			if exist('Pu')
+				if isa(M1,'Polyhedron')
+					Pi_3 = sdpvar(T*size(Pu.A,1),T*(size(ad.P_w.A,1)+size(ad.P_v.A,1))+size(M1.A,1),'full');
+				else
+					Pi_3 = sdpvar(T*size(Pu.A,1),T*(size(ad.P_w.A,1)+size(ad.P_v.A,1))+2*n,'full');
+				end
+			end
+
+			% Feedback Variables
+			Q = sdpvar(m*T,p*T,'full');
+			r = sdpvar(m*T,1,'full');
+			
+			% Creating Constraints
+			% ++++++++++++++++++++
+
+			positive_constr = positive_constr + [ Pi_1 >= 0, Pi_2 >= 0 ];
+
+			switch prob_type
+				case 'Feasible Set'
+					dual_constrs = dual_constrs + cg.get_fr_constr(ad_arr,L_star+1, ...
+																	Pi_1,Pi_2, Q, r, ...
+																	'Feasible Set', M1 , M2 , M3 );
+				case 'Minimize M2'
+					dual_constrs = dual_constrs + cg.get_fr_constr(ad_arr,L_star+1, ...
+																	Pi_1,Pi_2, Q,r, ...
+																	'Minimize M2', M1 , mu2 , M3 );
+
+				case 'Minimize M3'
+					dual_constrs = dual_constrs + cg.get_fr_constr(ad_arr,L_star+1, ...
+																	Pi_1,Pi_2, Q,r, ...
+																	'Minimize M3', M1 , M2 , mu3  );
+
+				otherwise
+					error('Unrecognized problem type. Cannot create dual constraints.')
+				end
+
+				if exist('Pu')
+					%If there exist limits on the input that we can give, then introduce that constraint as well.
+					dual_constrs = dual_constrs + cg.get_input_constr(ad_arr,L_star+1, ...
+																		Pi_3, Q, r, ...
+																		M1,Pu);
+					positive_constr = positive_constr + [Pi_3 >= 0];
+				end
+
+			%Lower Diagonal Constraint
+			for bl_row_num = 1 : T-1
+				l_diag_constr = l_diag_constr + [ Q(	[(bl_row_num-1)*m+1:bl_row_num*m], [bl_row_num*p+1:end] ) == 0 ];
 			end
 		end
 
@@ -387,7 +497,7 @@ function [opt_out, contr] = rec_synthesis( varargin )
 			end
 		end
 	elseif strcmp(prefix_flag,'time')
-		[H0,S0,Cm0,J0,f_bar,B_w_big,~] = get_mpc_matrices(ad_arr,'word',L{pattern_ind}+1);
+		[H0,S0,Cm0,J0,f_bar,B_w_big,~] = get_mpc_matrices(ad_arr,'word',L_star+1);
 
 		opt_out.Q = value(Q);
 		opt_out.Q(isnan(value(Q))) = 0;
@@ -401,6 +511,8 @@ function [opt_out, contr] = rec_synthesis( varargin )
 	switch prob_type
 	case 'Minimize M2'
 		opt_out.M2 = value(mu2);
+	case 'Minimize M3'
+		opt_out.M3 = value(mu3);
 	end
 
 end

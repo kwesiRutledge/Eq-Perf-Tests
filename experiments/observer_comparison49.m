@@ -28,22 +28,23 @@ function [results] = observer_comparison49(varargin)
 
 	%Create Zonotope Shapes
 	hypercube_bds = [0.5,0.5,0.05,0.05];
-	Z1.G = diag(hypercube_bds);
-	Z1.c = zeros(n,1);
-
-	P_M1 = Polyhedron('lb',-hypercube_bds,'ub',hypercube_bds);
+	%Z1 = Zonotope(diag(hypercube_bds),zeros(n,1)); P_M1 = Polyhedron('lb',-hypercube_bds,'ub',hypercube_bds);
+	Z1 = Zonotope(eye(n),zeros(n,1)); P_M1 = Polyhedron('lb',-ones(1,n),'ub',ones(1,n));
 
 	Z2 = Z1;
 	Z2.G = 10*Z1.G;
 
-	Z0.G = randi(100,n);
-	for col_ind = 1:size(Z0.G,2)
-		Z0.G(:,col_ind) = (1/norm(Z0.G(:,col_ind)))*Z0.G(:,col_ind);
+	G0 = randi(100,n);
+	for col_ind = 1:size(G0,2)
+		G0(:,col_ind) = (1/norm(G0(:,col_ind)))*G0(:,col_ind);
 	end
-	Z0.G = [roty(30),zeros(3,1);zeros(1,3),1];
-	Z0.c = zeros(n,1);
+	%Z0 = Zonotope(G0,zeros(n,1));
+	%Z0 = Zonotope([roty(30),zeros(3,1);zeros(1,3),1],zeros(n,1));
+	Z0 = Zonotope(diag(hypercube_bds),zeros(n,1));
 
 	results.Z0 = Z0;
+	results.Z1 = Z1;
+	results.Z2 = Z2;
 
 	% Create Constraint Generator
 	cg = constr_gen();
@@ -297,5 +298,25 @@ function [results] = observer_comparison49(varargin)
 	optim5.M2 = value(mu2);
 
 	results.lk_tests.box_template.opt_out = optim5;
+
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	%% Plot all 3 Polyhedron %%
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+	Z3 = Z0;
+	Z3.G = optim3.M2 * Z3.G;
+
+	Z5 = Z1;
+	Z5.G = optim5.M2 * Z5.G;
+
+	A = [1,0,0,0;0,0,1,0];
+
+	figure;
+	hold on;
+	plot(A*Z5.to_poly())
+	plot(A*Z3.to_poly(),'Color','magenta')
+
+	% legend('Hypercube Template','Zonotope Template')
+	saveas(gcf,'results/nahs2019/4d_lk_minM2_comparison.png')
 
 end

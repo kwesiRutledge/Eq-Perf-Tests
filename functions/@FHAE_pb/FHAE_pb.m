@@ -84,6 +84,7 @@ classdef FHAE_pb
 			%	x_0_t = obj.simulate_1run( ad , M1 , in_sig )
 			%	x_0_t = obj.simulate_1run( ad , M1 , 'in_sigma' , in_sig )
 			%	x_0_t = obj.simulate_1run( ad , M1 , 'in_sigma' , in_sig , 'in_w' , in_w )
+			%	x_0_t = obj.simulate_1run( ad , M1 , 'in_x0' , in_x0  )
 			%	
 			%
 			%Inputs:
@@ -133,6 +134,13 @@ classdef FHAE_pb
 							end
 							%Increment Flag Index
 							flag_ind = flag_ind+2;
+						case 'in_x0'
+							x0 = varargin{flag_ind+1};
+							if ((size(x0,1) ~= size(ad.A,2)) || (size(x0,2) ~= 1))
+								error('The dimensions of the input w sequence are not correct.')
+							end
+							%Increment Flag Index
+							flag_ind = flag_ind+2;
 						otherwise
 							error(['Unrecognized input to simulate_1run: ' varargin{flag_ind} ])
 						end
@@ -156,13 +164,29 @@ classdef FHAE_pb
 			vd = size(ad.C_v,2);
 
 			%Generate Random Variables
-			x0 = unifrnd(-M1,M1,n,1);
+			if ~exist('x0')
+				x0 = unifrnd(-M1,M1,n,1);
+			end
+
 			if exist('in_w')
 				w = in_w;
 			else
-				w  = unifrnd(-ad.eta_w,ad.eta_w,wd,T);
+				if ~isnan(ad.eta_w)
+					w  = unifrnd(-ad.eta_w,ad.eta_w,wd,T);
+				elseif isa(ad.P_w,'Polyhedron')
+					w = ad.P_w.V'*unifrnd(0,1,size(ad.P_w.V,1),T);
+				else
+					error('Do not understand how to handle this definition of w.')
+				end
 			end
-			v  = unifrnd(-ad.eta_v,ad.eta_v,vd,T);
+
+			if ~isnan(ad.eta_v)
+				v  = unifrnd(-ad.eta_v,ad.eta_v,vd,T);
+			elseif isa(ad.P_v,'Polyhedron')
+				v = ad.P_v.V'*unifrnd(0,1,size(ad.P_v.V,1),T)
+			else
+				error('Do not understand how to handle this definition of v.')
+			end
 
 			%Simulate system forward.
 			x_t = x0;

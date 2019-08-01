@@ -22,6 +22,9 @@ function [results] = observer_comparison50(varargin)
 
 	T = 6;
 	L1 = {ones(1,T)};
+	L2 = {[1,1,1],[0,1,1],[1,0,1],[1,1,0]};
+
+	periods_in_tunnel = 3; %Number of time periods in the tunnel.
 
 	rec_tries = 3;
 
@@ -37,7 +40,8 @@ function [results] = observer_comparison50(varargin)
 
 	l0 = [6;0];
 
-	l_x0 = repmat(l0,1,1+rec_tries*T)+[ fliplr(linspace(-l0(1),0,1+rec_tries*T)) ; zeros(1,1+rec_tries*T)];
+	l_x0 = repmat(l0,1,1+rec_tries*T+periods_in_tunnel*3)+ ...
+						[ fliplr(linspace(-l0(1),4,1+rec_tries*T+periods_in_tunnel*3)) ; zeros(1,1+rec_tries*T+periods_in_tunnel*3)];
 
 	w = l_x0(:,2:end) - l_x0(:,1:end-1);
 
@@ -49,6 +53,7 @@ function [results] = observer_comparison50(varargin)
 	if create_filters_flag
 		history.oo1 = {}; history.c1 = {};
 		history.oo2 = {}; history.c2 = {};
+		history.oo3 = {}; history.c2 = {};
 		for rec_num = 1:rec_tries
 			[history.oo1{rec_num},history.c1{rec_num}] = ad0.rec_synthesis('Equalized','prefix','Minimize M2',M2_temp,L1,'Pu',Pu);
 			[history.oo2{rec_num},history.c2{rec_num}] = ad0.rec_synthesis('Free','prefix','Minimize M3',M2_temp,history.oo1{rec_num}.M2,L1,'Pu',Pu);
@@ -59,6 +64,8 @@ function [results] = observer_comparison50(varargin)
 
 			M2_temp = history.oo2{rec_num}.M3;
 		end
+
+		[history.oo3,history.c3] = ad0.rec_synthesis('Equalized','prefix','Feasible Set',1,history.oo1{rec_num}.M2,L2,'Pu',Pu);
 
 		save('results/nahs2019/lead_foll_startup_gains.mat','history','M_t','M2_temp');
 	else
@@ -82,6 +89,11 @@ function [results] = observer_comparison50(varargin)
 		x = [x, history.c2{contr_num}.simulate_1run( ad0 , M_t(1+contr_num*(T-1)) , 'in_sigma' , L1{1} , ...
 																					'in_w' , w(:,(contr_num-1)*T+1:contr_num*T) , ...
 																					'in_x0' , x(:,end)  )]
+	end
+
+	for in_channel_idx = 1:periods_in_tunnel
+		x = [x, history.c3.simulate_1run( ad0 , M_t(1+contr_num*(T-1)) , 'in_w' , w(:,length(history.c2)*T+(in_channel_idx-1)*3+1:length(history.c2)*T+(in_channel_idx)*3) , ...
+																		'in_x0' , x(:,end)  )]
 	end
 
 	results.x_start = x;

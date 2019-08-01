@@ -125,6 +125,10 @@ classdef FHAE_pb
 							%Increment Flag Index
 							flag_ind = flag_ind+2;
 						case 'in_w'
+                            %Choose a random word to make our T
+                            rand_word_ind = randi(length(obj.L),1);
+                            sig = obj.L{rand_word_ind};
+                            T = length(sig);
 							if ~exist('T')
 								warning('simulate_1run was called with ''in_w'' parameter flag, but ''T'' was not defined.')
 							end

@@ -64,6 +64,7 @@ classdef constr_gen
 			%	constraints = cg.get_er_constr(ad_arr,sigma_i,Pi1,Pi2,Q,r,'Feasible Set',M1,M2)
 			%	constraints = cg.get_er_constr(ad_arr,sigma_i,Pi1,Pi2,Q,r,'Feasible Set',P_M1,P_M2)
 			%	constraints = cg.get_er_constr(ad_arr,sigma_i,Pi1,Pi2,Q,r,'Minimize M2',M1,mu2)
+			%	constraints = cg.get_er_constr(ad_arr,sigma_i,Pi1,Pi2,Q,r,'Minimize Z2',P_M1,Z1,Z2,mu2)
 			%
 			%Inputs:
 			%	Q:	The "Q" variable in Q-Parameterization. Together with r, this defines a set of feedbacks
@@ -90,6 +91,11 @@ classdef constr_gen
 			case 'Minimize M2'
 				M1 = varargin{9};
 				mu2 = varargin{10};
+			case 'Minimize Z2'
+				P_M1 = varargin{9};
+				Z1 = varargin{10};
+				Z2 = varargin{11};
+				mu2 = varargin{12};
 			otherwise
 				error('Unrecognized input string/type of equalized recovery problem.')
 			end
@@ -116,10 +122,16 @@ classdef constr_gen
 				end
 			elseif strcmp(in_str,'Minimize M2')
 				if isa(M1,'Polyhedron')
-					error('Only accepts scalar values for the value of M1 as a scalar for the hyperbox.')
+					P_M1 = M1;
+					P_M2 = unit_box;
+				elseif isscalar(M1)
+					P_M1 = M1 * unit_box;
+					P_M2 = unit_box;
 				end
-				P_M1 = M1 * unit_box;
-				P_M2 = unit_box;
+			elseif strcmp(in_str,'Minimize Z2')
+				if ~(isa(Z1,'Zonotope') && isa(Z2,'Zonotope'))
+					error('Need both inputs to be zonotopes.')
+				end
 			end
 				
 			T_i = length(sigma_i);
@@ -170,6 +182,20 @@ classdef constr_gen
 
 				constraints = constraints + [Pi1 * bounded_disturb_matrix == prod_M2.A*sel_influenced_states*G ];
 				constraints = constraints + [Pi2 * bounded_disturb_matrix == P_M1.A*select_m(T_i,T_i)*G];
+			case 'Minimize Z2'
+				[~,temp_constrs] = cg.create_sadraddini_AH_inclusion_constr(	S0*r{pattern_ind}+(eye(n*(T_i+1))+S0*Q{pattern_ind}*Cm0)*H0*f_bar, ...
+																				G{pattern_ind} , ...
+																				bounded_disturb_matrix,[ P_wT.b ; P_vT.b ; P_M1.b ], ...
+																				kron(ones(T_i+1,1),Z2.c),kron(eye(T_i+1),Z2.G), ...
+																				[eye((T_i+1)*n);-eye((T_i+1)*n)],mu2*ones(2*(T_i+1)*n,1));
+				constraints = constraints + temp_constrs;
+
+				[~,temp_constrs] = cg.create_sadraddini_AH_inclusion_constr(	select_m(T_i,T_i)*(S0*r{pattern_ind}+(eye(n*(T_i+1))+S0*Q{pattern_ind}*Cm0)*H0*f_bar), ...
+																				select_m(T_i,T_i)*G{pattern_ind} , ...
+																				bounded_disturb_matrix,[ P_wT.b ; P_vT.b ; P_M1.b ], ...
+																				Z3.c,Z3.G, ...
+																				[eye(n);-eye(n)],ones(2*n,1) );
+				constraints = constraints + temp_constrs;
 			otherwise
 				error('Unknown problem type.')
 			end
@@ -188,7 +214,7 @@ classdef constr_gen
 			%	constraints = cg.get_er_constr(ad_arr,sigma_i,Pi1,Pi2,Q,r,'Feasible Set',P_M1,P_M2,P_M3)
 			%	constraints = cg.get_er_constr(ad_arr,sigma_i,Pi1,Pi2,Q,r,'Minimize M2',M1,mu2,M3)
             %   constraints = cg.get_er_constr(ad_arr,sigma_i,Pi1,Pi2,Q,r,'Minimize M3',M1,M2,mu3)
-            %   constraints = cg.get_er_constr(ad_arr,sigma_i,Pi1,Pi2,Q,r,'Minimize Z2',Z1,mu2,Z3)
+            %   constraints = cg.get_er_constr(ad_arr,sigma_i,Pi1,Pi2,Q,r,'Minimize Z2',Z1,Z2,Z3,mu2)
 			%
 			%Inputs:
 			%	Q:	The "Q" variable in Q-Parameterization. Together with r, this defines a set of feedbacks
@@ -222,9 +248,10 @@ classdef constr_gen
 				M2 = varargin{10};
 				mu3 = varargin{11};
 			case 'Minimize Z2'
-				Z1 = varargin{9};
-				mu2 = varargin{10};
-				Z3 = varargin{10};
+				P_M1 = varargin{9};
+				Z2 = varargin{10};
+				Z3 = varargin{11};
+				mu2 = varargin{12};
 			otherwise
 				error('Unrecognized input string/type of equalized recovery problem.')
 			end
@@ -326,6 +353,22 @@ classdef constr_gen
 
 				constraints = constraints + [Pi1 * bounded_disturb_matrix == prod_M2.A*sel_influenced_states*G ];
 				constraints = constraints + [Pi2 * bounded_disturb_matrix == P_M3.A*select_m(T_i,T_i)*G];
+			case 'Minimize Z2'
+
+				[~,temp_constrs] = cg.create_sadraddini_AH_inclusion_constr(	S0*r{pattern_ind}+(eye(n*(T_i+1))+S0*Q{pattern_ind}*Cm0)*H0*f_bar, ...
+																				G{pattern_ind} , ...
+																				bounded_disturb_matrix,[ P_wT.b ; P_vT.b ; P_M1.b ], ...
+																				kron(ones(T_i+1,1),Z2.c),kron(eye(T_i+1),Z2.G), ...
+																				[eye((T_i+1)*n);-eye((T_i+1)*n)],mu2*ones(2*(T_i+1)*n,1));
+
+				constraints = constraints + temp_constrs;
+
+				[~,temp_constrs] = cg.create_sadraddini_AH_inclusion_constr(	select_m(T_i,T_i)*(S0*r{pattern_ind}+(eye(n*(T_i+1))+S0*Q{pattern_ind}*Cm0)*H0*f_bar), ...
+																				select_m(T_i,T_i)*G{pattern_ind} , ...
+																				bounded_disturb_matrix,[ P_wT.b ; P_vT.b ; P_M1.b ], ...
+																				Z3.c,Z3.G, ...
+																				[eye(n);-eye(n)],ones(2*n,1) );
+				constraints = constraints + temp_constrs;
 			otherwise
 				error('Unknown problem type.')
 			end

@@ -32,7 +32,7 @@ classdef Zonotope
 			[Z.dim,Z.num_g] = size(G_in);
 		end
 
-		function [poly_out] = to_poly(obj)
+		function [poly_out] = to_poly(obj,method_num)
 			%to_poly_v2.m
 			%	Description:
 			%		This function is meant to transform a Zonotope into a polyhedron.
@@ -40,20 +40,34 @@ classdef Zonotope
 			%% Constants
 			% num_g = size(obj.G,2);
 
-			warning('We are unsure how this algorithm works when G is not square.')
+			if size(obj.G,1) ~= size(obj.G,2)
+				warning('We are unsure how this algorithm works when G is not square.')
+			end
+
+			if ~exist('method_num')
+				method_num = 2;
+			end
 
 			%% Output
 
-			V = []; 						%Set of vertices
-			for vert_ind = 0:2^obj.num_g-1
-				gen_wghts = dec2bin(vert_ind,obj.num_g)';
-				gen_wghts = double(gen_wghts == '1') + (-1)*double(gen_wghts == '0');
+			switch method_num
+			case 1
+				V = []; 						%Set of vertices
+				for vert_ind = 0:2^obj.num_g-1
+					gen_wghts = dec2bin(vert_ind,obj.num_g)';
+					gen_wghts = double(gen_wghts == '1') + (-1)*double(gen_wghts == '0');
 
-				V(:,vert_ind+1) = obj.G*gen_wghts;
+					V(:,vert_ind+1) = obj.G*gen_wghts;
+				end
+
+				poly_out = Polyhedron('V',V');
+
+			case 2
+				%Compute Polyhedron using the affine map function of MPT3
+				poly_out = obj.G * Polyhedron('lb',-ones(1,obj.dim),'ub',ones(1,obj.dim)) + obj.c;
+			otherwise
+				error('Unrecognized method number.')
 			end
-
-			poly_out = Polyhedron('V',V')
-
 		end
 
 		function [] = plot(obj)

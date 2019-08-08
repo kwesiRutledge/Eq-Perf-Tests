@@ -78,10 +78,10 @@ function [ results ] = observer_comparison28( varargin )
     %% Design Problems
     
 	acc_ad = Aff_Dyn(acc_e.A,acc_e.B,zeros(size(acc_e.A,1),1), acc_e.C, acc_e.d , acc_e.m, acc_e.E , eye(size(acc.C,1)) );
-	[ oc27_opt1 , oc27_contr1 ] = eq_rec_design_t( acc_ad , 'Min_M2' , M1 , T , L );
+	[ oc27_opt1 , oc27_contr1 ] = eq_rec_design_t( acc_ad , 'Min_M2' , M1 , L );
 
 	disp('Testing a feasibility problem that is known to be feasible.')
-	[ oc27_feas_opt1 , oc27_feas_contr1 ] = eq_rec_design_t( acc_ad , 'Feasible Set' , M1 , oc27_contr1.opt_obj, T , L );
+	[ oc27_feas_opt1 , oc27_feas_contr1 ] = eq_rec_design_t( acc_ad , 'Feasible Set' , M1 , oc27_contr1.opt_obj, L );
 
 	disp('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
 	disp('Testing a feasibility problem for the prefix-based feedback law version.')

@@ -8,6 +8,7 @@ function [results] = observer_tests( varargin )
 
 	if isempty(strfind(path,'./functions/'))
 		addpath('./functions/')
+		addpath('./functions/systems/')
 	end
 
 	try

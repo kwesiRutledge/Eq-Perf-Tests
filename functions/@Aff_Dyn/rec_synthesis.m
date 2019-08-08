@@ -38,6 +38,12 @@ function [opt_out, contr] = rec_synthesis( varargin )
 		M1 = varargin{5};
 		L = varargin{6};
 		curr_idx = 7;
+	elseif strcmp(rec_type,'Equalized') && strcmp(prob_type,'Minimize Z2')
+		M1 = varargin{5};
+		Z1 = varargin{6};
+		Z2 = varargin{7};
+		L = varargin{8};
+		curr_idx = 9;
 	elseif strcmp(rec_type,'Free') && strcmp(prob_type,'Feasible Set')
 		M1 = varargin{5};
 		M2 = varargin{6};
@@ -52,11 +58,6 @@ function [opt_out, contr] = rec_synthesis( varargin )
 	elseif strcmp(rec_type,'Free') && strcmp(prob_type,'Minimize M3')
 		M1 = varargin{5};
 		M2 = varargin{6};
-		L = varargin{7};
-		curr_idx = 8;
-	elseif strcmp(rec_type,'Free') && strcmp(prob_type,'Minimize Z3')
-		Z1 = varargin{5};
-		Z2 = varargin{6};
 		L = varargin{7};
 		curr_idx = 8;
 	end
@@ -160,6 +161,11 @@ function [opt_out, contr] = rec_synthesis( varargin )
 																	Pi_1{pattern_ind},Pi_2{pattern_ind}, ...
 																	Q{pattern_ind},r{pattern_ind}, ...
 																	'Minimize M2', M1 , mu2 );
+				case 'Minimize Z2'
+					dual_constrs = dual_constrs + cg.get_er_constr(ad_arr,L{pattern_ind}+1, ...
+																	Pi_1{pattern_ind},Pi_2{pattern_ind}, ...
+																	Q{pattern_ind},r{pattern_ind}, ...
+																	'Minimize Z2', M1 , Z1, Z2, mu2 );
 				otherwise
 					error('Unrecognized problem type. Cannot create dual constraints.')
 				end

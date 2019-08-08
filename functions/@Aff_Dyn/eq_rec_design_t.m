@@ -54,6 +54,13 @@ select_m = @(t,T_r) [zeros(n,t*n) eye(n) zeros(n,(T_r-t)*n) ];
 		elseif isscalar(varargin{5})
 			T = varargin{5};
 			L = ones(1,T);
+        elseif isnumeric(varargin{5})
+            %Convert numeric array to a cell array
+            L = {};
+            for word_idx = 1:size(varargin{5})
+                L{word_idx} = varargin{5}(word_idx,:);
+            end
+            T = length(L{1});
 		else
 			error(['Unrecognized fifth input: ' num2str(varargin{5}) '. Expecting cell array or scalar.' ])
 		end
@@ -82,8 +89,15 @@ select_m = @(t,T_r) [zeros(n,t*n) eye(n) zeros(n,(T_r-t)*n) ];
 		elseif isscalar(varargin{4})
 			T = varargin{4};
 			L = ones(1,T);
-		else
-			error(['Unrecognized fifth input: ' num2str(varargin{4}) '. Expecting cell array or scalar.' ])
+        elseif isnumeric(varargin{4})
+            %Convert numeric array to a cell array
+            L = {};
+            for word_idx = 1:size(varargin{4})
+                L{word_idx} = varargin{4}(word_idx,:);
+            end
+            T = length(L{1});
+        else
+			error(['Unrecognized fourth input: ' num2str(varargin{4}) '. Expecting cell array or scalar.' ])
 		end
 
 		% Create L_star

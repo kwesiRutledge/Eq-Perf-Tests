@@ -168,7 +168,7 @@ classdef constr_gen
 
 			bounded_disturb_matrix = [ 	P_wT.A, zeros(size(P_wT.A,1),vd*T_i+n) ;
 										zeros(size(P_vT.A,1),size(P_wT.A,2)), P_vT.A, zeros(size(P_vT.A,1),n) ;
-										zeros(size(P_M1.A,1),(vd+wd)*T_i) P_M1.A ];
+										zeros(size(P_M1.A,1),size(P_wT.A,2)+size(P_vT.A,2)), P_M1.A ];
 			switch in_str
 			case 'Feasible Set'
 				constraints = constraints + [ Pi1 * [ P_wT.b ; P_vT.b ; P_M1.b ] <= prod_M2.b - prod_M2.A*sel_influenced_states*(S0*r+(eye(n*(T_i+1))+S0*Q*Cm0)*H0*f_bar) ];

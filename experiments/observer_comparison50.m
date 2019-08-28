@@ -9,10 +9,6 @@ function [results] = observer_comparison50(varargin)
 	%%%%%%%%%%%%%%%%%%%
 	%% Manage Inputs %%
 	%%%%%%%%%%%%%%%%%%%
-	allowable_nargin = [0,2,3];
-	if ~any(allowable_nargin == nargin)
-		error('Unexpected number of inputs.')
-	end
 
 	switch nargin
 	case 2
@@ -22,6 +18,13 @@ function [results] = observer_comparison50(varargin)
 		cube_x = varargin{1};
 		cube_y = varargin{2};
 		fig_switch = varargin{3};
+	case 4
+		cube_x = varargin{1};
+		cube_y = varargin{2};
+		fig_switch = varargin{3};
+		create_filters_flag = varargin{4};
+	otherwise
+			error('Unexpected number of inputs.')
 	end
 
 	%%%%%%%%%%%%%%%
@@ -58,6 +61,8 @@ function [results] = observer_comparison50(varargin)
 	results.params.ad = ad0;
 	results.params.Pu = Pu;
 	results.params.L1 = L1;
+	results.params.cube_x = cube_x;
+	results.params.cube_y = cube_y;
 
 	%%%%%%%%%%%%%%%%%%%%
 	%% Create Filters %%
@@ -65,7 +70,15 @@ function [results] = observer_comparison50(varargin)
 	M2_temp = 4;
 	M_t = M2_temp;
 
-	create_filters_flag = false;
+	if ~exist('create_filters_flag')
+		try
+			load(['results/nahs2019/lead_foll_startup_gains_' num2str(cube_x) 'by' num2str(cube_y) '.mat'])
+			create_filters_flag = false;
+		catch
+			create_filters_flag = true;
+		end
+	end
+
 
 	if create_filters_flag
 		history.oo1 = {}; history.c1 = {};
@@ -342,6 +355,8 @@ function [results] = observer_comparison50(varargin)
    			end
    			hold off;
 		end
+		
+		close(v);
 
 	end
 

@@ -10,6 +10,9 @@ classdef Aff_Dyn
 	%	x(k+1) = A x(k) + B u(k) + Bw w(k) + f
 	%	y(k)   = C x(k) + C_v v(k)
 	%
+	%FAQ:
+	%	Q - If I don't provide the value for B_w or C_v are they assigned to identity, zero, or some other matrix?
+	%	A - If B_w or C_v are not provided, then they are assumed to be identity matrices.
 
 	properties
 		A;

@@ -1,0 +1,144 @@
+function [results] = observer_comparison53( varargin )
+%	Description:
+%		This example will test 2 new classes for constructing the BeliefGRAPH (no longer a belief tree).
+
+	%%%%%%%%%%%%%%%%%%%%%%
+	%% Input Processing %%
+	%%%%%%%%%%%%%%%%%%%%%%
+
+	%%%%%%%%%%%%%%%
+	%% Constants %%
+	%%%%%%%%%%%%%%%
+
+	dim = 2;
+
+	L1 = {[1,1,1],[1,2,1],[3,2,1]};
+	L2 = {[1,1,2],[1,2,2],[1,2,4]};
+
+	%Create a simple Language Constrainted Switching System
+	A1 = eye(dim);
+	B1 = eye(dim);
+	C1 = eye(dim);
+	f1 = [0;1];
+
+	eta_v = 0; eta_w = 0.2;
+	Pv1 = Polyhedron('lb',-eta_v*ones(1,dim) ,'ub',eta_v*ones(1,dim));
+	Pw1 = Polyhedron('lb',-eta_w*ones(1,dim) ,'ub',eta_w*ones(1,dim));
+
+	ad1 = Aff_Dyn(A1,B1,f1,C1,Pw1,Pv1);
+
+	f2 = [1;0];
+	f3 = -f1;
+	f4 = -f2;
+
+	lcss1 = [	ad1,...
+				Aff_Dyn(A1,B1,f2,C1,Pw1,Pv1),...
+				Aff_Dyn(A1,B1,f3,C1,Pw1,Pv1),...
+				Aff_Dyn(A1,B1,f4,C1,Pw1,Pv1)];
+
+	%%%%%%%%%%%%%%%%%
+	%% Experient 1 %%
+	%%%%%%%%%%%%%%%%%
+
+	disp('Experiment 1: Create a Dummy Belief Node')
+
+	bn0 = BeliefNode({L1{[1:2]}},1);
+
+	results.exp1.L = L1;
+	results.exp1.bn = bn0;
+
+	disp('Done!')
+	disp(' ')
+
+	%%%%%%%%%%%%%%%%%%
+	%% Experiment 2 %%
+	%%%%%%%%%%%%%%%%%%
+
+	disp('Experiment 2: Implementing Power Set Operation for our Belief Node''s subL property')
+
+	bn1 = BeliefNode(L2,1);
+
+	c_level = [bn1];
+
+	%Get All Combinations of the node's subset
+	node_p_set = {};
+	node_ind = 1;
+	for comb_length = 1:length(c_level(node_ind).subL)
+		temp_combs = nchoosek([1:length(c_level(node_ind).subL)],comb_length);
+		for comb_ind = 1:size(temp_combs,1)
+			node_p_set{end+1} = temp_combs(comb_ind,:);
+		end
+	end
+
+	temp2 = bn1.idx_powerset_of_subL();
+
+	results.exp2.L = L2;
+	results.exp2.node_p_set = node_p_set;
+	results.exp2.function_pset = temp2;
+
+	disp('Comparing Languages.')
+	disp(['node_p_set == bn1.powerset_of_subL(): ' num2str( language_eq(node_p_set,temp2) )])
+
+	disp('Done')
+	disp(' ')
+
+	%%%%%%%%%%%%%%%%%%
+	%% Experiment 3 %%
+	%%%%%%%%%%%%%%%%%%
+
+	disp('Experiment 3: Testing the Post Operator');
+	
+	%Define Sets
+	eta_u = 0.25; eta_x0 = 0.5;
+	P_u = Polyhedron('lb',-eta_u*ones(1,dim) ,'ub',eta_u*ones(1,dim));
+	P_x0 = Polyhedron('lb',-eta_x0*ones(1,dim),'ub',eta_x0*ones(1,dim));
+
+	bn2 = BeliefNode(L2,0);
+	temp_post = bn2.post(lcss1,P_u,P_x0);
+
+	results.exp3.L = L2;
+	results.exp3.bn = bn2;
+	results.exp3.post = temp_post;
+
+	disp('Possible Belief Nodes at the Next Step:')
+	temp_post
+
+	disp('Done')
+	disp(' ')
+
+	%%%%%%%%%%%%%%%%%%
+	%% Experiment 4 %%
+	%%%%%%%%%%%%%%%%%%
+
+	clear temp_post
+
+	disp('Experiment 4: Verifying that the Post Operator can create a proper array of BeliefNode objects.');
+	
+	%Define Sets
+	% eta_u = 0.25; eta_x0 = 0.5;
+	% P_u = Polyhedron('lb',-eta_u*ones(1,dim) ,'ub',eta_u*ones(1,dim));
+	% P_x0 = Polyhedron('lb',-eta_x0*ones(1,dim),'ub',eta_x0*ones(1,dim));
+
+	bn3 = BeliefNode(L2,1);
+	temp_post = bn3.post(lcss1,P_u,P_x0);
+
+	results.exp4.L = L2;
+	results.exp4.bn = bn2;
+	results.exp4.post = temp_post;
+
+	%%%%%%%%%%%%%%%%%%
+	%% Experiment 5 %%
+	%%%%%%%%%%%%%%%%%%
+
+	disp('Experiment 5: Testing the Belief Node Equality function')
+
+	bn4 = BeliefNode(L2,1);
+
+	disp(['Comparing nodes:'])
+	disp(['bn4 == bn2 : ' num2str(bn4.is_eq(bn2))])
+	disp(['bn4 == bn3 : ' num2str(bn4.is_eq(bn3))])
+
+	disp('Done!')
+	disp(' ')
+
+end

@@ -141,4 +141,21 @@ function [results] = observer_comparison53( varargin )
 	disp('Done!')
 	disp(' ')
 
+	%%%%%%%%%%%%%%%%%%
+	%% Experiment 5 %%
+	%%%%%%%%%%%%%%%%%%
+
+	disp('Experiment 6: Testing the first iteration of the BeliefGraph construction')
+
+	% bg = BeliefGraph();
+	% bg = bg.construct(lcss1,L2, P_u, P_x0)
+	bg = BeliefGraph(lcss1,L2, P_u, P_x0)
+
+	disp('BeliefGraph successfully created!')
+	
+	results.exp6.bg = bg;
+
+	disp('Done!')
+	disp(' ')
+
 end

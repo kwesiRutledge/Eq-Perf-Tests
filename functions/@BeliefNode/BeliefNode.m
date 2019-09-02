@@ -40,23 +40,56 @@ classdef BeliefNode
 			subsets = node_p_set;
 		end
 
-		function ancest_nodes = post(obj,ad_arr,P_u,P_x0)
+		function ancest_nodes = post(varargin)
 			%Description:
 			%	Identifies what nodes could possibly arise after reaching the current Belief Node according to the dynamics
 			%	given in ad_arr.
+			%
+			%Usage:
+			%	post(BN,ad_arr,P_u,P_x0)
+			%	post(BN,ad_arr,P_u,P_x0,'debug',debug_flag)
 			%
 			%Inputs:
 			%	ad_arr - An array of Aff_Dyn() objects.
 			%			 
 
+			%%%%%%%%%%%%%%%%%%%%%%
+			%% Input Processing %%
+			%%%%%%%%%%%%%%%%%%%%%%
+
+			if nargin < 4
+				error('Not enough input arguments.')
+			end
+
+			BN 		= varargin{1};
+			ad_arr 	= varargin{2};
+			P_u 	= varargin{3};
+			P_x0 	= varargin{4};
+
+			if nargin > 4
+				arg_idx = 5;
+				while arg_idx <= nargin
+					switch varargin{arg_idx}
+						case 'debug'
+							debug_flag = varargin{arg_idx+1};
+
+							arg_idx = arg_idx + 2;
+						otherwise
+							error(['Unexpected input: ' varargin{arg_idx}])
+					end
+				end
+			end
+
 			%%%%%%%%%%%%%%%
 			%% Constants %%
 			%%%%%%%%%%%%%%%
 
-			debug_flag = 1;
+			if ~exist('debug_flag')
+				debug_flag = 0;
+			end
 
 			%Get All Combinations of the node's subset
-			node_p_set = obj.idx_powerset_of_subL();
+			node_p_set = BN.idx_powerset_of_subL();
 
 			n = size(ad_arr(1).A,1);
 			m = size(ad_arr(1).B,2);
@@ -67,7 +100,7 @@ classdef BeliefNode
 
 			Phi_sets = {}; visible_transitions = [];
 			for p_set_idx = 1:length(node_p_set)
-				Phi_sets{p_set_idx} = consistency_set(ad_arr,(obj.t+1),{obj.subL{node_p_set{p_set_idx}}},P_u,P_x0);
+				Phi_sets{p_set_idx} = consistency_set(ad_arr,(BN.t+1),{BN.subL{node_p_set{p_set_idx}}},P_u,P_x0);
 				%If any of the Phi's are empty,
 				%then it is impossible for a transition to exist between the node c_level(node_ind) and the node associated with Phi
 				if ~Phi_sets{p_set_idx}.isEmptySet
@@ -81,19 +114,19 @@ classdef BeliefNode
 
 			%For each possible transition, see if its transition set is completely contained by another transition set
 			for ut_idx = 1:length(node_p_set)
-				Projx_Phi1 = [eye(n*((obj.t+1)+1)+m*(obj.t+1)) zeros(n*((obj.t+1)+1)+m*(obj.t+1),Phi_sets{ut_idx}.Dim-n*((obj.t+1)+1)-m*(obj.t+1))]*Phi_sets{ut_idx};
+				Projx_Phi1 = [eye(n*((BN.t+1)+1)+m*(BN.t+1)) zeros(n*((BN.t+1)+1)+m*(BN.t+1),Phi_sets{ut_idx}.Dim-n*((BN.t+1)+1)-m*(BN.t+1))]*Phi_sets{ut_idx};
 				%vt_tilde = visible_transitions(visible_transitions ~= ind_ut);
 				for ch_idx = [ut_idx+1:length(node_p_set)]
 					if debug_flag >= 1
 						disp(['ch_idx = ' num2str(ch_idx)])
 					end
-					Projx_Phi2 = [eye(n*((obj.t+1)+1)+m*(obj.t+1)) zeros(n*((obj.t+1)+1)+m*(obj.t+1),Phi_sets{ch_idx}.Dim-n*((obj.t+1)+1)-m*(obj.t+1))]*Phi_sets{ch_idx};
+					Projx_Phi2 = [eye(n*((BN.t+1)+1)+m*(BN.t+1)) zeros(n*((BN.t+1)+1)+m*(BN.t+1),Phi_sets{ch_idx}.Dim-n*((BN.t+1)+1)-m*(BN.t+1))]*Phi_sets{ch_idx};
 					temp_diff = Projx_Phi1 \ Projx_Phi2;
 					if (temp_diff.isEmptySet)
 						if debug_flag >= 1
 							disp(['temp_diff.isEmptySet = ' num2str(temp_diff.isEmptySet) ' for:'])
-							disp(['- Phi1(' num2str([obj.subL{node_p_set{ut_idx}}]) ')' ])
-							disp(['- Phi2(' num2str([obj.subL{node_p_set{ch_idx}}]) ')' ])
+							disp(['- Phi1(' num2str([BN.subL{node_p_set{ut_idx}}]) ')' ])
+							disp(['- Phi2(' num2str([BN.subL{node_p_set{ch_idx}}]) ')' ])
 							disp(' ')
 						end
 						visible_transitions(ut_idx) = ch_idx;
@@ -109,9 +142,9 @@ classdef BeliefNode
 			%%%%%%%%%%%%%%%%%%%%%%%%%%%
 			ancest_nodes = [];
 			for trans_idx = 1:length(visible_transitions)
-				temp_L = {obj.subL{node_p_set{visible_transitions(trans_idx)}}};
+				temp_L = {BN.subL{node_p_set{visible_transitions(trans_idx)}}};
 
-				c_node = BeliefNode(temp_L,obj.t+1);
+				c_node = BeliefNode(temp_L,BN.t+1);
 				ancest_nodes = [ancest_nodes,c_node];
 			end
 
@@ -127,6 +160,18 @@ classdef BeliefNode
 				eq_flag = false;
 			end
 
+		end
+
+		function longest_T = find_longest_horizon(obj)
+			%Description:
+			%	Searches through all elements of the subL for this node and determines
+			%	how much longer of a future the system can have (at maximum).
+
+			longest_T = -1;
+
+			for L_idx = 1:length(obj.subL)
+				longest_T = max(length(obj.subL{L_idx}),longest_T) - obj.t;
+			end
 		end
 	end
 

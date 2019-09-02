@@ -11,6 +11,8 @@ function [results] = observer_comparison50(varargin)
 	%%%%%%%%%%%%%%%%%%%
 
 	switch nargin
+	case 0
+		1;
 	case 2
 		cube_x = varargin{1};
 		cube_y = varargin{2};

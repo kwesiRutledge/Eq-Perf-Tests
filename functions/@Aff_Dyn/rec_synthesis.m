@@ -14,7 +14,26 @@ function [opt_out, contr] = rec_synthesis( varargin )
 %	[opt_out, contr] = rec_synthesis( ad , 'Free' , 'prefix' , 'Min_M2' , P1, P3, L)
 %
 %Inputs:
-%	ad - Affine Dynamics
+%	ad 			- Affine Dynamics
+%	rec_type 	- A string indicating the type of recovery problem that we want to solve.
+%				  Options: 'Equalized' or 'Free'
+%	prefix_flag - A string indicating whether or not the controller/estimator designed will be prefix-based or not.
+%				  Options: 'prefix' or 'time'
+%	prob_type 	- A string indicating the structure of the problem statement.
+%				  Options: 'Feasible Set', 'Minimize M2', 'Minimize Z2', 'Minimize M3'
+%				  Not all options will be available depending on the choice of Recovery Type.
+%				  Example: 'Feasible Set' for an equalized recovery problem, indicates that the inputs to this function
+%							will be a set of parameters that define the equalized recovery problem (M1, M2, L) and the 
+%							algorithm finds a controller/estimator that satisfies the 3 parameters, or else it returns
+%							an infeasible flag.
+%				  Example: 'Minimize M3' for a free recovery problem, indicates that the inputs to this function will be
+%							all parameters that define the free recovery problem EXCEPT for M3. (i.e. the parameters are
+%							M1,M2,M3, and L but the user only needs to provide M1,M2, and L). The algorithm finds a
+%							controller/estimator that satisfies the 3 parameters AND minimizes the value of M3 if possible,
+%							or else it returns an infeasible flag.
+%	M1 			- A scalar value for M1.
+%	M2 			- A scalar vakye fir M2.
+
 
 	%%%%%%%%%%%%%%%%%%%%%%
 	%% Input Processing %%

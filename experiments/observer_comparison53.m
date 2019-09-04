@@ -142,7 +142,7 @@ function [results] = observer_comparison53( varargin )
 	disp(' ')
 
 	%%%%%%%%%%%%%%%%%%
-	%% Experiment 5 %%
+	%% Experiment 6 %%
 	%%%%%%%%%%%%%%%%%%
 
 	disp('Experiment 6: Testing the first iteration of the BeliefGraph construction')
@@ -155,6 +155,32 @@ function [results] = observer_comparison53( varargin )
 	
 	results.exp6.bg = bg;
 
+	disp('Done!')
+	disp(' ')
+
+
+	%%%%%%%%%%%%%%%%%%
+	%% Experiment 7 %%
+	%%%%%%%%%%%%%%%%%%
+
+	disp('Experiment 7: Testing BeliefGraph visualization for debugging purposes')
+
+	bg.plot()
+
+	disp('Are the belief nodes the same as the graph visualizes?')
+	disp(['bg.get_leaf_node_idxs() == [6,7,8,9] ? ' num2str(all(bg.get_leaf_node_idxs() == [6,7,8,9])) ])
+	disp(' ')
+	disp(['bg.pre(8) == [4,5]?' num2str(all(bg.pre(8) == [4,5]))])
+	disp(' ')
+	disp(['bg.all_words_start_with_root(L2) ? ' num2str(bg.all_words_start_with_root(L2))])
+	disp(['bg.all_words_start_with_root({[2,2,3,2,2]}) ? ' num2str(bg.all_words_start_with_root({[2,2,3,2,2]}))])
+	disp(' ')
+	temp_lang = bg.prepend_any_valid_node([8]);
+	disp(['bg.prepend_any_valid_node([8]) == {[4,8],[5,8]} [' num2str(temp_lang{1}) '] , [' num2str(temp_lang{2}) ']' ]) 
+	disp(' ')
+	temp_lang = bg.language_union({{[1,2],[4,5]},{[4,5],[3,4],[1:3],[1,2]}});
+	disp(['bg.language_union({{[1,2],[4,5]},{[4,5],[3,4],[1:3],[1,2]}}) = {' num2str(temp_lang{1}) ',' num2str(temp_lang{2}) ',' num2str(temp_lang{3}) ', ...'])
+	disp(' ')
 	disp('Done!')
 	disp(' ')
 

@@ -149,7 +149,10 @@ function [results] = observer_comparison53( varargin )
 
 	% bg = BeliefGraph();
 	% bg = bg.construct(lcss1,L2, P_u, P_x0)
-	bg = BeliefGraph(lcss1,L2, P_u, P_x0)
+	L3 = Language();
+	L3.words = L2;
+
+	bg = BeliefGraph(lcss1,L3, P_u, P_x0)
 
 	disp('BeliefGraph successfully created!')
 	
@@ -172,16 +175,28 @@ function [results] = observer_comparison53( varargin )
 	disp(' ')
 	disp(['bg.pre(8) == [4,5]?' num2str(all(bg.pre(8) == [4,5]))])
 	disp(' ')
-	disp(['bg.all_words_start_with_root(L2) ? ' num2str(bg.all_words_start_with_root(L2))])
-	disp(['bg.all_words_start_with_root({[2,2,3,2,2]}) ? ' num2str(bg.all_words_start_with_root({[2,2,3,2,2]}))])
+	disp(['bg.all_words_start_with_root(L2) ? ' num2str(L3.all_words_start_with_root())])
+	temp_lang = Language([2,2,3,2,2]);
+	disp(['bg.all_words_start_with_root({[2,2,3,2,2]}) ? ' num2str(temp_lang.all_words_start_with_root())])
 	disp(' ')
+	
 	temp_lang = bg.prepend_any_valid_node([8]);
-	disp(['bg.prepend_any_valid_node([8]) == {[4,8],[5,8]} [' num2str(temp_lang{1}) '] , [' num2str(temp_lang{2}) ']' ]) 
+	disp(['bg.prepend_any_valid_node([8]) == {[4,8],[5,8]} [' num2str(temp_lang.words{1}) '] , [' num2str(temp_lang.words{2}) ']' ]) 
+	temp_lang = Language([8],[9]);
+	temp_lang2 = bg.prepend_any_valid_node(temp_lang);
+	disp(['bg.prepend_any_valid_node({[8],[9]}) == {[4,8],[5,8],[5,9]} [' num2str(temp_lang2.words{1}) '] , [' num2str(temp_lang2.words{2}) '], [' num2str(temp_lang2.words{3}) ']' ])
 	disp(' ')
-	temp_lang = bg.language_union({{[1,2],[4,5]},{[4,5],[3,4],[1:3],[1,2]}});
-	disp(['bg.language_union({{[1,2],[4,5]},{[4,5],[3,4],[1:3],[1,2]}}) = {' num2str(temp_lang{1}) ',' num2str(temp_lang{2}) ',' num2str(temp_lang{3}) ', ...'])
+
+	temp_lang1 = Language([1,2],[4,5]);
+	temp_lang2 = Language([4,5],[3,4],[1:3],[1,2]);
+	temp_lang = temp_lang1.union(temp_lang2);
+	disp(['temp_lang1.union(temp_lang2) = {' num2str(temp_lang.words{1}) ',' num2str(temp_lang.words{2}) ',' num2str(temp_lang.words{3}) ', ...'])
+	disp(' ')
+	[belief_lang,leaf_node_idxs] = bg.get_belief_language();
 	disp(' ')
 	disp('Done!')
 	disp(' ')
+
+	results.exp7.belief_lang = belief_lang;
 
 end

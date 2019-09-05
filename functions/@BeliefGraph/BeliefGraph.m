@@ -10,11 +10,17 @@ classdef BeliefGraph
 	properties
 		E;
 		N;
-		LCSS;
+		lcsas;
+		L;
 	end
 
 	methods
-		function [BG] = BeliefGraph(lcss,L,P_u,P_x0)
+		function [BG] = BeliefGraph(in_sys,L,P_u,P_x0)
+			%Description:
+			%
+			%Inputs:
+			%	in_sys 	- An array of Aff_Dyn() objects. May eventually become its own class/data type soon.
+
 			% disp('Created empty Belief Graph. Please call the construct() function next.')
 			% BT.E = [];
 			% BT.N = [];
@@ -22,9 +28,17 @@ classdef BeliefGraph
 			%%
 			warning('The BeliefGraph() class was designed with the assumption that the affine dynamics contain the same state, input, and disturbance size throughout the entire language.')
 
-			%Constants
+			%%%%%%%%%%%%%%%%%%%%%%
+			%% Input Processing %%
+			%%%%%%%%%%%%%%%%%%%%%%
 
-			BG.LCSS = lcss;
+			if ~isa(L,'Language')
+				error('Expected L to be a Language object.')
+			end
+
+			%%Constants
+
+			BG.lcsas = in_sys;
 
 			%Create first node
 			% node0.subset = L;
@@ -47,7 +61,7 @@ classdef BeliefGraph
 					c_node = c_level(node_idx);
 
 					%Calculate the ancestors of this Belief Node
-					temp_post = c_node.post(BG.LCSS,P_u,P_x0);
+					temp_post = c_node.post(BG.lcsas,P_u,P_x0);
 					
 					%Add the ancestors to the BeliefGraph's set of nodes if they don't already exist in the set.
 					for node_idx = 1:length(temp_post)
@@ -122,7 +136,7 @@ classdef BeliefGraph
 
 			for cand_leaf_idx = 1:length(obj.N)
 				if any(obj.E(:,1) == cand_leaf_idx)
-					leaf_node_idxs = leaf_node_idxs(leaf_node_idxs ~= cand_leaf_idx)
+					leaf_node_idxs = leaf_node_idxs(leaf_node_idxs ~= cand_leaf_idx);
 				end
 			end
 		end
@@ -164,54 +178,50 @@ classdef BeliefGraph
 
 		end
 
-		function [reached_root] = all_words_start_with_root(obj,L)
+		function [new_lang] = prepend_any_valid_node(varargin)
 			%Description:
-			%	This function returns true if all words in the language begin with L.
-
-			reached_root = true;
-			for word_idx = 1:length(L)
-				reached_root = reached_root && (L{word_idx}(1) == 1);
-			end
-		end
-
-		function [new_lang] = prepend_any_valid_node(obj,word)
-			%Description:
-			%	For the word 'word', look at the initial index which corresponds to the initial node in the word.
-			%	For all ancestors of that node, create a new word that starts with the ancestor and is followed by
-			%	the original word.
+			%	Takes every word in the input language and 'extends' it backwards by prepending to it
+			%	a feasible prefix of a single symbol. If no prefix is possible, the word is left unchanged. 
 			%
+			%Usage:
+			%	new_L = prepend_any_valid_node(obj,word_in)
+			%	new_L = prepend_any_valid_node(obj,L_in)
 			%Outputs:
 			%	new_lang 	- A cell array which contains 0 elements if there are no possible completions. Otherwise, there
 			%				  should be a cell array of numeric arrays in new_lang.
 
-			new_lang = {};
+			%% Input Processing %%
+			obj = varargin{1};
 
-			temp_pre = obj.pre(word(1));
-			if ~isempty(temp_pre)
-				%Create a 
-				for pre_idx = 1:length(temp_pre)
-					new_lang{pre_idx} = [temp_pre(pre_idx),word];
+			new_lang = Language();
+
+			if isa(varargin{2},'Language')
+				%We want to perform this operation on an entire language.
+				in_lang = varargin{2};
+
+				for word_idx = 1:length(in_lang.words)
+					%For each word, perform the one step extension.
+					temp_word = in_lang.words{word_idx};
+					all_new_sublanguages(word_idx) = obj.prepend_any_valid_node(temp_word);
+				end
+				new_lang = new_lang.union(all_new_sublanguages);
+
+			elseif isnumeric(varargin{2})
+				%Hopefully this means we just have a word.
+				word_in = varargin{2};
+
+				temp_pre = obj.pre(word_in(1));
+				if ~isempty(temp_pre)
+					%Create a new word for each node in the pre's findings
+					for pre_idx = 1:length(temp_pre)
+						new_lang.words{pre_idx} = [temp_pre(pre_idx),word_in];
+					end
+				else
+					new_lang = Language(word_in)
 				end
 			end
 
 		end
-
-
-		function [new_lang] = get_one_step_extension(obj,in_lang)
-			%Description:
-			%	Takes every word in the input language and 'extends' it backwards by appending to it
-			%	a feasible prefix of a single symbol if possible. 
-
-			%% Variable Definitions
-
-			%% Algorithm
-
-			for word_idx = 1:length(in_lang)
-				%
-			end
-
-		end
-
 
 		function [belief_lang,leaf_node_idxs] = get_belief_language(obj)
 			%Description:
@@ -223,24 +233,19 @@ classdef BeliefGraph
 			belief_lang = [];
 
 			%% Find all leaves
-			leaf_node_idxs = obj.get_leaf_node_idxs(obj)
+			leaf_node_idxs = obj.get_leaf_node_idxs();
 
 			%% Perform backtracking operation for every node 
-			belief_lang = {};
+			belief_lang = Language();
 			for leaf_idx = leaf_node_idxs
-				sub_lang = {[leaf_idx]};
-				while(~obj.all_words_start_with_root())
+				sub_lang = Language([leaf_idx]);
+				while(~sub_lang.all_words_start_with_root())
 					%Until all of the words in this sub_language have reached the root node $n$ 
-					for word_idx = 1:length(sub_lang)
-						%For every word in the current sub language, expand the word by getting the pre.
-						temp_word = sub_lang{word_idx};
-						
-					end
+					temp_lang = obj.prepend_any_valid_node(sub_lang);
+					sub_lang = temp_lang;
 				end
-
+				belief_lang = belief_lang.union(sub_lang);
 			end
-
-
 		end
 
 	end

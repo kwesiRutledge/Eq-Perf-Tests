@@ -18,7 +18,7 @@ classdef Language
 			%Examples:
 			%	L1 = Language([1,2],[3,4,5],[1,4,5])
 
-			L.words = {}
+			L.words = {};
 
 			for word_idx = 1:nargin
 				%Check to see if each argument is numeric.
@@ -87,6 +87,47 @@ classdef Language
 				end
 			end
 
+		end
+
+		function [l_eq_flag] = is_eq(obj,L_in)
+			%Description:
+			%	Verifies if every word in the current language is in L and vice versa.
+
+			%% Verify L1 is a subset of L2
+
+			obj_vals_found = false(length(obj.words),1);
+			for L1_ind = 1:length(obj.words)
+				%Verify that each
+				for L2_ind = 1:length(L_in.words)
+					if (length(obj.words{L1_ind}) == length(L_in.words{L2_ind}))
+						obj_vals_found(L1_ind) = obj_vals_found(L1_ind) || all(obj.words{L1_ind} == L_in.words{L2_ind});
+					end
+				end
+			end
+
+			%% Verify L2 is a subset of L1
+			L_vals_found = false(length(L_in.words),1);
+			for L2_ind = 1:length(L_in.words)
+				%Verify that each
+				for L1_ind = 1:length(obj.words)
+					if (length(obj.words{L1_ind}) == length(L_in.words{L2_ind}))
+						L_vals_found(L2_ind) = L_vals_found(L2_ind) || all(obj.words{L1_ind} == L_in.words{L2_ind});
+					end
+				end
+			end
+
+			l_eq_flag = all(obj_vals_found) && all(L_vals_found);
+
+		end
+
+		function [reached_root] = all_words_start_with_root(obj)
+			%Description:
+			%	This function returns true if all words in the language begin with 1, the first node in a belief graph.
+
+			reached_root = true;
+			for word_idx = 1:length(obj.words)
+				reached_root = reached_root && (obj.words{word_idx}(1) == 1);
+			end
 		end
 
 	end

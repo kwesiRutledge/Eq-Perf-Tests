@@ -12,8 +12,17 @@ classdef BeliefNode
 			%% Input Processing %%
 			%%%%%%%%%%%%%%%%%%%%%%
 
-			if ~iscell(subset_L)
-				error('Expected subset of language to be a cell array.')
+			if ~(iscell(subset_L) || isa(subset_L,'Language') )
+				error('Expected subset of language to be a cell array or a Language object.')
+			end
+
+			if iscell(subset_L)
+				warning('The version of this class that uses L as a cell array is deprecated. We cannot guarantee that functions will work anymore as the class has been modified to support Language objects.')
+				%Convert subset_L to a Language
+				temp_arr = subset_L;
+				clear subset_L
+				subset_L = Language();
+				subset_L.words = temp_arr;
 			end
 
 			%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -26,13 +35,13 @@ classdef BeliefNode
 
 		function subsets = idx_powerset_of_subL(obj)
 			%Description:
-			%	Assigns to each word in subL an index.
+			%	Assigns to each word in subL.words an index.
 			%	Then returns all possible subsets of the INDICES.
 			%
 			
 			node_p_set = {};
-			for comb_length = 1:length(obj.subL)
-				temp_combs = nchoosek([1:length(obj.subL)],comb_length);
+			for comb_length = 1:length(obj.subL.words)
+				temp_combs = nchoosek([1:length(obj.subL.words)],comb_length);
 				for comb_ind = 1:size(temp_combs,1)
 					node_p_set{end+1} = temp_combs(comb_ind,:);
 				end
@@ -100,7 +109,7 @@ classdef BeliefNode
 
 			Phi_sets = {}; visible_transitions = [];
 			for p_set_idx = 1:length(node_p_set)
-				Phi_sets{p_set_idx} = consistency_set(ad_arr,(BN.t+1),{BN.subL{node_p_set{p_set_idx}}},P_u,P_x0);
+				Phi_sets{p_set_idx} = consistency_set(ad_arr,(BN.t+1),{BN.subL.words{node_p_set{p_set_idx}}},P_u,P_x0);
 				%If any of the Phi's are empty,
 				%then it is impossible for a transition to exist between the node c_level(node_ind) and the node associated with Phi
 				if ~Phi_sets{p_set_idx}.isEmptySet
@@ -125,8 +134,8 @@ classdef BeliefNode
 					if (temp_diff.isEmptySet)
 						if debug_flag >= 1
 							disp(['temp_diff.isEmptySet = ' num2str(temp_diff.isEmptySet) ' for:'])
-							disp(['- Phi1(' num2str([BN.subL{node_p_set{ut_idx}}]) ')' ])
-							disp(['- Phi2(' num2str([BN.subL{node_p_set{ch_idx}}]) ')' ])
+							disp(['- Phi1(' num2str([BN.subL.words{node_p_set{ut_idx}}]) ')' ])
+							disp(['- Phi2(' num2str([BN.subL.words{node_p_set{ch_idx}}]) ')' ])
 							disp(' ')
 						end
 						visible_transitions(ut_idx) = ch_idx;
@@ -142,7 +151,8 @@ classdef BeliefNode
 			%%%%%%%%%%%%%%%%%%%%%%%%%%%
 			ancest_nodes = [];
 			for trans_idx = 1:length(visible_transitions)
-				temp_L = {BN.subL{node_p_set{visible_transitions(trans_idx)}}};
+				temp_L = Language();
+				temp_L.words = {BN.subL.words{node_p_set{visible_transitions(trans_idx)}}};
 
 				c_node = BeliefNode(temp_L,BN.t+1);
 				ancest_nodes = [ancest_nodes,c_node];
@@ -154,7 +164,7 @@ classdef BeliefNode
 			%Description:
 			%	Returns true if this belief node (obj) is equal to the belief node BN.
 
-			if language_eq(obj.subL,BN.subL) && (obj.t == BN.t)
+			if obj.subL.is_eq(BN.subL) && (obj.t == BN.t)
 				eq_flag = true;
 			else
 				eq_flag = false;
@@ -164,13 +174,13 @@ classdef BeliefNode
 
 		function longest_T = find_longest_horizon(obj)
 			%Description:
-			%	Searches through all elements of the subL for this node and determines
+			%	Searches through all elements of the subL.words for this node and determines
 			%	how much longer of a future the system can have (at maximum).
 
 			longest_T = -1;
 
-			for L_idx = 1:length(obj.subL)
-				longest_T = max(length(obj.subL{L_idx}),longest_T) - obj.t;
+			for L_idx = 1:length(obj.subL.words)
+				longest_T = max(length(obj.subL.words{L_idx}),longest_T) - obj.t;
 			end
 		end
 	end

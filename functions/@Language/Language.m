@@ -130,6 +130,18 @@ classdef Language
 			end
 		end
 
+		function longest_T = find_longest_length(obj)
+			%Description:
+			%	Searches through all elements of the words for this node and determines
+			%	how long the longest word is.
+
+			longest_T = -1;
+
+			for L_idx = 1:length(obj.words)
+				longest_T = max(length(obj.words{L_idx}),longest_T);
+			end
+		end
+
 	end
 
 end

@@ -36,9 +36,20 @@ classdef BeliefGraph
 				error('Expected L to be a Language object.')
 			end
 
+			if ~isa(in_sys,'LCSAS')
+				warning('Expected input system to be LCSAS. Checking to see if this can be salvaged...')
+				if isa(in_sys,'Aff_Dyn')
+					temp_sys_arr = in_sys;
+					in_sys = LCSAS(temp_sys_arr);
+				else
+					error('System must be given either as an LCSAS object or as an array of Aff_Dyn objects.')
+				end
+			end
+
 			%%Constants
 
 			BG.lcsas = in_sys;
+			BG.L = L;
 
 			%Create first node
 			% node0.subset = L;
@@ -48,11 +59,6 @@ classdef BeliefGraph
 
 			c_level = [node0];
 			BG.N = [node0];
-
-			% nodes0 = [node0];
-			% nodes1 = [node1];
-			% edges0 = [];
-			% edges1 = []; %Numerical version of the edges matrix
 
 			for tau = 1:T_max
 				%Each belief will be indexed by a time. (i.e. I hold X belieft at time t)

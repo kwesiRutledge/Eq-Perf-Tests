@@ -8,7 +8,7 @@ function [results] = observer_comparison56( varargin )
 
 	dim = 2;
 
-	L1 = Language([1,1,2],[1,2,2],[1,2,4]);
+	L1 = Language([1,1,2,3],[1,2,2,4],[1,2,4,3]);
 
 	%Create a simple Language Constrainted Switching System
 	A1 = eye(dim);
@@ -31,8 +31,8 @@ function [results] = observer_comparison56( varargin )
 				Aff_Dyn(A1,B1,f3,C1,Pw1,Pv1),...
 				Aff_Dyn(A1,B1,f4,C1,Pw1,Pv1)];
 
-	results.parameters.L1 = L1;
-	results.parameters.lcsas = lcss1;
+	results.exp1.L = L1;
+	results.exp1.lcsas = lcss1;
 
 	%Define Sets
 	eta_u = 0; eta_x0 = 0.3;
@@ -50,19 +50,27 @@ function [results] = observer_comparison56( varargin )
 
 	for word_idx = 1:length(L1.words)
 		[Hc{word_idx},Sc{word_idx},~,Jc{word_idx},fc{word_idx}] = get_mpc_matrices(lcss1,'word',L1.words{word_idx});
+		%Create Cartesian Product of Polyhedra
+		P_wT{word_idx} = 1; P_vT{word_idx} = 1; P_uT{word_idx} = 1;
+		for sym_idx = 1:length(L1.words{word_idx})
+			P_wT{word_idx} = P_wT{word_idx} * lcss1(L1.words{word_idx}(sym_idx)).P_w;
+			P_vT{word_idx} = P_vT{word_idx} * lcss1(L1.words{word_idx}(sym_idx)).P_v;
+			P_uT{word_idx} = P_uT{word_idx} * P_u;
+		end
 	end
 
 	T = L1.find_longest_length();
 
+	%% Create P_wT and P_vT
 	figure;
 	for seq_ind = 1:length(Hc)
-		X = (Hc{seq_ind}*(Pw1*Pw1*Pw1+fc{seq_ind})) + Sc{seq_ind}*(P_u*P_u*P_u) + Jc{seq_ind}*P_x0;
+		X = (Hc{seq_ind}*(P_wT{seq_ind}+fc{seq_ind})) + Sc{seq_ind}*P_uT{seq_ind} + Jc{seq_ind}*P_x0;
 		subplot(1,length(Hc),seq_ind)
 		hold on;
-		plot(RT(dim,0,3)*X,'Color','white')
-		plot(RT(dim,1,3)*X,'Color','cyan')
-		plot(RT(dim,2,3)*X,'Color','magenta')
-		plot(RT(dim,3,3)*X,'Color','orange')
+		plot(RT(dim,0,L1.find_longest_length())*X,'Color','white')
+		plot(RT(dim,1,L1.find_longest_length())*X,'Color','cyan')
+		plot(RT(dim,2,L1.find_longest_length())*X,'Color','magenta')
+		plot(RT(dim,3,L1.find_longest_length())*X,'Color','orange')
 		axis([-5 5 -5 5])
 	end
 
@@ -75,19 +83,19 @@ function [results] = observer_comparison56( varargin )
 	figure;
 	bg.plot();
 
-	results.bg1 = bg;
+	results.exp1.bg = bg;
 
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	%% Create Belief Graph with More Edges %%
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-	clear bg eta_v eta_w
+	clear bg eta_v eta_w ad1 Pv1 Pw1 P_u P_wT P_vT;
 
-	eta_v = 0; eta_w = 0.4;
+	eta_v = 0; eta_w = 0.5;
 	Pv1 = Polyhedron('lb',-eta_v*ones(1,dim) ,'ub',eta_v*ones(1,dim));
 	Pw1 = Polyhedron('lb',-eta_w*ones(1,dim) ,'ub',eta_w*ones(1,dim));
 
-	eta_u = 0.2;
+	eta_u = 0.1;
 	P_u = Polyhedron('lb',-eta_u*ones(1,dim) ,'ub',eta_u*ones(1,dim));
 
 	ad1 = Aff_Dyn(A1,B1,f1,C1,Pw1,Pv1);
@@ -105,19 +113,27 @@ function [results] = observer_comparison56( varargin )
 
 	for word_idx = 1:length(L1.words)
 		[Hc{word_idx},Sc{word_idx},~,Jc{word_idx},fc{word_idx}] = get_mpc_matrices(lcss2,'word',L1.words{word_idx});
+
+		%Create Cartesian Product of Polyhedra
+		P_wT{word_idx} = 1; P_vT{word_idx} = 1; P_uT{word_idx} = 1;
+		for sym_idx = 1:length(L1.words{word_idx})
+			P_wT{word_idx} = P_wT{word_idx} * lcss1(L1.words{word_idx}(sym_idx)).P_w;
+			P_vT{word_idx} = P_vT{word_idx} * lcss1(L1.words{word_idx}(sym_idx)).P_v;
+			P_uT{word_idx} = P_uT{word_idx} * P_u;
+		end
 	end
 
 	T = L1.find_longest_length();
 
 	figure;
 	for seq_ind = 1:length(Hc)
-		X = (Hc{seq_ind}*(Pw1*Pw1*Pw1+fc{seq_ind})) + Sc{seq_ind}*(P_u*P_u*P_u) + Jc{seq_ind}*P_x0;
+		X = (Hc{seq_ind}*(P_wT{seq_ind}+fc{seq_ind})) + Sc{seq_ind}*P_uT{seq_ind} + Jc{seq_ind}*P_x0;
 		subplot(1,length(Hc),seq_ind)
 		hold on;
-		plot(RT(dim,0,3)*X,'Color','white')
-		plot(RT(dim,1,3)*X,'Color','cyan')
-		plot(RT(dim,2,3)*X,'Color','magenta')
-		plot(RT(dim,3,3)*X,'Color','orange')
+		plot(RT(dim,0,L1.find_longest_length())*X,'Color','white')
+		plot(RT(dim,1,L1.find_longest_length())*X,'Color','cyan')
+		plot(RT(dim,2,L1.find_longest_length())*X,'Color','magenta')
+		plot(RT(dim,3,L1.find_longest_length())*X,'Color','orange')
 		axis([-5 5 -5 5])
 	end
 
@@ -128,6 +144,6 @@ function [results] = observer_comparison56( varargin )
 
 	results.bg2 = bg;
 
-	%% Synthesizing a feedback gain that tries to place the user in a 
+
 
 end

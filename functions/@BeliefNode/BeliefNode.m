@@ -52,14 +52,15 @@ classdef BeliefNode
 		function ancest_nodes = post(varargin)
 			%Description:
 			%	Identifies what nodes could possibly arise after reaching the current Belief Node according to the dynamics
-			%	given in ad_arr.
+			%	given in lcsas.
 			%
 			%Usage:
-			%	post(BN,ad_arr,P_u,P_x0)
-			%	post(BN,ad_arr,P_u,P_x0,'debug',debug_flag)
+			%	post(BN,lcsas,P_u,P_x0)
+			%	post(BN,lcsas,P_u,P_x0,'debug',debug_flag)
+			%	post(BN,lcsas,P_u,P_x0,'fb_method','state')
 			%
 			%Inputs:
-			%	ad_arr - An array of Aff_Dyn() objects.
+			%	lcsas - An array of Aff_Dyn() objects.
 			%			 
 
 			%%%%%%%%%%%%%%%%%%%%%%
@@ -71,9 +72,13 @@ classdef BeliefNode
 			end
 
 			BN 		= varargin{1};
-			ad_arr 	= varargin{2};
+			lcsas 	= varargin{2};
 			P_u 	= varargin{3};
 			P_x0 	= varargin{4};
+
+			if ~isa(lcsas,'LCSAS')
+				error('You are using a deprecated function call. Please make sure that the input to post is an LCSAS object.')
+			end
 
 			if nargin > 4
 				arg_idx = 5;
@@ -81,7 +86,9 @@ classdef BeliefNode
 					switch varargin{arg_idx}
 						case 'debug'
 							debug_flag = varargin{arg_idx+1};
-
+							arg_idx = arg_idx + 2;
+						case 'fb_method'
+							fb_method = varargin{arg_idx+1};
 							arg_idx = arg_idx + 2;
 						otherwise
 							error(['Unexpected input: ' varargin{arg_idx}])
@@ -97,24 +104,37 @@ classdef BeliefNode
 				debug_flag = 0;
 			end
 
-			%Get All Combinations of the node's subset
-			node_p_set = BN.idx_powerset_of_subL();
+			if ~exist('fb_method')
+				fb_method = 'output';
+			end
 
-			n = size(ad_arr(1).A,1);
-			m = size(ad_arr(1).B,2);
+			%Get All Combinations of the node's subset
+			%node_p_set = BN.idx_powerset_of_subL();
+			subL_p_set = BN.subL.powerset();
+
+			n = size(lcsas.Dyn(1).A,1);
+			m = size(lcsas.Dyn(1).B,2);
 
 			%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 			%% Define Consistency Sets %%
 			%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-			Phi_sets = {}; visible_transitions = [1:length(node_p_set)];
-			for p_set_idx = 1:length(node_p_set)
-				Phi_sets{p_set_idx} = consistency_set(ad_arr,(BN.t+1),{BN.subL.words{node_p_set{p_set_idx}}},P_u,P_x0);
-				%If any of the Phi's are empty,
-				%then it is impossible for a transition to exist between the node c_level(node_ind) and the node associated with Phi
-				if Phi_sets{p_set_idx}.isEmptySet
+			Phi_sets = {};
+			Consist_sets = {};
+			visible_transitions = [1:length(subL_p_set)];
+			for p_set_idx = 1:length(subL_p_set)
+				%Check first to see if any of the words in this sublanguage are too short to create something at time t+1
+				if subL_p_set(p_set_idx).find_shortest_length() >= BN.t + 1
+					[ Consist_sets{p_set_idx} , ~ ] = lcsas.consistent_set(BN.t+1,subL_p_set(p_set_idx),P_u,P_x0,'fb_method',fb_method);
+					%If any of the Phi's are empty,
+					%then it is impossible for a transition to exist between the node c_level(node_ind) and the node associated with Phi
+					if Consist_sets{p_set_idx}.isEmptySet
+						visible_transitions(p_set_idx) = 0;
+					end
+				else
 					visible_transitions(p_set_idx) = 0;
 				end
+					
 			end 
 
 			%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -122,23 +142,23 @@ classdef BeliefNode
 			%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 			%For each possible transition, see if its transition set is completely contained by another transition set
-			for ut_idx = 1:length(node_p_set)
+			for ut_idx = 1:length(subL_p_set)
+				if debug_flag >= 1
+					disp(['ut_idx = ' num2str(ut_idx)])
+				end
 				if visible_transitions(ut_idx) ~= 0
-					Projx_Phi1 = [eye(n*((BN.t+1)+1)+m*(BN.t+1)) zeros(n*((BN.t+1)+1)+m*(BN.t+1),Phi_sets{ut_idx}.Dim-n*((BN.t+1)+1)-m*(BN.t+1))]*Phi_sets{ut_idx};
-					%vt_tilde = visible_transitions(visible_transitions ~= ind_ut);
-					for ch_idx = [ut_idx+1:length(node_p_set)]
+					for ch_idx = [ut_idx+1:length(subL_p_set)]
 						if debug_flag >= 1
 							disp(['ch_idx = ' num2str(ch_idx)])
 						end
-						Projx_Phi2 = [eye(n*((BN.t+1)+1)+m*(BN.t+1)) zeros(n*((BN.t+1)+1)+m*(BN.t+1),Phi_sets{ch_idx}.Dim-n*((BN.t+1)+1)-m*(BN.t+1))]*Phi_sets{ch_idx};
-						temp_diff = Projx_Phi1 \ Projx_Phi2;
+						temp_diff = Consist_sets{ut_idx} \ Consist_sets{ch_idx};
 						%Check to see if temp_diff is a single Polyhedron/Polytope (if it is multiple then the set difference is not empty)
 						if length(temp_diff) == 1
-							if (temp_diff.isEmptySet) && (~(Projx_Phi1.isEmptySet)) && (~(Projx_Phi2.isEmptySet))
-								if debug_flag >= 1
+							if (temp_diff.isEmptySet) && (~(Consist_sets{ut_idx}.isEmptySet)) && (~(Consist_sets{ch_idx}.isEmptySet))
+								if debug_flag >= 2
 									disp(['temp_diff.isEmptySet = ' num2str(temp_diff.isEmptySet) ' for:'])
-									disp(['- Phi1(' num2str([BN.subL.words{node_p_set{ut_idx}}]) ')' ])
-									disp(['- Phi2(' num2str([BN.subL.words{node_p_set{ch_idx}}]) ')' ])
+									disp(['- Phi1(' num2str([subL_p_set(ut_idx).words{:}]) ')' ])
+									disp(['- Phi2(' num2str([subL_p_set(ch_idx).words{:}]) ')' ])
 									disp(' ')
 								end
 								visible_transitions(ut_idx) = 0;
@@ -158,8 +178,7 @@ classdef BeliefNode
 			%%%%%%%%%%%%%%%%%%%%%%%%%%%
 			ancest_nodes = [];
 			for trans_idx = 1:length(visible_transitions)
-				temp_L = Language();
-				temp_L.words = {BN.subL.words{node_p_set{visible_transitions(trans_idx)}}};
+				temp_L = subL_p_set(visible_transitions(trans_idx));
 
 				c_node = BeliefNode(temp_L,BN.t+1);
 				ancest_nodes = [ancest_nodes,c_node];

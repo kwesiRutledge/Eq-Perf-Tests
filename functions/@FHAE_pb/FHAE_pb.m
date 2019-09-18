@@ -5,18 +5,86 @@ classdef FHAE_pb
 		L;
 		F_set;
 		u0_set;
+		BG;
 	end
 
 	methods
 		%Constructor
-		function contr = FHAE_pb( L , F_set , u0_set )
+		function contr = FHAE_pb( varargin )
 			%Description:
 			%	Simply copy everything over
+			%
+			%Usage:
+			%	contr = FHAE_pb( L , F_set , u0_set )
+			%	contr = FHAE_pb( BG , lcsas , Q_set , r_set )
+			%	contr = FHAE_pb( BG , lcsas , Q_set , r_set , 'fb_type', 'disturbance')
 			%Inputs:
 			%	L - 	A cell array of one dimension.
 			%	F_set - A 1 x |L| cell array of feedback matrices which are indexed
 			%			based on the index of the matching word in L.
 			
+			%%%%%%%%%%%%%%%%%%%%%%
+			%% Input Processing %%
+			%%%%%%%%%%%%%%%%%%%%%%
+
+			if nargin == 3
+				L = varargin{1};
+				F_set = varargin{2};
+				u0_set = varargin{3};
+			else
+				BG = varargin{1};
+				lcsas = varargin{2};
+				Q_set = varargin{3};
+				r_set = varargin{4};
+
+				if ~isa(BG,'BeliefGraph')
+					error('This version of the function requires the first input to be a Language object.')
+				end
+
+				if ~isa(lcsas,'LCSAS')
+					error('This version of the function requires the second input to be a LCSAS object.')
+				end
+
+				varargin_idx = 5;
+				while(varargin_idx <= nargin)
+					switch varargin{varargin_idx}
+						case 'fb_type'
+							fb_type = varargin{varargin_idx};
+							if ~(strcmp(fb_type,'disturbance') || strcmp(fb_type,'output'))
+								error('Unexpected feedback type. Expecting ''disturbance'' or ''output''.')
+							end
+							varargin_idx = varargin_idx + 2;
+						otherwise
+							error(['Unrecognized input string: ' varargin{varargin_idx}])
+					end
+				end
+
+			end
+
+			if ~exist('BG')
+				contr.BG = [];
+			end
+
+			%%%%%%%%%%%%%%%
+			%% Constants %%
+			%%%%%%%%%%%%%%%
+
+			%%%%%%%%%%%%%%%
+			%% Algorithm %%
+			%%%%%%%%%%%%%%%
+
+			if ~exist('F_set')
+				F_set = {}; u0_set = {};
+				for word_idx = 1:length(BG.BeliefLanguage.words)
+					[H0,S0,Cm0,J0,f_bar,B_w_big,~] = lcsas.get_mpc_matrices('word',BG.BeliefLanguage.words{word_idx});
+
+					F_set{word_idx} = pinv(eye(size(Q_set{word_idx},1)) + Q_set{word_idx}*Cm0*S0) * Q_set{word_idx};
+					u0_set{word_idx} = pinv(eye(size(Q_set{word_idx},1)) + Q_set{word_idx}*Cm0*S0) * r_set{word_idx} ;
+
+				end
+
+			end
+
 			if isnumeric(L)
 				%Convert L to cell array.
 				L_temp = {};
@@ -24,7 +92,7 @@ classdef FHAE_pb
 					L_temp{word_ind} = L(word_ind,:);
 				end
 				contr.L = L_temp;
-			elseif iscell(L)
+			elseif iscell(L) || isa(L,'Language')
 				contr.L = L;
 			else
 				error('Unknown type of L.')
@@ -35,42 +103,64 @@ classdef FHAE_pb
 		end
 
 		%Apply the correct control
-		function u = apply_control( obj , observed_w , y_vec )
-			%Useful Constants
+		function u = apply_control( varargin )
+			%FHAE_pb.apply_control
+			%Description:
+			%	Receives the currently measured output values
+			%	and computes the controller's output value.
+			%
+			%Usage:
+			%	u = apply_control(obj , observed_w , y_vec)
+			%	u = apply_control(obj , y_vec)
+
+			%%%%%%%%%%%%%%%%%%%%%%
+			%% Input Processing %%
+			%%%%%%%%%%%%%%%%%%%%%%
+
+			if (nargin < 2) || (nargin > 3)
+				error('Expected 2 or 3 inputs.')
+			end
+
+			obj = varargin{1};
+			switch nargin
+				case 2
+					y_vec = varargin{2};
+					mode_prop = 'unobserved';
+				case 3
+					observed_w = varargin{2};
+					y_vec = varargin{3};
+					mode_prop = 'observed';
+				otherwise
+					error('Expected 2 or 3 inputs.')
+			end
+
+			%%%%%%%%%%%%%%%%%%%%%%
+			%% Useful Constants %%
+			%%%%%%%%%%%%%%%%%%%%%%
+
 			ow_len = length(observed_w);
 			num_words = length(obj.L);
 			m = size(obj.F_set{1},1) / length(obj.L{1});
 			p = size(obj.F_set{1},2) / length(obj.L{1});
 
-			%Match observed_w with a word from L
-			matching_mat = [];
-			for word_ind = 1:length(obj.L)
-				if length(obj.L{word_ind}) >= ow_len
-					matching_mat = [matching_mat; obj.L{word_ind}(1:ow_len)];
-				else
-					%If the word is not long enough to match, then place some nonsense in the
-					%corresponding row of the matching matrix.
-					matching_mat = [matching_mat; Inf(1,ow_len)];
-				end
+			%%%%%%%%%%%%%%%
+			%% Algorithm %%
+			%%%%%%%%%%%%%%%
+
+			switch mode_prop
+				case 'observed'
+					%Match observed_w with a word from L
+					temp_L = Language(obj.L);
+					first_match_ind = temp_L.find_a_word_with_pref(observed_w);
+
+					%Obtain the correct feedback matrices
+					F_t  = obj.F_set{first_match_ind}([m*(ow_len-1)+1:m*ow_len],[1:p*ow_len]);
+					u0_t = obj.u0_set{first_match_ind}([m*(ow_len-1)+1:m*ow_len]);
+				otherwise
+					body
 			end
-			matching_mat = repmat(observed_w,num_words,1) == matching_mat;	
-            
-            %Showing which words match the observed prefix
-            if ow_len == 1
-                matching_locs = matching_mat;
-            elseif ow_len > 1
-                matching_locs = all(matching_mat')';
-            else
-                error('ow_len is a nonpositive integer.')
-            end
 
-			first_match_ind = find(matching_locs,1);
-
-			%Obtain the correct feedback matrices
-			obj.F_set{first_match_ind};
-			F_t  = obj.F_set{first_match_ind}([m*(ow_len-1)+1:m*ow_len],[1:p*ow_len]);
-			u0_t = obj.u0_set{first_match_ind}([m*(ow_len-1)+1:m*ow_len]);
-
+			% Compute Output
 			u = F_t * y_vec + u0_t;
 		end
 

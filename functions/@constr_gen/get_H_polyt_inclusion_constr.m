@@ -31,7 +31,7 @@ function [Lambda,constrs] = get_H_polyt_inclusion_constr( obj , H_x , h_x , H_y,
 	Lambda = sdpvar(q_y,q_x,'full');
 
 	constrs = [];
-	constrs = constrs + [Lambda >= 0]; %Lambda must be nonnegative
+	constrs = constrs + [ Lambda >= 0 ]; %Lambda must be nonnegative
 	constrs = constrs + [ Lambda * H_x == H_y];
 	constrs = constrs + [ Lambda *h_x <= h_y];
 

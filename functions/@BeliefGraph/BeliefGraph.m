@@ -11,15 +11,21 @@ classdef BeliefGraph
 		E;
 		N;
 		lcsas;
-		L;
+		ModeLanguage;
+		BeliefLanguage;
 	end
 
 	methods
-		function [BG] = BeliefGraph(in_sys,L,P_u,P_x0)
+		function [BG] = BeliefGraph(varargin)
 			%Description:
 			%
 			%Inputs:
 			%	in_sys 	- An array of Aff_Dyn() objects. May eventually become its own class/data type soon.
+			%
+			%Usage:
+			%	BG = BeliefGraph(in_sys,L,P_u,P_x0)
+			%	BG = BeliefGraph(in_sys,L,P_u,P_x0,'verbosity',verbosity)
+			%
 
 			% disp('Created empty Belief Graph. Please call the construct() function next.')
 			% BT.E = [];
@@ -32,6 +38,29 @@ classdef BeliefGraph
 			%% Input Processing %%
 			%%%%%%%%%%%%%%%%%%%%%%
 
+			if nargin < 4
+				error('Not enough inputs to construct BeliefGraph.')
+			end
+
+			in_sys = varargin{1};
+			L = varargin{2};
+			P_u = varargin{3};
+			P_x0 = varargin{4};
+
+			varargin_idx = 5;
+			while(varargin_idx <= nargin)
+				switch varargin{varargin_idx}
+					case 'verbosity'
+						verbosity = varargin{varargin_idx+1};
+						varargin_idx = varargin_idx + 2;
+					case 'fb_method'
+						fb_method = varargin{varargin_idx+1};
+						varargin_idx = varargin_idx + 2;
+					otherwise
+						error(['Unrecognized input to the function: ' varargin{varargin_idx}])
+				end
+			end
+
 			if ~isa(L,'Language')
 				error('Expected L to be a Language object.')
 			end
@@ -40,16 +69,30 @@ classdef BeliefGraph
 				warning('Expected input system to be LCSAS. Checking to see if this can be salvaged...')
 				if isa(in_sys,'Aff_Dyn')
 					temp_sys_arr = in_sys;
-					in_sys = LCSAS(temp_sys_arr);
+					in_sys = LCSAS(temp_sys_arr,L);
 				else
 					error('System must be given either as an LCSAS object or as an array of Aff_Dyn objects.')
 				end
 			end
 
-			%%Constants
+			%%%%%%%%%%%%%%%
+			%% Constants %%
+			%%%%%%%%%%%%%%%
+
+			if ~exist('verbosity')
+				verbosity = 0;
+			end
+
+			if ~exist('fb_method')
+				fb_method = 'output';
+			end
+
+			%%%%%%%%%%%%%%%%%%%%%%%%%%%
+			%% Building Belief Graph %%
+			%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 			BG.lcsas = in_sys;
-			BG.L = L;
+			BG.ModeLanguage = L;
 
 			%Create first node
 			% node0.subset = L;
@@ -60,14 +103,14 @@ classdef BeliefGraph
 			c_level = [node0];
 			BG.N = [node0];
 
-			for tau = 1:T_max
+			for tau = 1:T_max-1
 				%Each belief will be indexed by a time. (i.e. I hold X belieft at time t)
 				for node_idx = 1:length(c_level) %Iterate through all nodes that are stored in the c_level array
 					%Current node
 					c_node = c_level(node_idx);
 
 					%Calculate the ancestors of this Belief Node
-					temp_post = c_node.post(BG.lcsas,P_u,P_x0);
+					temp_post = c_node.post(BG.lcsas,P_u,P_x0,'debug',verbosity, 'fb_method',fb_method);
 					
 					%Add the ancestors to the BeliefGraph's set of nodes if they don't already exist in the set.
 					for node_idx = 1:length(temp_post)
@@ -88,9 +131,13 @@ classdef BeliefGraph
 
 				%Create next level of the tree
 				c_level = BG.get_all_nodes_at_time(tau);
-
-				disp(['There are ' num2str(length(c_level)) ' nodes at time tau = ' num2str(tau) '.' ])
+				if verbosity >= 1
+					disp(['There are ' num2str(length(c_level)) ' nodes at time tau = ' num2str(tau) '.' ])
+				end
 			end
+
+			%Create Belief Language
+			BG.BeliefLanguage = BG.get_belief_language();
 
 		end
 

@@ -20,17 +20,31 @@ classdef Language
 
 			L.words = {};
 
-			for word_idx = 1:nargin
-				%Check to see if each argument is numeric.
-				if ~isnumeric(varargin{word_idx})
-					error('All inputs to a language must be numeric.')
+
+			if (nargin == 1) && iscell(varargin{1})
+				%Check to see if each element of the cell array is a row vector.
+				temp_c_arr = varargin{1};
+				for word_idx = 1:length(temp_c_arr)
+					if size(temp_c_arr,1) ~= 1
+						error('All words in the language should be row vectors.')
+					end
 				end
 
-				if size(word_idx,1) ~= 1
-					error('All words should be row vectors.')
-				end
+				%Save
+				L.words = temp_c_arr;
+			else
+				for word_idx = 1:nargin
+					%Check to see if each argument is numeric.
+					if ~isnumeric(varargin{word_idx})
+						error('All inputs to a language must be numeric.')
+					end
 
-				L.words{word_idx} = varargin{word_idx};
+					if size(word_idx,1) ~= 1
+						error('All words should be row vectors.')
+					end
+
+					L.words{word_idx} = varargin{word_idx};
+				end
 			end
 		end
 
@@ -89,6 +103,33 @@ classdef Language
 
 		end
 
+		function powerset_L = powerset(obj)
+			%Description:
+			%	Computes an array of languages where each language in the array is composed of some subset of obj.
+
+			%%%%%%%%%%%%%%%
+			%% Constants %%
+			%%%%%%%%%%%%%%%
+
+			%%%%%%%%%%%%%%%
+			%% Algorithm %%
+			%%%%%%%%%%%%%%%
+
+			powerset_L = [];
+
+			for comb_length = 1:length(obj.words)
+				temp_combs = nchoosek([1:length(obj.words)],comb_length);
+				for comb_ind = 1:size(temp_combs,1)
+					%Create temporary language
+					temp_lang = Language();
+					temp_lang.words = { obj.words{temp_combs(comb_ind,:)} };
+					% Update the powerset
+					powerset_L = [powerset_L, temp_lang ];
+				end
+			end
+
+		end
+
 		function [l_eq_flag] = is_eq(obj,L_in)
 			%Description:
 			%	Verifies if every word in the current language is in L and vice versa.
@@ -139,6 +180,18 @@ classdef Language
 
 			for L_idx = 1:length(obj.words)
 				longest_T = max(length(obj.words{L_idx}),longest_T);
+			end
+		end
+
+		function shortest_T = find_shortest_length(obj)
+			%Description:
+			%	Searches through all elements of the words for this node and determines
+			%	how long the longest word is.
+
+			shortest_T = Inf;
+
+			for L_idx = 1:length(obj.words)
+				shortest_T = min(length(obj.words{L_idx}),shortest_T);
 			end
 		end
 

@@ -35,7 +35,7 @@ function [ fb_law , opt_out , constraints ] = rec_synthesis(varargin)
 	end
 
 	if ~exist('verbosity')
-		verbosity = 1;
+		verbosity = 0;
 	end
 
 	%%%%%%%%%%%%%%%
@@ -52,12 +52,14 @@ function [ fb_law , opt_out , constraints ] = rec_synthesis(varargin)
 
 	ops = sdpsettings('verbose',verbosity);
 
+	L = place(lcsas.Dyn(1).A',lcsas.Dyn(1).C',0.25*ones(1,n))';
+
 	%%%%%%%%%%%%%%%
 	%% Algorithm %%
 	%%%%%%%%%%%%%%%
 
 	%Create Belief Language through the BeliefGraph
-	BG = BeliefGraph(lcsas, lcsas.L, P_u, P_x0,'verbosity',1);
+	BG = BeliefGraph(lcsas, lcsas.L, P_u, P_x0,'verbosity',verbosity);
 
 	cg = constr_gen();
 
@@ -67,12 +69,12 @@ function [ fb_law , opt_out , constraints ] = rec_synthesis(varargin)
 		%Get Belief Path
 		bpath = BG.BeliefLanguage.words{bpath_idx};
 		%Synthesize Gains and Constraints associated with this belief path
-		[ Q{bpath_idx} , r{bpath_idx} , dual_vars{bpath_idx} , temp_constrs ] = BG.create_path_constraints( bpath , P_x0, P_x0 , P_u);
+		[ Q{bpath_idx} , r{bpath_idx} , dual_vars{bpath_idx} , temp_constrs ] = BG.create_path_constraints( bpath , P_x0, P_x0 , P_u , L );
 		constraints = constraints + temp_constrs;
 	end
 
 	%Add Prefix Constraints
-	pref_constrs = cg.create_prefix_constr_on_gains( lcsas , BG.BeliefLanguage , Q , r );
+	pref_constrs = cg.create_prefix_constr_on_gains( lcsas , BG.BeliefLanguage , F , f );
 	constraints = constraints + pref_constrs;
 
 	%% Call Optimizer %%
@@ -86,12 +88,12 @@ function [ fb_law , opt_out , constraints ] = rec_synthesis(varargin)
 		r_set{pattern_ind} = value(r{pattern_ind});
 	end
 
-	fb_law = FHAE_pb(BeliefLanguage,lcsas,Q_set,r_set);
+	fb_law = FHAE_pb(BG,Q_set,r_set);
 	
 	%% Optimization flags
 	opt_out = optim0;
-	opt_out.Q_set = Q_set;
-	opt_out.r_set = Q_set;
+	opt_out.F_set = F_set;
+	opt_out.f_set = f_set;
 
 
 end

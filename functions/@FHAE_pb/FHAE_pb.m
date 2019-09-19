@@ -15,9 +15,9 @@ classdef FHAE_pb
 			%	Simply copy everything over
 			%
 			%Usage:
-			%	contr = FHAE_pb( L , F_set , u0_set )
-			%	contr = FHAE_pb( BG , lcsas , Q_set , r_set )
-			%	contr = FHAE_pb( BG , lcsas , Q_set , r_set , 'fb_type', 'disturbance')
+			%	contr = FHAE_pb( L  , F_set , u0_set )
+			%	contr = FHAE_pb( BG , F_set , u0_set )
+			%
 			%Inputs:
 			%	L - 	A cell array of one dimension.
 			%	F_set - A 1 x |L| cell array of feedback matrices which are indexed
@@ -27,42 +27,45 @@ classdef FHAE_pb
 			%% Input Processing %%
 			%%%%%%%%%%%%%%%%%%%%%%
 
-			if nargin == 3
-				L = varargin{1};
+			if isa(varargin{1},'BeliefGraph')
+				BG = varargin{1};
 				F_set = varargin{2};
 				u0_set = varargin{3};
 			else
-				BG = varargin{1};
-				lcsas = varargin{2};
-				Q_set = varargin{3};
-				r_set = varargin{4};
+				L = varargin{1};
+				F_set = varargin{2};
+				u0_set = varargin{3};
 
-				if ~isa(BG,'BeliefGraph')
-					error('This version of the function requires the first input to be a Language object.')
-				end
-
-				if ~isa(lcsas,'LCSAS')
-					error('This version of the function requires the second input to be a LCSAS object.')
-				end
-
-				varargin_idx = 5;
-				while(varargin_idx <= nargin)
-					switch varargin{varargin_idx}
-						case 'fb_type'
-							fb_type = varargin{varargin_idx};
-							if ~(strcmp(fb_type,'disturbance') || strcmp(fb_type,'output'))
-								error('Unexpected feedback type. Expecting ''disturbance'' or ''output''.')
-							end
-							varargin_idx = varargin_idx + 2;
-						otherwise
-							error(['Unrecognized input string: ' varargin{varargin_idx}])
+				if isnumeric(L)
+					%Convert L to cell array.
+					L_temp = {};
+					for word_ind = 1:size(L,1)
+						L_temp{word_ind} = L(word_ind,:);
 					end
+					contr.L = Language(L_temp);
+				elseif iscell(L) 
+					contr.L = Language(L);
+				elseif isa(L,'Language')
+					contr.L = L;
+				else
+					error('Unknown type of L.')
 				end
-
 			end
 
-			if ~exist('BG')
-				contr.BG = [];
+			%Get any additional inputs.
+			varargin_idx = 4;
+			while(varargin_idx <= nargin)
+				switch varargin{varargin_idx}
+					case 'fb_type'
+						error('This flag is currently not in use.')
+						fb_type = varargin{varargin_idx};
+						if ~(strcmp(fb_type,'disturbance') || strcmp(fb_type,'output'))
+							error('Unexpected feedback type. Expecting ''disturbance'' or ''output''.')
+						end
+						varargin_idx = varargin_idx + 2;
+					otherwise
+						error(['Unrecognized input string: ' varargin{varargin_idx}])
+				end
 			end
 
 			%%%%%%%%%%%%%%%
@@ -73,31 +76,15 @@ classdef FHAE_pb
 			%% Algorithm %%
 			%%%%%%%%%%%%%%%
 
-			if ~exist('F_set')
-				F_set = {}; u0_set = {};
-				for word_idx = 1:length(BG.BeliefLanguage.words)
-					[H0,S0,Cm0,J0,f_bar,B_w_big,~] = lcsas.get_mpc_matrices('word',BG.BeliefLanguage.words{word_idx});
-
-					F_set{word_idx} = pinv(eye(size(Q_set{word_idx},1)) + Q_set{word_idx}*Cm0*S0) * Q_set{word_idx};
-					u0_set{word_idx} = pinv(eye(size(Q_set{word_idx},1)) + Q_set{word_idx}*Cm0*S0) * r_set{word_idx} ;
-
-				end
-
-			end
-
-			if isnumeric(L)
-				%Convert L to cell array.
-				L_temp = {};
-				for word_ind = 1:size(L,1)
-					L_temp{word_ind} = L(word_ind,:);
-				end
-				contr.L = L_temp;
-			elseif iscell(L) || isa(L,'Language')
+			if exist('L')
+				%If the first input was a lnaguage, check the value of L.
 				contr.L = L;
-			else
-				error('Unknown type of L.')
+				contr.BG = [];
+			elseif exist('BG')
+				contr.L = [];
+				contr.BG = BG;
 			end
-
+				
 			contr.F_set = F_set;
 			contr.u0_set = u0_set;
 		end

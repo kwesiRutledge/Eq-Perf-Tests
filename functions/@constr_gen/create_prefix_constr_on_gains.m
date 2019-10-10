@@ -1,4 +1,4 @@
-function [constraints] = create_prefix_constr_on_gains( obj , lcsas , L , Q_set , r_set )
+function [constraints] = create_prefix_constr_on_gains( obj , lcsas , Q_set , r_set )
 	%create_sadraddini_cond.m
 	%Description:
 	%	This function should use the language in L to constrain the gains defined by
@@ -19,10 +19,6 @@ function [constraints] = create_prefix_constr_on_gains( obj , lcsas , L , Q_set 
 		error('The second input must be a LCSAS object.')
 	end
 
-	if ~isa(L,'Language')
-		error('The third input must be a Language object.')
-	end
-
 	%%%%%%%%%%%%%%%
 	%% Constants %%
 	%%%%%%%%%%%%%%%
@@ -32,6 +28,8 @@ function [constraints] = create_prefix_constr_on_gains( obj , lcsas , L , Q_set 
 	p = size(lcsas.Dyn(1).C,1);
 	wd = size(lcsas.Dyn(1).B_w,2); %Assume that the size of the disturbance doesn't change for any of the included dynamics
 	vd = size(lcsas.Dyn(1).C_v,2);
+
+	L = lcsas.L;
 
 	%%%%%%%%%%%%%%%
 	%% Algorithm %%

@@ -1,4 +1,4 @@
-function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints(varargin)
+function [ varargout ] = get_robust_invariance_constraints(varargin)
 	%Description:
 	%	Gets the variables necessary to define a finite horizon reachability problem.
 	%	- Q-Parameterized versions of the feedback gains (F,f) [Notation used is the NAHS submission variety.]
@@ -6,7 +6,9 @@ function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints(varar
 	%	- Dual variable that is used to define satisfaction of the input constraint.
 	%
 	%Usage:
-	%	[ Pi1 , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,P_des,Q,r)
+	%	[ Pi2 , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,P_des,Q,r)
+	%	[ Pi2 , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,eta_x0,Q,r)
+	%
 	%	[ Pi1 , Piu , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,P_des,Q,r, 'P_u' , P_u)
 	%	[ Pi1 , Piu , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,P_des,Q,r, 'P_u' , P_u , 'u_des' , u_d)
 	%
@@ -30,15 +32,7 @@ function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints(varar
 	end
 
 	cg = varargin{1};
-
-	if isa(varargin{2},'LCSAS')
-		lcsas = varargin{2};
-	elseif isa(varargin{2},'Aff_Dyn')
-		error('This function currently does not support Aff_Dyn objects. Maybe in the future?')
-	else
-		error('Unexpected input for the second input. Expected an LCSAS or Aff_Dyn type of object.')
-	end
-
+	lcsas = varargin{2};
 	word = varargin{3};
 	P_x0 = varargin{4};
 	P_des = varargin{5};
@@ -117,10 +111,11 @@ function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints(varar
 
 	constraints = [];
 
-	P_wT = 1; P_vT = 1;
+	P_wT = 1; P_vT = 1; P_desT = P_des;
 	for symb_idx = 1:length(word)
 		P_wT = P_wT * lcsas.Dyn( word(symb_idx) ).P_w;
 		P_vT = P_vT * lcsas.Dyn( word(symb_idx) ).P_v;
+		P_desT = P_desT * P_des;
 	end
 
 	P_eta = P_wT * P_vT * P_x0;
@@ -135,7 +130,7 @@ function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints(varar
 					S0*Q*C_v_big ...
 					(eye(n*(T+1))+S0*Q*Cm0)*J0 ];
 
-			[Pi1,temp_constrs] = cg.get_H_polyt_inclusion_constr( P_eta.A, P_eta.b , P_des.A*select_m(T,T)*G, P_des.b-P_des.A*select_m(T,T)*(S0*r+(eye(n*(T+1))+S0*Q*Cm0)*H0*k_bar) );
+			[Pi2,temp_constrs] = cg.get_H_polyt_inclusion_constr( P_eta.A, P_eta.b , P_desT.A*G, P_des.b-P_desT.A*select_m(T,T)*(S0*r+(eye(n*(T+1))+S0*Q*Cm0)*H0*k_bar) );
 
 			constraints = constraints + temp_constrs;
 
@@ -159,44 +154,27 @@ function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints(varar
 
 			end
 
-		case 'F1'
-			L_big = kron(eye(T),L);
-			temp_IpLC = (eye(size(H0,1))+ L_big*Cm0)^(-1);
-
-			G = [ 	(S0*F*temp_IpLC+eye(m*T))*H0*B_w_big, ...
-					(S0*F*temp_IpLC*(-L_big)+S0*F)*C_v_big, ...
-					(S0*F*temp_IpLC+eye(m*T))*J0 ];
-
-			[Pi1,temp_constrs] = cg.get_H_polyt_inclusion_constr( 	P_eta.A, ...
-																	P_eta.b , ...
-																	P_des.A*select_m(T,T)*G, ...
-																	P_des.b-P_des.A*select_m(T,T)*(-S0*F*Cm0*temp_IpLC*J0*xhat0 + S0*f + H0*k_bar ) );
-
-			constraints = constraints + temp_constrs;
-
-			%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-			%% Define the Dual Variables for Input Constraint %%
-			%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-			if exist('P_u')
-
-				P_uT = 1;
-				for symb_idx = 1:length(word)
-					P_uT = P_uT * P_u;
-				end
-
-				%Create the G matrix for the input, H_u
-				%temp_IpLC = (eye(size(H0,1))+ L_big*Cm0)^(-1);
-				G_u = [ F*Cm0*temp_IpLC*B_w_big, F*Cm0*temp_IpLC*(-L_big)*C_v_big, F*Cm0*temp_IpLC*J0 ];
-
-				[Piu, temp_constrs] = cg.get_H_polyt_inclusion_constr( 	P_eta.A, P_eta.b , ...
-																		P_uT.A*G_u, P_uT.b- P_uT.A*(f-F*Cm0*temp_IpLC*J0*xhat0) );
-
-				constraints = constraints + temp_constrs;
-
-			end
+		
 
 
 	end
+
+	%%%%%%%%%%%%%%%%%%%%%%%
+	%% Output Processing %%
+	%%%%%%%%%%%%%%%%%%%%%%%
+
+	varargout_idx = 1;
+
+	if exist('Pi2')
+		varargout{varargout_idx} = Pi2;
+		varargout_idx = varargout_idx + 1;
+	end
+
+	if exist('Piu')
+		varargout{varargout_idx} = Piu;
+		varargout_idx = varargout_idx + 1;
+	end
+
+	varargout{varargout_idx} = constraints;
 
 end

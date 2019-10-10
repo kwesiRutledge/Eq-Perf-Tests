@@ -1,4 +1,4 @@
-function ancest_nodes = post(varargin)
+function ancest_nodes = post_consv(varargin)
 	%Description:
 	%	Identifies what nodes could possibly arise after reaching the current Belief Node according to the dynamics
 	%	given in lcsas.
@@ -82,37 +82,14 @@ function ancest_nodes = post(varargin)
 			%Does the belief node already exist in the tree?
 			%If so, then get the consistency set from there.
 			Consist_sets{p_set_idx} = BG.N( BG.find_node_idx(temp_BN) ).c_set;
-			
 		%Check first to see if any of the words in this sublanguage are too short to create something at time t+1
-		elseif temp_lang.find_shortest_length() >= BN.t + 1
-			if temp_lang.cardinality() == 1
-
-				%See if the current prefix has already been considered.
-				word = temp_lang.words{1}; %The cardinality is 1, so there is only one word.
-				curr_pref = word([1:(BN.t+1)]);
-				matches = zeros(1,p_set_idx-1); %Store whether or not there is a prefix match in this array.
-				for word_idx = 1:p_set_idx-1
-					prev_word = subL_p_set(word_idx).words{1}; %All previous Languages must also have cardinality 1. (by construction)
-					prev_word_pref = prev_word([1:BN.t+1]);
-
-					matches(word_idx) = all( prev_word_pref == curr_pref );
-				end
-
-				if any(matches)
-					%We have already constructed this consist_set
-					match_idx = find(matches,1);
-					Consist_sets{p_set_idx} = Consist_sets{match_idx};
-					if visible_transitions(match_idx) == 0
-						visible_transitions(p_set_idx) = 0;
-					end
-				else
-					%We must construct this consist_set.
-					[ Consist_sets{p_set_idx} , ~ ] = lcsas.consistent_set(BN.t+1,subL_p_set(p_set_idx),P_u,P_x0,'fb_method',fb_method);
-					%If any of the Phi's are empty,
-					%then it is impossible for a transition to exist between the node c_level(node_ind) and the node associated with Phi
-					if Consist_sets{p_set_idx}.isEmptySet
-						visible_transitions(p_set_idx) = 0;
-					end
+		elseif subL_p_set(p_set_idx).find_shortest_length() >= BN.t + 1
+			if subL_p_set(p_set_idx).cardinality() == 1
+				[ Consist_sets{p_set_idx} , ~ ] = lcsas.consistent_set(BN.t+1,subL_p_set(p_set_idx),P_u,P_x0,'fb_method',fb_method);
+				%If any of the Phi's are empty,
+				%then it is impossible for a transition to exist between the node c_level(node_ind) and the node associated with Phi
+				if Consist_sets{p_set_idx}.isEmptySet
+					visible_transitions(p_set_idx) = 0;
 				end
 			else
 				%If there is more than one word in the element of the powerset, then do not call the consistent set function.
@@ -152,60 +129,34 @@ function ancest_nodes = post(varargin)
 	%% Identify Which Consistency Sets Can Be Independently Detected %%
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-	empty_log = zeros(length(subL_p_set));
-
-	%For each possible transition, see if its transition set is completely contained by another transition set
-	for ut_idx = 1:length(subL_p_set)
-		L_ut = subL_p_set(ut_idx);
-		if debug_flag >= 1
-			disp(['ut_idx = ' num2str(ut_idx)])
-		end
-		%Only check the indices of the powerset that have NON-empty
-		%consistency sets.
-		if visible_transitions(ut_idx) ~= 0
-			for ch_idx = [ut_idx+1:length(subL_p_set)]
-				L_ch = subL_p_set(ch_idx);
-
-				if debug_flag >= 1
-					disp(['ch_idx = ' num2str(ch_idx)])
-				end
-
-				%if ch_idx is for a non-visible transition.
-				if visible_transitions(ch_idx) == 0
-					continue;
-				end
-
-				%Before performing any set differences, see if a logical check will do.
-				for p_set_idx = 1:length(empty_log)
-					L_temp = subL_p_set(p_set_idx);
-					if (empty_log(p_set_idx,ch_idx) == 1) && ( L_temp.subseteq( L_ut ) )
-						visible_transitions(ut_idx) = 0;
-						empty_log(ut_idx,ch_idx) = 1;
-						break;
-					end
-				end
-
-				temp_diff = Consist_sets{ut_idx} \ Consist_sets{ch_idx};
-				%Check to see if temp_diff is a single Polyhedron/Polytope (if it is multiple then the set difference is not empty)
-				if length(temp_diff) == 1
-					if (temp_diff.isEmptySet) %&& (~(Consist_sets{ch_idx}.isEmptySet))
-						if debug_flag >= 2
-							disp(['temp_diff.isEmptySet = ' num2str(temp_diff.isEmptySet) ' for:'])
-							disp(['- Phi1(' num2str([subL_p_set(ut_idx).words{:}]) ')' ])
-							disp(['- Phi2(' num2str([subL_p_set(ch_idx).words{:}]) ')' ])
-							disp(' ')
-						end
-						visible_transitions(ut_idx) = 0;
-						empty_log(ut_idx,ch_idx) = 1;
-						break;
-					% elseif (ch_idx == ind_ut) && (~Projx_Phi1.isEmptySet)
-					% 	visible_transitions(ind_ut) = ch_idx;
-					end 
-				end
-
-			end
-		end
-	end
+	% %For each possible transition, see if its transition set is completely contained by another transition set
+	% for ut_idx = 1:length(subL_p_set)
+	% 	if debug_flag >= 1
+	% 		disp(['ut_idx = ' num2str(ut_idx)])
+	% 	end
+	% 	if visible_transitions(ut_idx) ~= 0
+	% 		for ch_idx = [ut_idx+1:length(subL_p_set)]
+	% 			if debug_flag >= 1
+	% 				disp(['ch_idx = ' num2str(ch_idx)])
+	% 			end
+	% 			temp_diff = Consist_sets{ut_idx} \ Consist_sets{ch_idx};
+	% 			%Check to see if temp_diff is a single Polyhedron/Polytope (if it is multiple then the set difference is not empty)
+	% 			if length(temp_diff) == 1
+	% 				if (temp_diff.isEmptySet) && (~(Consist_sets{ut_idx}.isEmptySet)) && (~(Consist_sets{ch_idx}.isEmptySet))
+	% 					if debug_flag >= 2
+	% 						disp(['temp_diff.isEmptySet = ' num2str(temp_diff.isEmptySet) ' for:'])
+	% 						disp(['- Phi1(' num2str([subL_p_set(ut_idx).words{:}]) ')' ])
+	% 						disp(['- Phi2(' num2str([subL_p_set(ch_idx).words{:}]) ')' ])
+	% 						disp(' ')
+	% 					end
+	% 					visible_transitions(ut_idx) = 0;
+	% 				% elseif (ch_idx == ind_ut) && (~Projx_Phi1.isEmptySet)
+	% 				% 	visible_transitions(ind_ut) = ch_idx;
+	% 				end 
+	% 			end
+	% 		end
+	% 	end
+	% end
 	%Process visible_transitions matrix
 	visible_transitions = visible_transitions(visible_transitions ~= 0);
 	visible_transitions = unique(visible_transitions);

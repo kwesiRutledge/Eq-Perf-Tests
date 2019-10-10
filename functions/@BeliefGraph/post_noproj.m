@@ -1,7 +1,7 @@
-function ancest_nodes = post(varargin)
+function ancest_nodes = post_noproj(varargin)
 	%Description:
 	%	Identifies what nodes could possibly arise after reaching the current Belief Node according to the dynamics
-	%	given in lcsas.
+	%	given in lcsas. DOES NOT USE PROJECTION.
 	%
 	%Usage:
 	%	BG.post(BN,P_u,P_x0)
@@ -82,20 +82,17 @@ function ancest_nodes = post(varargin)
 			%Does the belief node already exist in the tree?
 			%If so, then get the consistency set from there.
 			Consist_sets{p_set_idx} = BG.N( BG.find_node_idx(temp_BN) ).c_set;
-			
 		%Check first to see if any of the words in this sublanguage are too short to create something at time t+1
-		elseif temp_lang.find_shortest_length() >= BN.t + 1
-			if temp_lang.cardinality() == 1
+		elseif subL_p_set(p_set_idx).find_shortest_length() >= BN.t + 1
+			if subL_p_set(p_set_idx).cardinality() == 1
 
 				%See if the current prefix has already been considered.
-				word = temp_lang.words{1}; %The cardinality is 1, so there is only one word.
+				word = subL_p_set(p_set_idx).words{1}; %The cardinality is 1, so there is only one word.
 				curr_pref = word([1:(BN.t+1)]);
 				matches = zeros(1,p_set_idx-1); %Store whether or not there is a prefix match in this array.
 				for word_idx = 1:p_set_idx-1
 					prev_word = subL_p_set(word_idx).words{1}; %All previous Languages must also have cardinality 1. (by construction)
-					prev_word_pref = prev_word([1:BN.t+1]);
-
-					matches(word_idx) = all( prev_word_pref == curr_pref );
+					matches(word_idx) = all( prev_word == word );
 				end
 
 				if any(matches)
@@ -152,7 +149,7 @@ function ancest_nodes = post(varargin)
 	%% Identify Which Consistency Sets Can Be Independently Detected %%
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-	empty_log = zeros(length(subL_p_set));
+	empty_log = zeros(1,length(subL_p_set));
 
 	%For each possible transition, see if its transition set is completely contained by another transition set
 	for ut_idx = 1:length(subL_p_set)
@@ -170,7 +167,7 @@ function ancest_nodes = post(varargin)
 					disp(['ch_idx = ' num2str(ch_idx)])
 				end
 
-				%if ch_idx is for a non-visible transition.
+				%if ch_idx is for a 
 				if visible_transitions(ch_idx) == 0
 					continue;
 				end
@@ -178,9 +175,9 @@ function ancest_nodes = post(varargin)
 				%Before performing any set differences, see if a logical check will do.
 				for p_set_idx = 1:length(empty_log)
 					L_temp = subL_p_set(p_set_idx);
-					if (empty_log(p_set_idx,ch_idx) == 1) && ( L_temp.subseteq( L_ut ) )
+					if (empty_log(p_set_idx) == 1) && ( L_temp.subseteq( L_ut ) )
 						visible_transitions(ut_idx) = 0;
-						empty_log(ut_idx,ch_idx) = 1;
+						empty_log(ut_idx) = 1;
 						break;
 					end
 				end
@@ -196,7 +193,7 @@ function ancest_nodes = post(varargin)
 							disp(' ')
 						end
 						visible_transitions(ut_idx) = 0;
-						empty_log(ut_idx,ch_idx) = 1;
+						empty_log(ut_idx) = 1;
 						break;
 					% elseif (ch_idx == ind_ut) && (~Projx_Phi1.isEmptySet)
 					% 	visible_transitions(ind_ut) = ch_idx;

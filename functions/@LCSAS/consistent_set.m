@@ -104,7 +104,8 @@ function [Consist_set, full_set ] = consistent_set(varargin)
 		%Initial Condition Set for Each Word in L
 		P_x0_L = P_x0_L * P_x0;
     end
-    
+    %Created Disturbance Sets
+
     P_uT = 1;
     for t_idx = 1:t
         P_uT = P_uT * P_u;
@@ -120,7 +121,7 @@ function [Consist_set, full_set ] = consistent_set(varargin)
 	I_blockx = []; I_blockx2 = []; I_blocky = [];
 	C_block = []; Cv_block = [];
 	for word_ind = 1:length(L.words)
-		H_block(end+[1:size(Hc{word_ind},1)],end+[1:size(Hc{word_ind},2)]) = -Hc{word_ind}*Bwc{word_ind};
+		H_block(end+[1:size(Hc{word_ind},1)],end+[1:size(Bwc{word_ind},2)]) = -Hc{word_ind}*Bwc{word_ind};
 		S_block(end+[1:size(Sc{word_ind},1)],[1:size(Sc{word_ind},2)]) = -Sc{word_ind};
 		J_block(end+[1:size(Jc{word_ind},1)],end+[1:size(Jc{word_ind},2)]) = -Jc{word_ind};
 		f_block(end+[1:size(Hc{word_ind}*fc{word_ind},1)],1) = Hc{word_ind}*fc{word_ind};
@@ -128,8 +129,8 @@ function [Consist_set, full_set ] = consistent_set(varargin)
 		I_blockx(end+[1:n_x*(t+1)],[1:n_x*(t+1)]) = eye(n_x*(t+1));
 		I_blocky(end+[1:n_y*(t+1)],[1:n_y*(t+1)]) = eye(n_y*(t+1));
 
-		C_block(end+[1:n_y*(t+1)],end+[1:n_x*(t+1)]) = -[Cc{word_ind} ; zeros(n_y,n_x*t), lcsas.Dyn( L.words{word_ind}(t+1) ).C ];
-		Cv_block(end+[1:n_y*(t+1)],end+[1:n_v*(t+1)]) = -[Cvc{word_ind},zeros(size(Cvc{word_ind},1),n_v);zeros(n_y,size(Cvc{word_ind},2)), lcsas.Dyn( L.words{word_ind}(t+1) ).C_v ];
+		C_block(end+[1:n_y*(t+1)],end+[1:n_x*(t+1)]) = [Cc{word_ind} ; zeros(n_y,n_x*t), lcsas.Dyn( L.words{word_ind}(t+1) ).C ];
+		Cv_block(end+[1:n_y*(t+1)],end+[1:n_v*(t+1)]) = [Cvc{word_ind},zeros(size(Cvc{word_ind},1),n_v);zeros(n_y,size(Cvc{word_ind},2)), lcsas.Dyn( L.words{word_ind}(t+1) ).C_v ];
 		I_blockx2(end+[1:n_x*(t+1)],end+[1:n_x*(t+1)]) = eye(n_x*(t+1));
 	end
 
@@ -164,12 +165,17 @@ function [Consist_set, full_set ] = consistent_set(varargin)
     	%Create the set of feasible (x,u,w,x0) tuples
     	full_set = Polyhedron(	'A',[zeros(size(P_eta.A,1),n_y*(t+1)),P_eta.A,zeros(size(P_eta.A,1),length(L.words)*n_x*(t+1))],'b',P_eta.b, ...
     							'Ae',[zeros(size(S_block,1),size(I_blocky,2)),S_block, H_block, zeros(size(S_block,1),size(Cv_block,2)), J_block, I_blockx2; ...
-    								  I_blocky, zeros(size(I_blocky,1),size(S_block,2)+size(H_block,2)), Cv_block , zeros(size(I_blocky,1),size(J_block,2)) , C_block ], ...
+    								  I_blocky, zeros(size(I_blocky,1),size(S_block,2)+size(H_block,2)), -Cv_block , zeros(size(I_blocky,1),size(J_block,2)) , -C_block ], ...
     							'be', [f_block;zeros(size(I_blocky,1),1)] );
 
-		%Project the above set to create the set of feasible observed trajectories (x,u)
-		Consist_set = [ eye(n_y*(t+1) + n_u*t), zeros(n_x*(t+1) + n_u*t, length(L.words)*(n_w*t + n_v*(t+1) + n_x + n_x*(t+1)) ) ] * full_set;
-
+    	if ~full_set.isEmptySet
+			%Project the above set to create the set of feasible observed trajectories (x,u)
+			%Consist_set = [ eye(n_y*(t+1) + n_u*t), zeros(n_x*(t+1) + n_u*t, length(L.words)*(n_w*t + n_v*(t+1) + n_x + n_x*(t+1)) ) ] * full_set;
+			%Consist_set = full_set.affineMap([ eye(n_y*(t+1) + n_u*t), zeros(n_x*(t+1) + n_u*t, length(L.words)*(n_w*t + n_v*(t+1) + n_x + n_x*(t+1)) ) ],'vrep')
+			Consist_set = full_set.projection([1:n_y*(t+1) + n_u*t]);
+		else
+			Consist_set = Polyhedron('A',[ [1;-1], ones(2,n_y*(t+1) + n_u*t-1) ],'b',[1;-2]);
+		end
 	end
 		
 

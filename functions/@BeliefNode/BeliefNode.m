@@ -1,16 +1,61 @@
 classdef BeliefNode
+	%Description:
+	%
+	%Properties:
+	%	- subL:	A Language object that represents the belief at the current time step.
+	%			i.e. One of the mode sequences in this language is occurring, if we have
+	%			reached this node.
+	%
+	%	- t:	Time at which the belief is held.
+	%			Assumed to be between 0 and the length of the longest word in subset_L.
+	%
+	%	- c_set:	A Polyhedron that represents what trajectories (y_[0:t],u_[0:t-1])
+	%
+	%Methods:
+	%	- idx_powerset_of_subL
+	%	- post
+	%	- is_eq
+	%	- find_longest_horizon
+	%
 
 	properties
 		subL;
 		t;
+		c_set;
 	end
 
 	methods
-		function BN = BeliefNode(subset_L,t0)
-			
+		function BN = BeliefNode(varargin)
+			%Description:
+			%	A Belief Node is defined to contain:
+			%		- A Belief on which mode sequences are being executed (represented as a subset of the
+			%		  language L defined for the LCSAS), and
+			%		- A time at which that belief is held
+			%Usage:
+			%	BN = BeliefNode(subset_L,t0)
+			%	BN = BeliefNode(subset_L,t0,c_set)
+
+			debug_flag = 0;
+
 			%%%%%%%%%%%%%%%%%%%%%%
 			%% Input Processing %%
 			%%%%%%%%%%%%%%%%%%%%%%
+
+			if nargin < 2
+				error('Not enough input arguments.')
+			end
+
+			subset_L = varargin{1};
+			t0 = varargin{2};
+
+			if nargin == 2
+				if debug_flag > 0
+					warning('This method for initializing Belief Nodes is deprecated. Please use the 3 argument version.')
+				end
+			elseif nargin == 3
+				c_set = varargin{3};
+				BN.c_set = c_set;
+			end
 
 			if ~(iscell(subset_L) || isa(subset_L,'Language') )
 				error('Expected subset of language to be a cell array or a Language object.')
@@ -123,6 +168,7 @@ classdef BeliefNode
 			Consist_sets = {};
 			visible_transitions = [1:length(subL_p_set)];
 			for p_set_idx = 1:length(subL_p_set)
+				disp(['p_set_idx = ' num2str(p_set_idx)])
 				%Check first to see if any of the words in this sublanguage are too short to create something at time t+1
 				if subL_p_set(p_set_idx).find_shortest_length() >= BN.t + 1
 					[ Consist_sets{p_set_idx} , ~ ] = lcsas.consistent_set(BN.t+1,subL_p_set(p_set_idx),P_u,P_x0,'fb_method',fb_method);
@@ -179,8 +225,9 @@ classdef BeliefNode
 			ancest_nodes = [];
 			for trans_idx = 1:length(visible_transitions)
 				temp_L = subL_p_set(visible_transitions(trans_idx));
+				temp_consist_set = Consist_sets{visible_transitions(trans_idx)};
 
-				c_node = BeliefNode(temp_L,BN.t+1);
+				c_node = BeliefNode(temp_L,BN.t+1,temp_consist_set);
 				ancest_nodes = [ancest_nodes,c_node];
 			end
 

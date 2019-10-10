@@ -9,7 +9,7 @@ function [varargout] = get_mpc_matrices(varargin)
 	%
 	%	Usage:
 	%		[H,S,C_bar,J,f_bar] = get_mpc_matrices(lcsas,'word',sigma)
-	%		[H,S,C_bar,J,f_bar,B_w_bar,C_v_bar] = get_mpc_matrices(sys_arr,'word',sigma)
+	%		[H,S,C_bar,J,f_bar,B_w_bar,C_v_bar] = get_mpc_matrices(lcsas,'word',sigma)
 	%
 	%	Inputs:
 	%		T - 		Time horizon for the MPC matrices.

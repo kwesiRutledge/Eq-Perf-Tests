@@ -1,4 +1,4 @@
-classdef BeliefGraph
+classdef BeliefGraph < handle
 	%Description:
 	%
 	%Member Variables:
@@ -6,6 +6,15 @@ classdef BeliefGraph
 	%		  For a row E_i, the first entry (first column) is the INDEX of the edge's source node (i.e. N(E_i(1)) is
 	%		  the source node of the edge) and the second entry (second column) is the INDEX of the edge's
 	%		  destination node (i.e. N(E_i(2)) is the destination node of the edge).
+	%
+	%Member Functions
+	%	- find_node_idx
+	%	- get_all_nodes_at_time
+	%	- plot
+	%	- get_leaf_node_idxs
+	%	- pre
+	%	- prepend_any_valid_node
+	%	- get_belief_language
 
 	properties
 		E;
@@ -21,11 +30,14 @@ classdef BeliefGraph
 			%
 			%Inputs:
 			%	in_sys 	- An array of Aff_Dyn() objects. May eventually become its own class/data type soon.
+			%	in_lcsas- An LCSAS object representing the desired system.
 			%
 			%Usage:
 			%	BG = BeliefGraph(in_sys,L,P_u,P_x0)
 			%	BG = BeliefGraph(in_sys,L,P_u,P_x0,'verbosity',verbosity)
+			%	BG = BeliefGraph(in_lcsas,P_u,P_x0,'verbosity',verbosity)
 			%
+
 
 			% disp('Created empty Belief Graph. Please call the construct() function next.')
 			% BT.E = [];
@@ -38,16 +50,31 @@ classdef BeliefGraph
 			%% Input Processing %%
 			%%%%%%%%%%%%%%%%%%%%%%
 
-			if nargin < 4
-				error('Not enough inputs to construct BeliefGraph.')
+			in_sys = varargin{1};
+			
+			if ~isa(in_sys,'LCSAS')
+				if nargin < 4
+					error('Not enough inputs to construct BeliefGraph.')
+				end
+
+				L = varargin{2};
+				P_u = varargin{3};
+				P_x0 = varargin{4};
+
+				varargin_idx = 5;
+			else
+				if nargin < 3
+					error('Not enough inputs to construct BeliefGraph.')
+				end
+
+				L = in_sys.L;
+				P_u = varargin{2};
+				P_x0 = varargin{3};
+
+				varargin_idx = 4;
 			end
 
-			in_sys = varargin{1};
-			L = varargin{2};
-			P_u = varargin{3};
-			P_x0 = varargin{4};
 
-			varargin_idx = 5;
 			while(varargin_idx <= nargin)
 				switch varargin{varargin_idx}
 					case 'verbosity'
@@ -75,6 +102,8 @@ classdef BeliefGraph
 				end
 			end
 
+			disp('Worked through inputs.')
+
 			%%%%%%%%%%%%%%%
 			%% Constants %%
 			%%%%%%%%%%%%%%%
@@ -97,7 +126,7 @@ classdef BeliefGraph
 			%Create first node
 			% node0.subset = L;
 			% node0.t = 0;
-			node0 = BeliefNode(L,0);
+			node0 = BeliefNode(L,0,in_sys.Dyn(1).C*P_x0);
 			T_max = node0.find_longest_horizon();
 
 			c_level = [node0];
@@ -110,7 +139,7 @@ classdef BeliefGraph
 					c_node = c_level(node_idx);
 
 					%Calculate the ancestors of this Belief Node
-					temp_post = c_node.post(BG.lcsas,P_u,P_x0,'debug',verbosity, 'fb_method',fb_method);
+					temp_post = BG.post(c_node,P_u,P_x0,'debug',verbosity, 'fb_method',fb_method);
 					
 					%Add the ancestors to the BeliefGraph's set of nodes if they don't already exist in the set.
 					for node_idx = 1:length(temp_post)
@@ -158,6 +187,12 @@ classdef BeliefGraph
 		function [subN] = get_all_nodes_at_time(obj,tau)
 			%Description:
 			%	Retrieves all belief nodes that have time value provided.
+			%
+			%Usage:
+			%	[subN] = BG.get_all_nodes_at_time(tau)
+			%
+			%Outputs:
+			%	subN - 	An array of BeliefNode objects.
 
 			subN = [];
 			for node_idx = 1:length(obj.N)

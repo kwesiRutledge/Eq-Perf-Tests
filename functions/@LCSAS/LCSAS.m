@@ -2,6 +2,14 @@ classdef LCSAS
 	%Definition:
 	%	Object for a Language Constrained Switched Affine System.
 	%
+	%Construction:
+	%	lcsas = LCSAS(ad_arr,L);
+	%	lcsas = LCSAS(ad_arr,L,Domain);	
+	%
+	%Member functions:
+	%	- consistency_set
+	%	- get_mpc_matrices
+	%
 	%Requires:
 	%	Aff_Dyn() class.
 

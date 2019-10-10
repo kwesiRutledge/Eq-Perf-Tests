@@ -2,6 +2,21 @@ classdef Language
 	%Description:
 	%	This class is meant to contain the methods needed to model languages used in the Ozay group's prefix-based methods.
 	%
+	%Construction:
+	%	L1 = Language([1,2],[3,4,5],[1,4,5])
+	%	L2 = Language({[1,2,3],[2,3,3]})
+	%
+	%Methods:
+	%	- contains
+	%	- subseteq
+	%	- union
+	%	- powerset
+	%	- is_eq
+	%	- all_words_start_with_root
+	%	- find_longest_length
+	%	- find_shortest_length
+	%	- find_a_word_with_pref
+	%
 	%Member Variables:
 	%	words 	- A cell array of numeric arrays.
 	%			  In general languages can contain words of different lengths, which is why this is a cell array.
@@ -52,6 +67,9 @@ classdef Language
 			%Description:
 			%	Returns true if the word 'word_in' is in the language's words/
 			%	Otherwise returns false.
+			%
+			%Usage:
+			%	in_lang_flag = L.contains([1,2,1,1,1])
 
 			%% Variables
 
@@ -187,12 +205,26 @@ classdef Language
 			%Description:
 			%	Searches through all elements of the words for this node and determines
 			%	how long the longest word is.
+			%
+			%Usage:
+			%	shortest_T = Language.find_shortest_length()
 
 			shortest_T = Inf;
 
 			for L_idx = 1:length(obj.words)
 				shortest_T = min(length(obj.words{L_idx}),shortest_T);
 			end
+		end
+
+		function card = cardinality(obj)
+			%Description:
+			%	Returns the cardinality of the set.
+			%
+			%Assumption:
+			%	Assumes every word in the language is unique.
+
+			card = length(obj.words);
+
 		end
 
 	end

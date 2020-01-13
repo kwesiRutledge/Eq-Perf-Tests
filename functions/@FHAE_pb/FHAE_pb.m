@@ -1,14 +1,10 @@
-classdef FHAE_pb < handle
+classdef FHAE_pb
 %Description:
 %	This class is the prefix-based controller that was developed in my most recent write up. (#31)
 	properties
 		L;
 		F_set;
 		u0_set;
-
-		BG;
-		u_hist;
-		b_hist;
 	end
 
 	methods
@@ -19,7 +15,6 @@ classdef FHAE_pb < handle
 			%
 			%Usage:
 			%	contr = FHAE_pb( L  , F_set , u0_set )
-			%	contr = FHAE_pb( BG , F_set , u0_set )
 			%
 			%Inputs:
 			%	L - 	A cell array of one dimension.
@@ -30,15 +25,9 @@ classdef FHAE_pb < handle
 			%% Input Processing %%
 			%%%%%%%%%%%%%%%%%%%%%%
 
-			if isa(varargin{1},'BeliefGraph')
-				BG = varargin{1};
-				F_set = varargin{2};
-				u0_set = varargin{3};
-			else
-				L = varargin{1};
-				F_set = varargin{2};
-				u0_set = varargin{3};
-			end
+			L = varargin{1};
+			F_set = varargin{2};
+			u0_set = varargin{3};
 
 			%Get any additional inputs.
 			varargin_idx = 4;
@@ -64,34 +53,24 @@ classdef FHAE_pb < handle
 			%% Algorithm %%
 			%%%%%%%%%%%%%%%
 
-			if exist('L')
-				%If the first input was a lnaguage, check the value of L.
-				if isnumeric(L)
-					%Convert L to cell array.
-					L_temp = {};
-					for word_ind = 1:size(L,1)
-						L_temp{word_ind} = L(word_ind,:);
-					end
-					contr.L = Language(L_temp);
-				elseif iscell(L) 
-					contr.L = Language(L);
-				elseif isa(L,'Language')
-					contr.L = L;
-				else
-					error('Unknown type of L.')
+			%If the first input was a lnaguage, check the value of L.
+			if isnumeric(L)
+				%Convert L to cell array.
+				L_temp = {};
+				for word_ind = 1:size(L,1)
+					L_temp{word_ind} = L(word_ind,:);
 				end
-
-				contr.BG = [];
-			elseif exist('BG')
-				contr.L = [];
-				contr.BG = BG;
+				contr.L = Language(L_temp);
+			elseif iscell(L) 
+				contr.L = Language(L);
+			elseif isa(L,'Language')
+				contr.L = L;
+			else
+				error('Unknown type of L.')
 			end
 				
 			contr.F_set = F_set;
 			contr.u0_set = u0_set;
-
-			contr.u_hist = [];
-			contr.b_hist = [];
 		end
 
 		%Apply the correct control
@@ -102,9 +81,7 @@ classdef FHAE_pb < handle
 			%	and computes the controller's output value.
 			%
 			%Usage:
-			%	u = apply_control(obj , observed_w , y_mat)
-			%	u = apply_control(obj , y_mat)
-			
+			%	u = apply_control(obj , observed_w , y_mat)			
 
 			%%%%%%%%%%%%%%%%%%%%%%
 			%% Input Processing %%
@@ -115,17 +92,13 @@ classdef FHAE_pb < handle
 			end
 
 			obj = varargin{1};
-			switch nargin
-				case 2
-					y_mat = varargin{2};
-					mode_prop = 'unobserved';
-				case 3
-					observed_w = varargin{2};
-					y_mat = varargin{3};
+			observed_w = varargin{2};
+			y_mat = varargin{3};
 
-					mode_prop = 'observed';
-				otherwise
-					error('Expected 2 or 3 inputs.')
+			if size(y_mat,2) == 1
+				% It seems like I might have put this in the format of a n_y*t x 1 vector.
+				%Resize the vector if necessary.
+				y_mat = reshape(y_mat,length(y_mat)/length(observed_w),length(observed_w) );
 			end
 
 			%%%%%%%%%%%%%%%%%%%%%%
@@ -134,39 +107,19 @@ classdef FHAE_pb < handle
 
 			p = size(y_mat,1);
 
-			if ~isempty(obj.L)
-				num_words = length(obj.L.words);
-				m = size(obj.F_set{1},1) / length(obj.L.words{1});
-				%p = size(obj.F_set{1},2) / length(obj.L.words{1});
-			elseif ~isempty(obj.BG)
-				num_words = length(obj.BG.BeliefLanguage.words);
-				T1 = length(obj.BG.BeliefLanguage.words{1});
-				m = size(obj.F_set{1},1) / T1;
-				%p = size(obj.F_set{1},2) / T1;
-			else
-				error('There is not an available Language or BeliefGraph object in the controller.')
-			end
+			num_words = length(obj.L.words);
+			m = size(obj.F_set{1},1) / length(obj.L.words{1});
+			%p = size(obj.F_set{1},2) / length(obj.L.words{1});
 
 			y_vec = reshape(y_mat,prod(size(y_mat)),1);
 
-			switch mode_prop
-				case 'unobserved'
-					num_obsvs = length(y_vec)/p;
-				case 'observed'
-					num_obsvs = length(observed_w);
-			end
+			num_obsvs = length(observed_w);
 
 			%%%%%%%%%%%%%%%
 			%% Algorithm %%
 			%%%%%%%%%%%%%%%
 
-			switch mode_prop
-				case 'observed'
-					gain_idx = obj.prefix_detection( observed_w );
-				case 'unobserved'
-					gain_idx = obj.prefix_detection( y_mat )
-					obj.BG.BeliefLanguage.words{gain_idx}
-			end
+			gain_idx = obj.L.find_a_word_with_pref( observed_w );
 
 			%Obtain the correct feedback matrices
 			F_t  = obj.F_set{gain_idx}([m*(num_obsvs-1)+1:m*num_obsvs],[1:p*num_obsvs]);
@@ -174,8 +127,6 @@ classdef FHAE_pb < handle
 
 			% Compute Output
 			u = F_t * y_vec + u0_t;
-
-			obj.u_hist = [obj.u_hist,u];
 		end
 
 		%Simulation of a single run
@@ -187,7 +138,7 @@ classdef FHAE_pb < handle
 			%Usages:
 			%	x_0_t = obj.simulate_1run( ad , M1 , sig )
 			%	x_0_t = obj.simulate_1run( ad , M1 , 'in_sigma' , sig )
-			%	x_0_t = obj.simulate_1run( ad , M1 , 'in_sigma' , sig , )'in_w' , in_w 
+			%	x_0_t = obj.simulate_1run( ad , M1 , 'in_sigma' , sig , 'in_w' , in_w )
 			%	x_0_t = obj.simulate_1run( ad , M1 , 'in_x0' , in_x0  )
 			%	x_0_t
 			%
@@ -208,156 +159,91 @@ classdef FHAE_pb < handle
 			%++++++++++++++++
 			%Input Processing
 			obj = varargin{1};
-			in_sys = varargin{2};
+			ad = varargin{2};
 			M1 = varargin{3};
 
-			if (~isa(in_sys,'Aff_Dyn')) && (~isa(in_sys,'LCSAS'))
-				error('The input system must be an LCSAS or Aff_Dyn object.')
+			if ~isa(ad,'Aff_Dyn')
+				error('The input system must be an Aff_Dyn object.')
 			end
 
 			x_0_t = []; y_0_t=[]; sig = []; u_0_tm1 = [];
 
-			if isa(in_sys,'Aff_Dyn')
-				ad = in_sys;
-
-				if nargin < 4
-					rand_word_ind = randi(length(obj.L.words),1);
-					sig = obj.L.words{rand_word_ind};
-					T = length(sig);
-				else
-					if isa(varargin{4},'char')
-						%This means that the newer version of simulate_1run is being called.
-						%Read the characters.
-						[sig,T,in_w,x0] = obj.simulate_1run_input_helper( varargin );
-					elseif isa(varargin{4},'double')
-						%This means that the older version of simulate_1run is being called.
-						%Read the double.
-						sig = varargin{4};
-					else
-						error('Unrecognized type for fourth argument.')
-					end
-				end
-
-				%%%%%%%%%%%%%%%
-				%% Algorithm %%
-				%%%%%%%%%%%%%%%
-
-				%Constants
-				% T = size(obj.L,2);
-				n = size(ad.A,1);
-				wd = size(ad.B_w,2);
-				vd = size(ad.C_v,2);
-
-				%Generate Random Variables
-				if isempty('x0')
-					x0 = obj.gen_rand_vars( ad , sig , 'x0' , M1 );
-				end
-
-				if ~isempty('in_w')
-					w = in_w;
-				else
-					w = obj.gen_rand_vars( ad , sig , 'w' );
-				end
-
-				v = obj.gen_rand_vars( ad , sig , 'v' );
-
-				%Simulate system forward.
-				x_t = x0;
-				y_t = ad.C*x0 + ad.C_v*v(:,1);
-				
-				x_0_t = x_t;
-				y_0_t = y_t;
-				x_tp1 = Inf(n,1);
-				sig = [sig,1];
-				for t = 0:T-1
-					%Use Affine Dynamics with proper control law.
-					x_tp1 = ad.A * x_t + ...
-							ad.B * obj.apply_control( sig([1:t+1]) , y_0_t ) + ...
-							ad.B_w * w(:,t+1) + ...
-							ad.f ;
-					%Update other variables in system
-					x_t = x_tp1;
-					x_0_t = [x_0_t, x_t];
-
-					if( t == T-1 )
-						continue;
-					end
-
-					y_t = sig(t+2)*(ad.C*x_t + ad.C_v*v(:,t+1));
-					y_0_t = [y_0_t, y_t];
-				end
-
-			elseif isa(in_sys,'LCSAS')
-				%Save system in a new container
-				lcsas = in_sys;
-
-				in_w = []; x0 = [];
-
-				if nargin < 4
-					rand_word_ind = randi(length(lcsas.L.words),1);
-					sig = lcsas.L.words{rand_word_ind};
-					T = length(sig);
-				else
+			if nargin >= 4
+				if isa(varargin{4},'char')
+					%This means that the newer version of simulate_1run is being called.
+					%Read the characters.
 					[sig,T,in_w,x0] = obj.simulate_1run_input_helper( varargin );
-				end
-
-				%%%%%%%%%%%%%%%
-				%% Algorithm %%
-				%%%%%%%%%%%%%%%
-
-				%Constants
-				% T = size(obj.L,2);
-				n = size(lcsas.Dyn(1).A,1);
-				wd = size(lcsas.Dyn(1).B_w,2);
-				vd = size(lcsas.Dyn(1).C_v,2);
-
-				%Generate Random Variables
-				if isempty(x0)
-					x0 = obj.gen_rand_vars( lcsas , sig , 'x0' , M1 );
-				end
-
-				if ~isempty(in_w)
-					w = in_w;
+				elseif isa(varargin{4},'double')
+					%This means that the older version of simulate_1run is being called.
+					%Read the double.
+					sig = varargin{4};
 				else
-					w = obj.gen_rand_vars( lcsas , sig , 'w' );
+					error('Unrecognized type for fourth argument.')
 				end
-
-				v = obj.gen_rand_vars( lcsas , sig , 'v' );
-
-				%Simulate system forward.
-				x_t = x0;
-				q_t = sig(1);
-
-				y_t = lcsas.Dyn(q_t).C*x0 + lcsas.Dyn(q_t).C_v*v(:,1);
-				
-				x_0_t = x_t;
-				y_0_t = y_t;
-				x_tp1 = Inf(n,1);
-				%sig = [sig,1];
-				for t = 0:T-1
-					q_t = sig(t+1);
-
-					%Use Affine Dynamics with proper control law.
-					x_tp1 = lcsas.Dyn(q_t).A * x_t + ...
-							lcsas.Dyn(q_t).B * obj.apply_control( y_0_t ) + ...
-							lcsas.Dyn(q_t).B_w * w(:,t+1) + ...
-							lcsas.Dyn(q_t).f ;
-					%Update other variables in system
-					x_t = x_tp1;
-					x_0_t = [x_0_t, x_t];
-
-					if( t == T-1 )
-						continue;
-					end
-					q_tp1 = sig(t+2);
-
-					y_t = lcsas.Dyn(q_tp1).C*x_t + lcsas.Dyn(q_tp1).C_v*v(:,t+1);
-					y_0_t = [y_0_t, y_t];
-				end
-
 			end
 
-			u_0_tm1 = obj.u_hist;
+			if ~exist('sig')
+				rand_word_ind = randi(length(obj.L.words),1);
+				sig = obj.L.words{rand_word_ind};
+				T = length(sig);
+			elseif isempty(sig)
+				rand_word_ind = randi(length(obj.L.words),1);
+				sig = obj.L.words{rand_word_ind};
+				T = length(sig);
+			end
+
+			%%%%%%%%%%%%%%%
+			%% Algorithm %%
+			%%%%%%%%%%%%%%%
+
+			%Constants
+			% T = size(obj.L,2);
+			n = size(ad.A,1);
+			wd = size(ad.B_w,2);
+			vd = size(ad.C_v,2);
+
+			%Generate Random Variables
+			if ~exist('x0')
+				x0 = obj.gen_rand_vars( ad , sig , 'x0' , M1 );
+			elseif isempty(x0)
+				x0 = obj.gen_rand_vars( ad , sig , 'x0' , M1 );
+			end
+
+			if ~exist('in_w')
+				w = obj.gen_rand_vars( ad , sig , 'w' );
+			elseif isempty(in_w)
+				w = obj.gen_rand_vars( ad , sig , 'w' );
+			else
+				w = in_w;
+			end
+
+			v = obj.gen_rand_vars( ad , sig , 'v' );
+
+			%Simulate system forward.
+			x_t = x0;
+			y_t = ad.C*x0 + ad.C_v*v(:,1);
+			
+			x_0_t = x_t;
+			y_0_t = y_t;
+			x_tp1 = Inf(n,1);
+			sig = [sig,1];
+			for t = 0:T-1
+				%Use Affine Dynamics with proper control law.
+				x_tp1 = ad.A * x_t + ...
+						ad.B * obj.apply_control( sig([1:t+1]) , y_0_t ) + ...
+						ad.B_w * w(:,t+1) + ...
+						ad.f ;
+				%Update other variables in system
+				x_t = x_tp1;
+				x_0_t = [x_0_t, x_t];
+
+				if( t == T-1 )
+					continue;
+				end
+
+				y_t = sig(t+2)*(ad.C*x_t + ad.C_v*v(:,t+1));
+				y_0_t = [y_0_t, y_t];
+			end
 
 		end
 
@@ -371,10 +257,6 @@ classdef FHAE_pb < handle
 			%	v = FHAE_pb.gen_rand_vars( aff_dyn , word , 'v' )
 			%	x0 = FHAE_pb.gen_rand_vars( aff_dyn , word , 'x0' , M1 )
 			%	x0 = FHAE_pb.gen_rand_vars( aff_dyn , word , 'x0' , Px0 )
-			%	
-			%	w = FHAE_pb.gen_rand_vars( lcsas , word ,'w' )
-			%	w = FHAE_pb.gen_rand_vars( lcsas , word ,'v' )
-			%	w = FHAE_pb.gen_rand_vars( lcsas , word ,'x0' , M1 )
 
 
 			%%%%%%%%%%%%%%%%%%%%%%
@@ -398,155 +280,60 @@ classdef FHAE_pb < handle
 			%%%%%%%%%%%%%%%%
 
 			obj = varargin{1};
-			in_sys = varargin{2};
+			ad = varargin{2};
 
-			if isa(in_sys,'Aff_Dyn')
+			n = size(ad.A,1);
+			wd = size(ad.B_w,2);
+			vd = size(ad.C_v,2);
+			
+			%% Algorithm %%
+			switch disturb_flag
+			case 'w'
+				if ~isnan(in_sys.eta_w)
+					rand_var  = unifrnd(-in_sys.eta_w,in_sys.eta_w,wd,T);
+				elseif isa(in_sys.P_w,'Polyhedron')
+					num_verts = size(lcsas.Dyn(1).P_w.V,2);
+					convex_comb = unifrnd(0,1,num_verts,T);
+					convex_comb = convex_comb./repmat(sum(convex_comb),num_verts,1);
 
-				%% Constants %%
-				ad = in_sys;
-
-				n = size(ad.A,1);
-				wd = size(ad.B_w,2);
-				vd = size(ad.C_v,2);
-				
-				%% Algorithm %%
-				switch disturb_flag
-				case 'w'
-					if ~isnan(in_sys.eta_w)
-						rand_var  = unifrnd(-in_sys.eta_w,in_sys.eta_w,wd,T);
-					elseif isa(in_sys.P_w,'Polyhedron')
-						num_verts = size(lcsas.Dyn(1).P_w.V,2);
-						convex_comb = unifrnd(0,1,num_verts,T);
-						convex_comb = convex_comb./repmat(sum(convex_comb),num_verts,1);
-
-						rand_var = in_sys.P_w.V'*convex_comb;
-					else
-						error('Do not understand how to handle this definition of w.')
-					end
-				case 'v'
-					%Generate the measurement disturbances.
-					if ~isnan(ad.eta_v)
-						rand_var  = unifrnd(-ad.eta_v,ad.eta_v,vd,T);
-					elseif isa(ad.P_v,'Polyhedron')
-						%Create Convex Combination Vector
-						num_verts = size(lcsas.Dyn(1).P_v.V,1);
-						convex_comb = unifrnd(0,1,num_verts,T);
-						convex_comb = convex_comb./repmat(sum(convex_comb),num_verts,1);
-
-						rand_var = ad.P_v.V'*convex_comb;
-					else
-						error('Do not understand how to handle this definition of v.')
-					end
-				case 'x0'
-					x0_set_def = varargin{5};
-					%Generate x0
-					if isa(x0_set_def,'Polyhedron')
-						%Input Processing
-						Px0 = x0_set_def;
-
-						%Convex Combination
-						convex_comb = unifrnd(0,1,size(Px0.V,1),T);
-						convex_comb = convex_comb./sum(convex_comb);
-
-						rand_var = Px0.V'*convex_comb; %'
-					elseif isscalar(x0_set_def)
-						M1 = x0_set_def;
-						rand_var = unifrnd(-M1,M1,n,1);
-					else
-						error('Do not understand how to handle this definition of x0.')
-					end
-				otherwise
-					error('Unexpected disturbance flag.')
+					rand_var = in_sys.P_w.V'*convex_comb;
+				else
+					error('Do not understand how to handle this definition of w.')
 				end
+			case 'v'
+				%Generate the measurement disturbances.
+				if ~isnan(ad.eta_v)
+					rand_var  = unifrnd(-ad.eta_v,ad.eta_v,vd,T);
+				elseif isa(ad.P_v,'Polyhedron')
+					%Create Convex Combination Vector
+					num_verts = size(lcsas.Dyn(1).P_v.V,1);
+					convex_comb = unifrnd(0,1,num_verts,T);
+					convex_comb = convex_comb./repmat(sum(convex_comb),num_verts,1);
 
-			elseif isa(in_sys,'LCSAS')
-				
-				%% Constants %%
-				lcsas = in_sys;
-
-				n = size(lcsas.Dyn(1).A,1);
-				wd = size(lcsas.Dyn(1).B_w,2);
-				vd = size(lcsas.Dyn(1).C_v,2);
-				
-				%% Algorithm %%
-				switch disturb_flag
-				case 'w'
-					if ~isnan(lcsas.Dyn(1).eta_w)
-						rand_var = [];
-						for symb_idx = 1:T
-							symb_t = word(symb_idx);
-							w_t = unifrnd(	-lcsas.Dyn(symb_t).eta_w, ...
-											lcsas.Dyn(symb_t).eta_w, wd,1);
-
-							rand_var  = [rand_var, w_t];
-						end
-					elseif isa(lcsas.Dyn(1).P_w,'Polyhedron')
-						rand_var = [];
-
-						convex_comb = unifrnd(0,1,size(lcsas.Dyn(1).P_w.V,1),T);
-						num_verts = size(lcsas.Dyn(1).P_w.V,1);
-						convex_comb = convex_comb./repmat(sum(convex_comb),num_verts,1);
-
-						for symb_idx = 1:T
-							symb_t = word(symb_idx);
-							w_t = lcsas.Dyn(symb_t).P_w.V'*convex_comb(:,symb_idx); %'
-
-							rand_var = [rand_var, w_t];
-						end
-					else
-						error('Do not understand how to handle this definition of w.')
-					end
-				case 'v'
-					%Generate the measurement disturbances.
-					if ~isnan(lcsas.Dyn(1).eta_v)
-						rand_var = [];
-						for symb_idx = 1:T
-							symb_t = word(symb_idx);
-							v_t = unifrnd(	-lcsas.Dyn(symb_t).eta_v, ...
-											lcsas.Dyn(symb_t).eta_v, vd,1);
-
-							rand_var  = [rand_var, v_t];
-						end
-					elseif isa(lcsas.Dyn(1).P_v,'Polyhedron')
-						rand_var = [];
-
-						convex_comb = unifrnd(0,1,size(lcsas.Dyn(1).P_v.V,1),T);
-						num_verts = size(lcsas.Dyn(1).P_v.V,1);
-						convex_comb = convex_comb./repmat(sum(convex_comb),num_verts,1);
-
-						for symb_idx = 1:T
-							symb_t = word(symb_idx);
-							v_t = lcsas.Dyn(symb_t).P_v.V'*convex_comb(:,symb_idx); %'
-
-							rand_var = [rand_var, v_t];
-						end
-					else
-						error('Do not understand how to handle this definition of v.')
-					end
-				case 'x0'
-					x0_set_def = varargin{5};
-					%Generate x0
-					if isa(x0_set_def,'Polyhedron')
-						%Input Processing
-						Px0 = x0_set_def;
-
-						%Convex Combination
-						convex_comb = unifrnd(0,1,size(Px0.V,1),T);
-						convex_comb = convex_comb/sum(convex_comb);
-
-						rand_var = Px0.V'*convex_comb; %'
-					elseif isscalar(x0_set_def)
-						M1 = x0_set_def;
-						rand_var = unifrnd(-M1,M1,n,1);
-					else
-						error('Do not understand how to handle this definition of x0.')
-					end
-				otherwise
-					error('Unexpected disturbance flag.')
+					rand_var = ad.P_v.V'*convex_comb;
+				else
+					error('Do not understand how to handle this definition of v.')
 				end
+			case 'x0'
+				x0_set_def = varargin{5};
+				%Generate x0
+				if isa(x0_set_def,'Polyhedron')
+					%Input Processing
+					Px0 = x0_set_def;
 
-			else
-				error('Input system can only be an Aff_Dyn or LCSAS object.')
+					%Convex Combination
+					convex_comb = unifrnd(0,1,size(Px0.V,1),T);
+					convex_comb = convex_comb./sum(convex_comb);
+
+					rand_var = Px0.V'*convex_comb; %'
+				elseif isscalar(x0_set_def)
+					M1 = x0_set_def;
+					rand_var = unifrnd(-M1,M1,n,1);
+				else
+					error('Do not understand how to handle this definition of x0.')
+				end
+			otherwise
+				error('Unexpected disturbance flag.')
 			end
 
 		end
@@ -564,7 +351,7 @@ classdef FHAE_pb < handle
 			%%%%%%%%%%%%%%%%%%%%%%
 
 			obj = arg_arr{1};
-			in_sys = arg_arr{2};
+			ad = arg_arr{2};
 			M1 = arg_arr{3};
 
 			%%%%%%%%%%%%%%%
@@ -574,86 +361,38 @@ classdef FHAE_pb < handle
 
 			flag_ind = 4;
 
-			if isa(in_sys,'Aff_Dyn')
-
-				ad = in_sys;
-
-				while flag_ind <= length(arg_arr)
-					switch arg_arr{flag_ind}
-					case 'in_sigma'
-						if (size(arg_arr{flag_ind+1},1) ~= 1) %|| (size(in_sig,2) ~= T)
-							error('Input word is not a single word or does not have the correct length.' )
-						end
-						sig = arg_arr{flag_ind+1};
-						T = length(sig);
-						%Increment Flag Index
-						flag_ind = flag_ind+2;
-					case 'in_w'
-	                    %Choose a random word to make our T
-	                    rand_word_ind = randi(length(obj.L),1);
-	                    sig = obj.L.words{rand_word_ind};
-	                    T = length(sig);
-						if ~exist('T')
-							warning('simulate_1run was called with ''in_w'' parameter flag, but ''T'' was not defined.')
-						end
-						in_w = arg_arr{flag_ind+1};
-						if ((size(in_w,1) ~= size(ad.B_w,2)) || (size(in_w,2) ~= T))
-							error('The dimensions of the input w sequence are not correct.')
-						end
-						%Increment Flag Index
-						flag_ind = flag_ind+2;
-					case 'in_x0'
-						x0 = arg_arr{flag_ind+1};
-						if ((size(x0,1) ~= size(ad.A,2)) || (size(x0,2) ~= 1))
-							error('The dimensions of the input w sequence are not correct.')
-						end
-						%Increment Flag Index
-						flag_ind = flag_ind+2;
-					otherwise
-						error(['Unrecognized input to simulate_1run: ' arg_arr{flag_ind} ])
+			while flag_ind <= length(arg_arr)
+				switch arg_arr{flag_ind}
+				case 'in_sigma'
+					if (size(arg_arr{flag_ind+1},1) ~= 1) %|| (size(in_sig,2) ~= T)
+						error('Input word is not a single word or does not have the correct length.' )
 					end
-				end
-			elseif isa(in_sys,'LCSAS')
-
-				lcsas = in_sys;
-
-				while flag_ind <= length(arg_arr)
-					switch arg_arr{flag_ind}
-					case 'in_sigma'
-						if (size(arg_arr{flag_ind+1},1) ~= 1) %|| (size(in_sig,2) ~= T)
-							error('Input word is not a single word or does not have the correct length.' )
-						end
-						sig = arg_arr{flag_ind+1};
+					sig = arg_arr{flag_ind+1};
+					if isempty(T)
 						T = length(sig);
-						%Increment Flag Index
-						flag_ind = flag_ind+2;
-					case 'in_w'
-	                    %Choose a random word to make our T
-	                    rand_word_ind = randi(length(lcsas.L),1);
-	                    sig = lcsas.L.words{rand_word_ind};
-	                    T = length(sig);
-						if ~exist('T')
-							warning('simulate_1run was called with ''in_w'' parameter flag, but ''T'' was not defined.')
-						end
-						in_w = arg_arr{flag_ind+1};
-						if ((size(in_w,1) ~= size(lcsas.Dyn(1).B_w,2)) || (size(in_w,2) ~= T))
-							error('The dimensions of the input w sequence are not correct.')
-						end
-						%Increment Flag Index
-						flag_ind = flag_ind+2;
-					case 'in_x0'
-						x0 = arg_arr{flag_ind+1};
-						if ((size(x0,1) ~= size(lcsas.Dyn(1).A,2)) || (size(x0,2) ~= 1))
-							error('The dimensions of the input w sequence are not correct.')
-						end
-						%Increment Flag Index
-						flag_ind = flag_ind+2;
-					otherwise
-						error(['Unrecognized input to simulate_1run: ' arg_arr{flag_ind} ])
 					end
+					%Increment Flag Index
+					flag_ind = flag_ind+2;
+				case 'in_w'
+                    in_w = arg_arr{flag_ind+1};
+					if (size(in_w,1) ~= size(ad.B_w,2))
+						error('The dimensions of the input w sequence are not correct.')
+					end
+					if isempty(T)
+						T = size(in_w,2);
+					end
+					%Increment Flag Index
+					flag_ind = flag_ind+2;
+				case 'in_x0'
+					x0 = arg_arr{flag_ind+1};
+					if ((size(x0,1) ~= size(ad.A,2)) || (size(x0,2) ~= 1))
+						error('The dimensions of the input w sequence are not correct.')
+					end
+					%Increment Flag Index
+					flag_ind = flag_ind+2;
+				otherwise
+					error(['Unrecognized input to simulate_1run: ' arg_arr{flag_ind} ])
 				end
-			else
-				error('in_sys is expected to be either an Aff_Dyn or LCSAS object.')
 			end
 		end
 
@@ -699,7 +438,9 @@ classdef FHAE_pb < handle
 								error('Input word is not a single word or does not have the correct length.' )
 							end
 							in_sig = varargin{flag_ind+1};
-							T = length(in_sig);
+							if ~exist('T')
+								T = length(in_sig);
+							end
 							%Increment Flag Index
 							flag_ind = flag_ind+2;
 						case 'in_w'

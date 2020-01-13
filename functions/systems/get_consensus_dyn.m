@@ -5,9 +5,9 @@ function [consensus_lcsas,des_pos] = get_consensus_dyn(varargin)
 	%	- Have a set of consensus positions that are predefined.
 	%
 	%Example Usage:
-	%	ad = get_consensus_dyn(n_x,n_y,dt)
-	%	ad = get_consensus_dyn(n_x,n_y,dt,'disturb_params',P_w,P_v)
-	%	ad = get_consensus_dyn(n_x,n_y,dt,'disturb_params',eta_w,eta_v)
+	%	out_lcsas = get_consensus_dyn(n_x,n_y,dt)
+	%	out_lcsas = get_consensus_dyn(n_x,n_y,dt,'disturb_params',P_w,P_v)
+	%	out_lcsas = get_consensus_dyn(n_x,n_y,dt,'disturb_params',eta_w,eta_v)
 	%
 	%Notes:
 	%	- Agent i is represented by the (2i-1) and the 2ith coordinates.
@@ -47,6 +47,7 @@ function [consensus_lcsas,des_pos] = get_consensus_dyn(varargin)
 				arg_idx = arg_idx+3;
 			case 'L'
 				L = varargin{arg_idx+1};
+				arg_idx = arg_idx + 2;
 				if ~isa(L,'Language')
 					error('The input L is not a Lanugage object.')
 				end

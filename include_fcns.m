@@ -43,19 +43,10 @@ if strcmp(getenv('USER'),'kwesirutledge') %Suggests the laptop is in use
                 end
             case 'tbxmanager'
                 try
-                    cd(['../../' 'tbxmanager'])
-                    startup
+                    addpath(genpath(['../../' 'toolboxes/tbxmanager']) )
+                    Polyhedron();
                 catch
                     error('tbxmanager was not added to path.')
-                end
-
-            case 'tbxmanager2'
-                try
-                    cd(['../../' 'tbxmanager'])
-                    cd toolboxes
-                    addpath(genpath('.'))
-                catch
-                    error('tbxmanager''s contents were not added to path.')
                 end
 
             otherwise

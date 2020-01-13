@@ -6,9 +6,11 @@ function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints(varar
 	%	- Dual variable that is used to define satisfaction of the input constraint.
 	%
 	%Usage:
-	%	[ Pi1 , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,P_des,Q,r)
-	%	[ Pi1 , Piu , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,P_des,Q,r, 'P_u' , P_u)
-	%	[ Pi1 , Piu , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,P_des,Q,r, 'P_u' , P_u , 'u_des' , u_d)
+	%	[ Pi1 , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,Q,r)
+	%	[ Pi1 , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,Q,r,'P_des',P_des)
+	%	[ Pi1 , Piu , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,Q,r,'P_des',P_des, 'P_u' , P_u)
+	%	[ Pi1 , Piu , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,Q,r,'eta_des',M3, 'P_u' , P_u)
+	%	[ Pi1 , Piu , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,Q,r,'P_des',P_des, 'P_u' , P_u , 'u_des' , u_d)
 	%
 	%	[ Pi1 , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,P_des,gain1,gain2,'param_type',param_flag)
 	%	[ Pi1 , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,P_des,Q,r,'param_type','Q')
@@ -41,17 +43,22 @@ function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints(varar
 
 	word = varargin{3};
 	P_x0 = varargin{4};
-	P_des = varargin{5};
 
-	if ~(isa(P_x0,'Polyhedron') && isa(P_des,'Polyhedron'))
+	if ~isa(P_x0,'Polyhedron')
 		error('P_x0 and P_des must be given as a Polyhedron.')
 	end
 
-	varargin_idx = 8;
+	varargin_idx = 7;
 	while varargin_idx <= nargin
 		switch varargin{varargin_idx}
 			case 'P_u'
 				P_u = varargin{varargin_idx+1};
+				varargin_idx = varargin_idx + 2;
+			case 'P_des'
+				P_des = varargin{varargin_idx+1};
+				varargin_idx = varargin_idx + 2;
+			case 'eta_des'
+				eta_des = varargin{varargin_idx+1};
 				varargin_idx = varargin_idx + 2;
 			case 'u_des'
 				u_d = varargin{varargin_idx+1};
@@ -87,11 +94,11 @@ function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints(varar
 	% Create Gain Variables
 	switch param_flag
 	case 'Q'
-		Q = varargin{6};
-		r = varargin{7};
+		Q = varargin{5};
+		r = varargin{6};
 	case 'F1'
-		F = varargin{6};
-		f = varargin{7};
+		F = varargin{5};
+		f = varargin{6};
 	end
 
 	%%%%%%%%%%%%%%%
@@ -107,9 +114,13 @@ function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints(varar
 	T = length(word);
 
 	q_x0 = size(P_x0.A,1);
-	q_des = size(P_des.A,1);
+	%q_des = size(P_des.A,1);
 
 	select_m = @(t,T_r) [zeros(n,t*n), eye(n), zeros(n,(T_r-t)*n) ];
+
+	if ~(exist('P_des') || exist('eta_des'))
+		P_des = P_x0;
+	end
 
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	%% Define the Dual Variables for Robust Reachability %%
@@ -130,14 +141,28 @@ function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints(varar
 
 	switch param_flag
 		case 'Q'
+			if exist('P_des')
+				G = [ 	(eye(n*(T+1))+S0*Q*Cm0)*H0*B_w_big ...
+						S0*Q*C_v_big ...
+						(eye(n*(T+1))+S0*Q*Cm0)*J0 ];
 
-			G = [ 	(eye(n*(T+1))+S0*Q*Cm0)*H0*B_w_big ...
-					S0*Q*C_v_big ...
-					(eye(n*(T+1))+S0*Q*Cm0)*J0 ];
+				[Pi1,temp_constrs] = cg.get_H_polyt_inclusion_constr( P_eta.A, P_eta.b , P_des.A*select_m(T,T)*G, P_des.b-P_des.A*select_m(T,T)*(S0*r+(eye(n*(T+1))+S0*Q*Cm0)*H0*k_bar) );
 
-			[Pi1,temp_constrs] = cg.get_H_polyt_inclusion_constr( P_eta.A, P_eta.b , P_des.A*select_m(T,T)*G, P_des.b-P_des.A*select_m(T,T)*(S0*r+(eye(n*(T+1))+S0*Q*Cm0)*H0*k_bar) );
+				constraints = constraints + temp_constrs;
+			elseif exist('eta_des')
 
-			constraints = constraints + temp_constrs;
+				G = [ 	(eye(n*(T+1))+S0*Q*Cm0)*H0*B_w_big ...
+						S0*Q*C_v_big ...
+						(eye(n*(T+1))+S0*Q*Cm0)*J0 ];
+
+				I_t = [eye(n);-eye(n)];
+
+				[Pi1,temp_constrs] = cg.get_H_polyt_inclusion_constr( P_eta.A, P_eta.b , I_t*select_m(T,T)*G, eta_des*ones(2*n,1)-I_t*select_m(T,T)*(S0*r+(eye(n*(T+1))+S0*Q*Cm0)*H0*k_bar) );
+
+				constraints = constraints + temp_constrs;
+			else
+				error('Unrecognized input combination.')
+			end
 
 			%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 			%% Define the Dual Variables for Input Constraint %%

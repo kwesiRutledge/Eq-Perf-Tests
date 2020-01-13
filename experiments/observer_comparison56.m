@@ -101,7 +101,7 @@ function [results] = observer_comparison56( varargin )
 	Pv1 = Polyhedron('lb',-eta_v*ones(1,dim) ,'ub',eta_v*ones(1,dim));
 	Pw1 = Polyhedron('lb',-eta_w*ones(1,dim) ,'ub',eta_w*ones(1,dim));
 
-	eta_u = 0; eta_x0 = 0.0;
+	eta_u = 0; eta_x0 = 0.1;
 	P_u = Polyhedron('lb',-eta_u*ones(1,dim) ,'ub',eta_u*ones(1,dim));
 	P_x0 = Polyhedron('lb',-eta_x0*ones(1,dim),'ub',eta_x0*ones(1,dim));
 
@@ -133,23 +133,23 @@ function [results] = observer_comparison56( varargin )
 
 	T = L1.find_longest_length();
 
-	figure;
-	for seq_ind = 1:length(Hc)
-		X = (Hc{seq_ind}*(P_wT{seq_ind}+fc{seq_ind})) + Sc{seq_ind}*P_uT{seq_ind} + Jc{seq_ind}*P_x0;
-		Y = Cc{seq_ind}*X + P_vT{seq_ind};
-		subplot(1,length(Hc),seq_ind)
-		hold on;
-		plot(RT(dim,0,L1.find_longest_length()-1)*Y,'Color','white')
-		plot(RT(dim,1,L1.find_longest_length()-1)*Y,'Color','cyan')
-		plot(RT(dim,2,L1.find_longest_length()-1)*Y,'Color','magenta')
-		plot(RT(dim,3,L1.find_longest_length()-1)*Y,'Color','orange')
-		%title(['Trajectory of Word ' num2str(seq_ind)])
-		xlabel('$x_1(t)$','Interpreter','latex')
-		ylabel('$x_2(t)$','Interpreter','latex')
-		axis([-2 3 -2 3])
-	end
+	% figure;
+	% for seq_ind = 1:length(Hc)
+	% 	X = (Hc{seq_ind}*(P_wT{seq_ind}+fc{seq_ind})) + Sc{seq_ind}*P_uT{seq_ind} + Jc{seq_ind}*P_x0;
+	% 	Y = Cc{seq_ind}*X + P_vT{seq_ind};
+	% 	subplot(1,length(Hc),seq_ind)
+	% 	hold on;
+	% 	plot(RT(dim,0,L1.find_longest_length()-1)*Y,'Color','white')
+	% 	plot(RT(dim,1,L1.find_longest_length()-1)*Y,'Color','cyan')
+	% 	plot(RT(dim,2,L1.find_longest_length()-1)*Y,'Color','magenta')
+	% 	plot(RT(dim,3,L1.find_longest_length()-1)*Y,'Color','orange')
+	% 	%title(['Trajectory of Word ' num2str(seq_ind)])
+	% 	xlabel('$x_1(t)$','Interpreter','latex')
+	% 	ylabel('$x_2(t)$','Interpreter','latex')
+	% 	axis([-2 3 -2 3])
+	% end
 
-	saveas(gcf,'results/oc56_trajectories_sys2.png')
+	% saveas(gcf,'results/oc56_trajectories_sys2.png')
 
 	bg = BeliefGraph(lcss2,L1, P_u, P_x0);
 

@@ -3,9 +3,10 @@ function [BG,contr,opt_out] = synth_robust_reach_contr( varargin )
 	%	Testing the all mode observer construction algorithm
 	%
 	%Usage:
-	%	[BG,contr] = lcsas.synth_robust_reach_contr( P_x0 , P_u , P_target )
-	%	[BG,contr] = lcsas.synth_robust_reach_contr( P_x0 , P_u , P_target , 'BG' , BG )
-	%	[BG,contr] = lcsas.synth_robust_reach_contr( P_x0 , P_u , P_target , 'debug' , debug_flag )
+	%	[BG,contr] = lcsas.synth_robust_reach_contr( P_x0 , P_u )
+	%	[BG,contr] = lcsas.synth_robust_reach_contr( P_x0 , P_u , 'P_target', P_target , 'BG' , BG )
+	%	[BG,contr] = lcsas.synth_robust_reach_contr( P_x0 , P_u , 'P_target', P_target , 'BG' , BG )
+	%	[BG,contr] = lcsas.synth_robust_reach_contr( P_x0 , P_u , 'P_target', P_target , 'debug' , debug_flag )
 
 	%%%%%%%%%%%%%%%%%%%%%%
 	%% Input Processing %%
@@ -14,17 +15,16 @@ function [BG,contr,opt_out] = synth_robust_reach_contr( varargin )
 	in_lcsas = varargin{1};
 	P_x0 = varargin{2};
 	P_u = varargin{3};
-	P_target = varargin{4};
 
 	if ~isa(in_lcsas,'LCSAS')
 		error('Expected first input to be an LCSAS object.')
 	end
 
-	if ~(isa(P_x0,'Polyhedron') && isa(P_u,'Polyhedron') && isa(P_target,'Polyhedron'))
+	if ~(isa(P_x0,'Polyhedron') && isa(P_u,'Polyhedron')) %&& isa(P_target,'Polyhedron'))
 		error('Expected all sets given as input to be Polyhedron objects.')
 	end
 
-	varargin_idx = 5;
+	varargin_idx = 4;
 	while varargin_idx <= nargin
 		switch varargin{varargin_idx}
 			case 'BG'
@@ -33,6 +33,13 @@ function [BG,contr,opt_out] = synth_robust_reach_contr( varargin )
 			case 'debug'
 				debug_flag = varargin{varargin_idx+1};
 				varargin_idx = varargin_idx + 2;
+			case 'P_target'
+				P_target = varargin{varargin_idx+1};
+				if ~isa(P_target,'Polyhedron')
+					error('P_target needs to be a Polyhedron!')
+				end
+				varargin_idx = varargin_idx + 2;
+
 			otherwise
 				error(['Unexpected flag for this function: ' varargin{varargin_idx}])
 		end
@@ -71,6 +78,9 @@ function [BG,contr,opt_out] = synth_robust_reach_contr( varargin )
 	dual_var_ind = 0;
 	constraints = [];
 
+	M2 = sdpvar(1,1,'full'); %3;
+	M3 = sdpvar(1,1,'full');
+
 	for blang_idx = 1:length(BG.BeliefLanguage.words)
 		bword_ut = BG.BeliefLanguage.words{blang_idx};
 
@@ -87,11 +97,31 @@ function [BG,contr,opt_out] = synth_robust_reach_contr( varargin )
 			possible_word = final_lang.words{word_idx};
 
 			dual_var_ind = dual_var_ind + 1;
-			[ Pi1{dual_var_ind} , Piu{dual_var_ind} , temp_constrs ] = cg.get_robust_reachability_constraints(	in_lcsas, possible_word, ...
-																					P_x0,P_target, ...
-																					Q{blang_idx},r{blang_idx}, ...
-																					'P_u' , P_u);
-			constraints = constraints + temp_constrs;
+
+			if exist('P_target')
+				[ Pi1{dual_var_ind} , Piu{dual_var_ind} , temp_constrs ] = cg.get_robust_reachability_constraints(	in_lcsas, possible_word, ...
+																						P_x0, Q{blang_idx},r{blang_idx}, ...
+																						'eta_des', M3 ,'P_u' , P_u);
+				constraints = constraints + temp_constrs;
+
+				[ Pi2{dual_var_ind} , Piu2{dual_var_ind} , temp_constrs ] = cg.get_robust_invariance_constraints(	in_lcsas, possible_word , ...
+																						P_x0,Q{blang_idx},r{blang_idx}, ...
+																						'P_des', P_target, 'P_u' , P_u );
+
+				constraints = constraints + temp_constrs;
+			else
+
+				[ Pi1{dual_var_ind} , Piu{dual_var_ind} , temp_constrs ] = cg.get_robust_reachability_constraints(	in_lcsas, possible_word, ...
+																						P_x0, Q{blang_idx},r{blang_idx}, ...
+																						'eta_des', M3 ,'P_u' , P_u);
+				constraints = constraints + temp_constrs;
+
+				[ Pi2{dual_var_ind} , Piu2{dual_var_ind} , temp_constrs ] = cg.get_robust_invariance_constraints(	in_lcsas, possible_word , ...
+																						P_x0,Q{blang_idx},r{blang_idx}, ...
+																						'eta_des', M2, 'P_u' , P_u );
+
+				constraints = constraints + temp_constrs;
+			end
 
 		end
 
@@ -110,7 +140,12 @@ function [BG,contr,opt_out] = synth_robust_reach_contr( varargin )
 	results.constraints = constraints;
 
 	%Optimize!
-	obj_fcn = [];
+	if exist('P_target')
+		obj_fcn = [M2];
+	else
+		obj_fcn = [M2+M3];
+	end
+
 	opt_out = optimize(	constraints, obj_fcn, ops);
 
 	%Convert Q and r matrices to F and u0
@@ -144,8 +179,11 @@ function [BG,contr,opt_out] = synth_robust_reach_contr( varargin )
 		%Create Function Outputs
 		opt_out.Q_set = Q_set;
 		opt_out.r_set = r_set;
+		opt_out.obj = value(obj_fcn);
+		opt_out.M2 = value(M2);
+		opt_out.M3 = value(M3);
 
-		contr = FHAE_pb(BG,F_set,u0_set);
+		contr = POB_Controller(BG,F_set,u0_set);
 	end
 
 end

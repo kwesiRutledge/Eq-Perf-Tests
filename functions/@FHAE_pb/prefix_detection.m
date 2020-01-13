@@ -42,11 +42,6 @@ function gain_idx = prefix_detection( varargin )
 	%% Constants %%
 	%%%%%%%%%%%%%%%
 
-	y_vec = reshape(y_mat,prod(size(y_mat)),1);
-	u_vec = reshape(contr.u_hist,prod(size(contr.u_hist)),1);
-
-	BG = contr.BG;
-
 	%%%%%%%%%%%%%%%
 	%% Algorithm %%
 	%%%%%%%%%%%%%%%
@@ -57,6 +52,11 @@ function gain_idx = prefix_detection( varargin )
 			gain_idx = L.find_a_word_with_pref(observed_w);
 						
 		case 'unobserved'
+
+			y_vec = reshape(y_mat,prod(size(y_mat)),1);
+			u_vec = reshape(contr.u_hist,prod(size(contr.u_hist)),1);
+
+			BG = contr.BG;
 			u_hist = contr.u_hist;
 
 			%Get the current time and find the nodes that correspond to this time.

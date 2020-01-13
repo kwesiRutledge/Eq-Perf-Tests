@@ -126,7 +126,7 @@ classdef BeliefGraph < handle
 			%Create first node
 			% node0.subset = L;
 			% node0.t = 0;
-			node0 = BeliefNode(L,0,in_sys.Dyn(1).C*P_x0);
+			node0 = BeliefNode(L,0,in_sys.Dyn(1).C*P_x0+in_sys.Dyn(1).C_v*in_sys.Dyn(1).P_v);
 			T_max = node0.find_longest_horizon();
 
 			c_level = [node0];

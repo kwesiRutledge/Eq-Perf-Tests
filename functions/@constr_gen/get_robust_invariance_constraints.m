@@ -6,15 +6,11 @@ function [ varargout ] = get_robust_invariance_constraints(varargin)
 	%	- Dual variable that is used to define satisfaction of the input constraint.
 	%
 	%Usage:
-	%	[ Pi2 , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,P_des,Q,r)
-	%	[ Pi2 , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,eta_x0,Q,r)
+	%	[ Pi2 , constraints ] = cg.get_robust_invariance_constraints(lcsas,word,P_x0,Q,r,'P_des',P_des)
+	%	[ Pi2 , constraints ] = cg.get_robust_invariance_constraints(lcsas,word,P_x0,Q,r,'eta_des',eta_des)
 	%
-	%	[ Pi1 , Piu , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,P_des,Q,r, 'P_u' , P_u)
-	%	[ Pi1 , Piu , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,P_des,Q,r, 'P_u' , P_u , 'u_des' , u_d)
-	%
-	%	[ Pi1 , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,P_des,gain1,gain2,'param_type',param_flag)
-	%	[ Pi1 , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,P_des,Q,r,'param_type','Q')
-	%	[ Pi1 , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,P_des,F,f,'param_type','F1',L,xhat0)
+	%	[ Pi2 , Piu , constraints ] = cg.get_robust_invariance_constraints(lcsas,word,P_x0,Q,r,'P_des',P_des, 'P_u' , P_u)
+	%	[ Pi2 , Piu , constraints ] = cg.get_robust_invariance_constraints(lcsas,word,P_x0,Q,r,'eta_des',M2, 'P_u' , P_u , 'u_des' , u_d)
 	%
 	%Inputs:
 	%	lcsas - A language constrained switched affine system (LCSAS) defined in an LCSAS object.
@@ -35,15 +31,24 @@ function [ varargout ] = get_robust_invariance_constraints(varargin)
 	lcsas = varargin{2};
 	word = varargin{3};
 	P_x0 = varargin{4};
-	P_des = varargin{5};
 
-	if ~(isa(P_x0,'Polyhedron') && isa(P_des,'Polyhedron'))
-		error('P_x0 and P_des must be given as a Polyhedron.')
+	if ~isa(P_x0,'Polyhedron')
+		error('P_x0 must be given as a Polyhedron.')
 	end
 
-	varargin_idx = 8;
+	varargin_idx = 7;
 	while varargin_idx <= nargin
 		switch varargin{varargin_idx}
+			case 'P_des'
+				P_des = varargin{varargin_idx+1};
+				varargin_idx = varargin_idx + 2;
+				if ~isa(P_des,'Polyhedron')
+					error('P_des must be given as a Polyhedron.')
+				end
+			case 'eta_des'
+				eta_des = varargin{varargin_idx+1};
+				varargin_idx = varargin_idx + 2;
+				%Should be a scalar?
 			case 'P_u'
 				P_u = varargin{varargin_idx+1};
 				varargin_idx = varargin_idx + 2;
@@ -53,18 +58,18 @@ function [ varargout ] = get_robust_invariance_constraints(varargin)
 					error('u_d appears to be improperly sized. Please give the full trajectory of desired inputs.')
 				end
 				varargin_idx = varargin_idx + 2;
-			case 'param_type'
-				param_flag = varargin{varargin_idx+1};
-				switch param_flag
-					case 'Q'
-						varargin_idx = varargin_idx + 2;
-					case 'F1'
-						L = varargin{varargin_idx+2};
-						xhat0 = varargin{varargin_idx+3};
-						varargin_idx = varargin_idx + 4;
-					otherwise
-						error(['Unexpected parameterization flag: ' param_flag])
-				end
+			% case 'param_type'
+			% 	param_flag = varargin{varargin_idx+1};
+			% 	switch param_flag
+			% 		case 'Q'
+			% 			varargin_idx = varargin_idx + 2;
+			% 		case 'F1'
+			% 			L = varargin{varargin_idx+2};
+			% 			xhat0 = varargin{varargin_idx+3};
+			% 			varargin_idx = varargin_idx + 4;
+			% 		otherwise
+			% 			error(['Unexpected parameterization flag: ' param_flag])
+			% 	end
 			otherwise
 				error('Unexpected extra input.')
 		end
@@ -81,11 +86,11 @@ function [ varargout ] = get_robust_invariance_constraints(varargin)
 	% Create Gain Variables
 	switch param_flag
 	case 'Q'
-		Q = varargin{6};
-		r = varargin{7};
+		Q = varargin{5};
+		r = varargin{6};
 	case 'F1'
-		F = varargin{6};
-		f = varargin{7};
+		F = varargin{5};
+		f = varargin{6};
 	end
 
 	%%%%%%%%%%%%%%%
@@ -101,7 +106,7 @@ function [ varargout ] = get_robust_invariance_constraints(varargin)
 	T = length(word);
 
 	q_x0 = size(P_x0.A,1);
-	q_des = size(P_des.A,1);
+	%q_des = size(P_des.A,1);
 
 	select_m = @(t,T_r) [zeros(n,t*n), eye(n), zeros(n,(T_r-t)*n) ];
 
@@ -111,11 +116,10 @@ function [ varargout ] = get_robust_invariance_constraints(varargin)
 
 	constraints = [];
 
-	P_wT = 1; P_vT = 1; P_desT = P_des;
+	P_wT = 1; P_vT = 1; 
 	for symb_idx = 1:length(word)
 		P_wT = P_wT * lcsas.Dyn( word(symb_idx) ).P_w;
 		P_vT = P_vT * lcsas.Dyn( word(symb_idx) ).P_v;
-		P_desT = P_desT * P_des;
 	end
 
 	P_eta = P_wT * P_vT * P_x0;
@@ -123,39 +127,60 @@ function [ varargout ] = get_robust_invariance_constraints(varargin)
 	%Get Special Matrices
 	[H0,S0,Cm0,J0,k_bar,B_w_big,C_v_big] = lcsas.get_mpc_matrices('word',word);
 
-	switch param_flag
-		case 'Q'
+	if exist('P_des')
+
+			%Use P_des to create the larger safe set
+			P_desT = P_des;
+			for symb_idx = 1:length(word)
+				P_desT = P_desT * P_des;
+			end
 
 			G = [ 	(eye(n*(T+1))+S0*Q*Cm0)*H0*B_w_big ...
 					S0*Q*C_v_big ...
 					(eye(n*(T+1))+S0*Q*Cm0)*J0 ];
 
-			[Pi2,temp_constrs] = cg.get_H_polyt_inclusion_constr( P_eta.A, P_eta.b , P_desT.A*G, P_des.b-P_desT.A*select_m(T,T)*(S0*r+(eye(n*(T+1))+S0*Q*Cm0)*H0*k_bar) );
+			[Pi2,temp_constrs] = cg.get_H_polyt_inclusion_constr( P_eta.A, P_eta.b , P_desT.A*G, P_desT.b-P_desT.A*(S0*r+(eye(n*(T+1))+S0*Q*Cm0)*H0*k_bar) );
 
 			constraints = constraints + temp_constrs;
 
-			%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-			%% Define the Dual Variables for Input Constraint %%
-			%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+			
 
-			if exist('P_u')
+	elseif exist('eta_des')
 
-				P_uT = 1;
-				for symb_idx = 1:length(word)
-					P_uT = P_uT * P_u;
-				end
+		G = [ 	(eye(n*(T+1))+S0*Q*Cm0)*H0*B_w_big ...
+					S0*Q*C_v_big ...
+					(eye(n*(T+1))+S0*Q*Cm0)*J0 ];
 
-				%Create the G matrix for the input, H_u
-				G_u = [ Q*Cm0*H0*B_w_big, Q*C_v_big, Q*Cm0*J0 ];
+		I_T = [eye(n*(T+1));-eye(n*(T+1))];
 
-				[Piu, temp_constrs] = cg.get_H_polyt_inclusion_constr( P_eta.A, P_eta.b , P_uT.A*G_u, P_uT.b- P_uT.A*(r+Q*Cm0*H0*k_bar+u_d) );
+		[Pi2,temp_constrs] = cg.get_H_polyt_inclusion_constr( P_eta.A, P_eta.b , I_T*G, eta_des*ones(2*n*(T+1),1)-I_T*(S0*r+(eye(n*(T+1))+S0*Q*Cm0)*H0*k_bar) );
 
-				constraints = constraints + temp_constrs;
+		constraints = constraints + temp_constrs;
 
-			end
 
-		
+	else
+		error('Your situation is currently unsupported.')
+	end
 
+	%% Managing Input Constraints
+
+	if (exist('P_des') || exist('eta_des')) && exist('P_u')
+
+		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+		%% Define the Dual Variables for Input Constraint %%
+		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+		P_uT = 1;
+		for symb_idx = 1:length(word)
+			P_uT = P_uT * P_u;
+		end
+
+		%Create the G matrix for the input, H_u
+		G_u = [ Q*Cm0*H0*B_w_big, Q*C_v_big, Q*Cm0*J0 ];
+
+		[Piu, temp_constrs] = cg.get_H_polyt_inclusion_constr( P_eta.A, P_eta.b , P_uT.A*G_u, P_uT.b- P_uT.A*(r+Q*Cm0*H0*k_bar+u_d) );
+
+		constraints = constraints + temp_constrs;
 
 	end
 

@@ -90,6 +90,9 @@ function [opt_out, contr] = rec_synthesis( varargin )
 				case 'System Type'
 					sys_type = varargin{curr_idx+1};
 					curr_idx = curr_idx + 2;
+				case 'debug'
+					debug_flag = varargin{curr_idx+1};
+					curr_idx = curr_idx + 2;
 				otherwise
 					error('Unexpected input.')
 			end
@@ -98,6 +101,10 @@ function [opt_out, contr] = rec_synthesis( varargin )
 
 	if ~exist('sys_type')
 		sys_type = 'Missing Data';
+	end
+
+	if ~exist('debug_flag')
+		debug_flag = 1;
 	end
 
 	%%%%%%%%%%%%%%%
@@ -142,9 +149,7 @@ function [opt_out, contr] = rec_synthesis( varargin )
 			m = size(ad(1).B,2);
 			p = size(ad(1).C,1);
 			wd = size(ad(1).B_w,2);
-			vd = size(ad(1).C_v,2);
-
-			
+			vd = size(ad(1).C_v,2);			
 
 		otherwise
 			error('Unexpected System Type. Expecting ''Missing Data'' or ''Switched''.')
@@ -155,7 +160,7 @@ function [opt_out, contr] = rec_synthesis( varargin )
 
 	unit_box = Polyhedron('lb',-ones(1,n),'ub',ones(1,n));
 
-	ops = sdpsettings('verbose',1);
+	ops = sdpsettings('verbose',debug_flag);
 
 	cg = constr_gen();
 
@@ -547,13 +552,11 @@ function [opt_out, contr] = rec_synthesis( varargin )
 	constrs = positive_constr  + dual_constrs + l_diag_constr + prefix_constrs ;
 
 	%% Call Optimizer %%
-	optim0 = optimize(constrs,obj_fcn,ops);
+	opt_out = optimize(constrs,obj_fcn,ops);
 
 	%%%%%%%%%%%%%%%%%%
 	%% Make Outputs %%
 	%%%%%%%%%%%%%%%%%%
-
-	opt_out = optim0;
 
 	if strcmp(prefix_flag,'prefix')
 		if opt_out.problem ~= 0
@@ -576,14 +579,18 @@ function [opt_out, contr] = rec_synthesis( varargin )
 				%Fix up F and u0 to avoid NaN
 				F_set{pattern_ind}( isnan(F_set{pattern_ind}) ) = 0;
 				% u0_set{pattern_ind}( isnan(u0_set{pattern_ind}) ) = 0;
-
-				%Create Function Outputs
-				opt_out.Q_set = Q_set;
-				opt_out.r_set = r_set;
-
-				contr = FHAE_pb(L,F_set,u0_set);
-
 			end
+
+			%Create Function Outputs
+			opt_out.Q_set = Q_set;
+			opt_out.r_set = r_set;
+
+			for sig_idx = 1:length(L)
+				L{sig_idx} = L{sig_idx} - 1;
+			end
+
+			contr = FHAE_pb(L,F_set,u0_set);
+
 		end
 	elseif strcmp(prefix_flag,'time')
 		[H0,S0,Cm0,J0,f_bar,B_w_big,~] = get_mpc_matrices(ad_arr,'word',L_star);

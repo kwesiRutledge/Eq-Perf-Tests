@@ -25,6 +25,12 @@ function [results] = observer_comparison50(varargin)
 		cube_y = varargin{2};
 		fig_switch = varargin{3};
 		create_filters_flag = varargin{4};
+	case 5
+		cube_x = varargin{1};
+		cube_y = varargin{2};
+		fig_switch = varargin{3};
+		create_filters_flag = varargin{4};
+		debug_flag = varargin{5};
 	otherwise
 			error('Unexpected number of inputs.')
 	end
@@ -66,12 +72,25 @@ function [results] = observer_comparison50(varargin)
 	results.params.cube_x = cube_x;
 	results.params.cube_y = cube_y;
 
+	fs = 20; %Font Size
+	ms = 118; %Marker Size. Default is 36
+	follower_marker = 'h'; 	% Other optinos: 'd' or 'diamond'
+							% 				 'p' or 'pentagram'
+							%				 's' or 'square'
+							%				 'h' or 'hexagram'
+
+	nahs_results_image_folder = 'results/nahs2019/images/';
+
+	if ~exist('debug_flag')
+		debug_flag = 1;
+	end
+
 	%%%%%%%%%%%%%%%%%%%%
 	%% Create Filters %%
 	%%%%%%%%%%%%%%%%%%%%
 	M2_temp = 4;
 	M_t = M2_temp;
-
+    
 	if ~exist('create_filters_flag')
 		try
 			load(['results/nahs2019/lead_foll_startup_gains_' num2str(cube_x) 'by' num2str(cube_y) '.mat'])
@@ -91,8 +110,12 @@ function [results] = observer_comparison50(varargin)
 			%Increment rec_num
 			rec_num = rec_num + 1;
 
-			[history.oo1{rec_num},history.c1{rec_num}] = ad0.rec_synthesis('Equalized','prefix','Minimize M2',M2_temp,L1,'Pu',Pu);
-			[history.oo2{rec_num},history.c2{rec_num}] = ad0.rec_synthesis('Free','prefix','Minimize M3',M2_temp,history.oo1{rec_num}.M2,L1,'Pu',Pu);
+			[history.oo1{rec_num},history.c1{rec_num}] = ad0.rec_synthesis(	'Equalized','prefix','Minimize M2',M2_temp,L1, ...
+																			'Pu',Pu, ...
+																			'debug',debug_flag);
+			[history.oo2{rec_num},history.c2{rec_num}] = ad0.rec_synthesis(	'Free','prefix','Minimize M3',M2_temp,history.oo1{rec_num}.M2,L1, ...
+																			'Pu',Pu, ...
+																			'debug',debug_flag);
 
 			%Update M2
 			M_t(1+(rec_num-1)*T+1:1+rec_num*T-1) = history.oo1{rec_num}.M2*ones(T-1,1);
@@ -156,8 +179,8 @@ function [results] = observer_comparison50(varargin)
 	x = x0;
 	for contr_num = 1:rec_tries
 		temp_traj = history.c2{contr_num}.simulate_1run( ad0 , M_t(1+contr_num*(T-1)) , 'in_sigma' , L1{1} , ...
-																					'in_w' , w(:,(contr_num-1)*T+1:contr_num*T) , ...
-																					'in_x0' , x(:,end)  );
+																						'in_w' , w(:,(contr_num-1)*T+1:contr_num*T) , ...
+																						'in_x0' , x(:,end)  );
 		x = [x, temp_traj(:,2:end)];
 	end
 
@@ -234,11 +257,11 @@ function [results] = observer_comparison50(varargin)
 	axis_lims = [l_0(1)-2*cube_x-6,l_targ(1)+2,-(l_targ(2)+2),l_targ(2)+2];
 
 	if fig_switch <= 5
-		figure;
+		figure('DefaultAxesFontSize',fs);
 		for t_idx = 1:length(t_instances)
 			subplot(1,length(t_instances),t_idx)
 			hold on;
-	        scatter(l_x(1,t_instances(t_idx)),l_x(2,t_instances(t_idx)),'x')
+	        scatter(l_x(1,t_instances(t_idx)),l_x(2,t_instances(t_idx)),ms,'x')
 			for robot_idx = 1:cube_x*cube_y
 				scatter(x_true(robot_idx,t_instances(t_idx)), ...
 						x_true(cube_x*cube_y+robot_idx,t_instances(t_idx)))
@@ -246,14 +269,15 @@ function [results] = observer_comparison50(varargin)
 			end
 		end
 
-		figure;
+		figure('DefaultAxesFontSize',fs);
 		for t_idx = 1:length(t_instances)
 			subplot(1,length(t_instances),t_idx)
 			hold on;
-	        scatter(l_x(1,t_instances(t_idx)),l_x(2,t_instances(t_idx)),'x')
+	        scatter(l_x(1,t_instances(t_idx)),l_x(2,t_instances(t_idx)),ms,'x')
 			for robot_idx = 1:cube_x*cube_y
 				scatter(x_true(robot_idx,t_instances(t_idx)), ...
-						x_true(cube_x*cube_y+robot_idx,t_instances(t_idx)))
+						x_true(cube_x*cube_y+robot_idx,t_instances(t_idx)), ...
+						ms,follower_marker)
 				axis(axis_lims)
 			end
 			%Draw Error Box
@@ -272,17 +296,18 @@ function [results] = observer_comparison50(varargin)
 
 		end
 		set(gcf,'Units','Normalized','Position',[0,0,1,1])
-		saveas(gcf,['results/nahs2019/consensus_following_' num2str(cube_x) 'by' num2str(cube_y) '_v' num2str(fig_switch) ], 'epsc')
+		saveas(gcf,[ nahs_results_image_folder 'consensus_following_' num2str(cube_x) 'by' num2str(cube_y) '_v' num2str(fig_switch) ], 'epsc')
 
 		if fig_switch == 5
-			figure;
+			figure('DefaultAxesFontSize',fs);
 			for t_idx = 1:length(t_instances)-1
 				subplot(1,length(t_instances)-1,t_idx)
 				hold on;
-		        scatter(l_x(1,t_instances(t_idx)),l_x(2,t_instances(t_idx)),'x')
+		        scatter(l_x(1,t_instances(t_idx)),l_x(2,t_instances(t_idx)),ms,'x')
 				for robot_idx = 1:cube_x*cube_y
 					scatter(x_true(robot_idx,t_instances(t_idx)), ...
-							x_true(cube_x*cube_y+robot_idx,t_instances(t_idx)))
+							x_true(cube_x*cube_y+robot_idx,t_instances(t_idx)), ...
+							ms, follower_marker)
 					axis(axis_lims)
 				end
 				%Draw Error Box
@@ -306,7 +331,7 @@ function [results] = observer_comparison50(varargin)
 									box_height ],...
 						'FaceColor','none');
 				set(gcf,'Units','Normalized','Position',[0,0,1,1])
-				saveas(gcf,['results/nahs2019/consensus_following_' num2str(cube_x) 'by' num2str(cube_y) '_worst_case'], 'epsc')
+				saveas(gcf,[ nahs_results_image_folder 'consensus_following_' num2str(cube_x) 'by' num2str(cube_y) '_worst_case'], 'epsc')
 			end
 		end
 	end
@@ -317,18 +342,19 @@ function [results] = observer_comparison50(varargin)
 		figure;
 
 		%Create video writer
-		v = VideoWriter('results/nahs2019/formation_vid0.avi');
+		v = VideoWriter([ nahs_results_image_folder 'formation_vid0.mp4'],'MPEG-4');
 		open(v);
 
 		for t_idx = 1:size(x_true,2)
 			%Plot leader
-			scatter(l_x(1,t_idx),l_x(2,t_idx),'x')
+			scatter(l_x(1,t_idx),l_x(2,t_idx),ms,'x')
 			hold on;
 			
 			%Plot followers
 			for robot_idx = 1:cube_x*cube_y
 				scatter(x_true(robot_idx,t_idx), ...
-						x_true(cube_x*cube_y+robot_idx,t_idx))
+						x_true(cube_x*cube_y+robot_idx,t_idx), ...
+						ms,follower_marker)
 				axis(axis_lims)
 			end
 			%Draw Error Box

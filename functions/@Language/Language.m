@@ -16,6 +16,7 @@ classdef Language
 	%	- find_longest_length
 	%	- find_shortest_length
 	%	- find_a_word_with_pref
+	%	- find_all_words_with_pref
 	%
 	%Member Variables:
 	%	words 	- A cell array of numeric arrays.
@@ -179,6 +180,18 @@ classdef Language
 
 		end
 
+		function [tf] = eq( obj, L_in )
+			%Description:
+			%	Defines the == operator.
+			%
+			%Usage:
+			%	tf = L1.eq(L2)
+			%	tf = ( L1 == L2 )
+
+			tf = obj.is_eq(L_in);
+
+		end
+
 		function [reached_root] = all_words_start_with_root(obj)
 			%Description:
 			%	This function returns true if all words in the language begin with 1, the first node in a belief graph.
@@ -225,6 +238,42 @@ classdef Language
 
 			card = length(obj.words);
 
+		end
+
+		function symb_arr = get_all_symbols_at_idx(obj,idx)
+			%Description:
+			%	For each word, w, in the language 'obj', this function retrieves the symbol at idx 'idx', w[idx]
+			%	and returns the list of all such symbols.
+			%
+
+			%% Algorithm %%
+
+			symb_arr = [];
+			for word_idx = 1:length(obj.words)
+				symb_arr = [symb_arr,obj.words{word_idx}];
+			end
+			symb_arr = unique(symb_arr);
+
+		end
+
+		function char_arr = langtostr( obj )
+			%Description:
+			%	Converts a langauge of numeric arrays into a set of strings.
+
+			%% Constants %%
+
+			n_words = length(obj.words);
+
+			%% Algorithm %%
+
+			char_arr = '{ ';
+			for word_idx = 1:n_words
+				char_arr = [char_arr,num2str(obj.words{word_idx})];
+				if word_idx ~= n_words
+					char_arr = [char_arr,' , '];
+				end
+			end
+			char_arr = [char_arr,' }'];
 		end
 
 	end

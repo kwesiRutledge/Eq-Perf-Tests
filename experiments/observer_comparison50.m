@@ -73,11 +73,12 @@ function [results] = observer_comparison50(varargin)
 	results.params.cube_y = cube_y;
 
 	fs = 20; %Font Size
-	ms = 118; %Marker Size. Default is 36
-	follower_marker = 'h'; 	% Other optinos: 'd' or 'diamond'
+	ms = 36; %Marker Size. Default is 36
+	follower_marker = '.'; 	% Other optinos: 'd' or 'diamond'
 							% 				 'p' or 'pentagram'
 							%				 's' or 'square'
 							%				 'h' or 'hexagram'
+	lw0 = 0.5; %LineWidth of markers. Default is 0.5
 
 	nahs_results_image_folder = 'results/nahs2019/images/';
 
@@ -254,7 +255,10 @@ function [results] = observer_comparison50(varargin)
 	end
 
 	%Plot Hyperboxes around the area where the followers can be.
-	axis_lims = [l_0(1)-2*cube_x-6,l_targ(1)+2,-(l_targ(2)+2),l_targ(2)+2];
+	%axis_lims = [l_0(1)-2*cube_x-6,l_targ(1)+2,-(l_targ(2)+2),l_targ(2)+2];
+	axis_lims = [-10,30,-4,4];
+
+	channel_width = 5;
 
 	if fig_switch <= 5
 		figure('DefaultAxesFontSize',fs);
@@ -273,11 +277,12 @@ function [results] = observer_comparison50(varargin)
 		for t_idx = 1:length(t_instances)
 			subplot(1,length(t_instances),t_idx)
 			hold on;
-	        scatter(l_x(1,t_instances(t_idx)),l_x(2,t_instances(t_idx)),ms,'x')
+	        scatter(l_x(1,t_instances(t_idx)),l_x(2,t_instances(t_idx)),ms,'x','LineWidth',lw0)
 			for robot_idx = 1:cube_x*cube_y
 				scatter(x_true(robot_idx,t_instances(t_idx)), ...
 						x_true(cube_x*cube_y+robot_idx,t_instances(t_idx)), ...
-						ms,follower_marker)
+						ms,follower_marker, ...
+						'LineWidth', lw0)
 				axis(axis_lims)
 			end
 			%Draw Error Box
@@ -289,9 +294,9 @@ function [results] = observer_comparison50(varargin)
 									box_height ],...
 						'FaceColor','none');
 			%Create Obstacles
-			rectangle('Position',[0,3,l_f(1)-0,axis_lims(4)-3], ...
+			rectangle('Position',[0,(channel_width/2),l_f(1)-0,axis_lims(4)-(channel_width/2)], ...
 						'FaceColor','red')
-			rectangle('Position',[0,axis_lims(3),l_f(1)-0,-3-axis_lims(3)], ...
+			rectangle('Position',[0,axis_lims(3),l_f(1)-0,-(channel_width/2)-axis_lims(3)], ...
 						'FaceColor','red')
 
 		end
@@ -303,11 +308,12 @@ function [results] = observer_comparison50(varargin)
 			for t_idx = 1:length(t_instances)-1
 				subplot(1,length(t_instances)-1,t_idx)
 				hold on;
-		        scatter(l_x(1,t_instances(t_idx)),l_x(2,t_instances(t_idx)),ms,'x')
+		        scatter(l_x(1,t_instances(t_idx)),l_x(2,t_instances(t_idx)),ms,'x','LineWidth',lw0)
 				for robot_idx = 1:cube_x*cube_y
 					scatter(x_true(robot_idx,t_instances(t_idx)), ...
 							x_true(cube_x*cube_y+robot_idx,t_instances(t_idx)), ...
-							ms, follower_marker)
+							ms, follower_marker, ...
+							'LineWidth', lw0)
 					axis(axis_lims)
 				end
 				%Draw Error Box
@@ -321,9 +327,9 @@ function [results] = observer_comparison50(varargin)
 				end
 
 				%Create Obstacles
-				rectangle('Position',[0,2.5,l_f(1)-0,axis_lims(4)-3], ...
+				rectangle('Position',[0,(channel_width/2),l_f(1)-0,axis_lims(4)-(channel_width/2)], ...
 							'FaceColor','red')
-				rectangle('Position',[0,axis_lims(3),l_f(1)-0,-2.5-axis_lims(3)], ...
+				rectangle('Position',[0,axis_lims(3),l_f(1)-0,-(channel_width/2)-axis_lims(3)], ...
 							'FaceColor','red')
 				%Create bounding box
 				rectangle('Position',[center_pos(1)-(1/2)*box_width,center_pos(2)-(1/2)*box_height, ...
@@ -347,14 +353,15 @@ function [results] = observer_comparison50(varargin)
 
 		for t_idx = 1:size(x_true,2)
 			%Plot leader
-			scatter(l_x(1,t_idx),l_x(2,t_idx),ms,'x')
+			scatter(l_x(1,t_idx),l_x(2,t_idx),ms,'x','LineWidth',lw0)
 			hold on;
 			
 			%Plot followers
 			for robot_idx = 1:cube_x*cube_y
 				scatter(x_true(robot_idx,t_idx), ...
 						x_true(cube_x*cube_y+robot_idx,t_idx), ...
-						ms,follower_marker)
+						ms,follower_marker, ...
+						'LineWidth',lw0)
 				axis(axis_lims)
 			end
 			%Draw Error Box
@@ -365,9 +372,9 @@ function [results] = observer_comparison50(varargin)
 			
 
 			%Create Obstacles
-			rectangle('Position',[0,2.5,l_f(1)-0,axis_lims(4)-3], ...
+			rectangle('Position',[0,(channel_width/2),l_f(1)-0,axis_lims(4)-(channel_width/2)], ...
 						'FaceColor','red')
-			rectangle('Position',[0,axis_lims(3),l_f(1)-0,-2.5-axis_lims(3)], ...
+			rectangle('Position',[0,axis_lims(3),l_f(1)-0,-(channel_width/2)-axis_lims(3)], ...
 						'FaceColor','red')
 			%Create bounding box
 			rectangle('Position',[center_pos(1)-(1/2)*box_width,center_pos(2)-(1/2)*box_height, ...

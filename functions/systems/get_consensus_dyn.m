@@ -68,10 +68,23 @@ function [consensus_lcsas,des_pos] = get_consensus_dyn(varargin)
 	unit_box_w = Polyhedron('lb',-ones(1,dim),'ub',ones(1,dim));
 	unit_box_v = unit_box_x;
 
+	if ~exist('eta_w')
+		eta_w = 0.5;
+	end
+
+	if ~exist('eta_v')
+		eta_v = 0.2;
+	end
+
 	if ~exist('P_w')
-		eta_w = 0.5; eta_v = 0.2;
 		P_w = eta_w * unit_box_w;
+	end
+
+	if ~exist('P_w2')
 		P_w2 = P_w + eta_w*ones(P_w.Dim,1);
+	end
+
+	if ~exist('P_v')
 		P_v = eta_v * unit_box_v;
 	end
 

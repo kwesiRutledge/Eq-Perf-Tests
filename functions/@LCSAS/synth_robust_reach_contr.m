@@ -1,4 +1,4 @@
-function [BG,contr,opt_out] = synth_robust_reach_contr( varargin )
+function [BG,contr,opt_out,BG_creation_time] = synth_robust_reach_contr( varargin )
 	%Description:
 	%	Testing the all mode observer construction algorithm
 	%
@@ -67,7 +67,9 @@ function [BG,contr,opt_out] = synth_robust_reach_contr( varargin )
 	%% Algorithm %%
 	%%%%%%%%%%%%%%%
 	if ~exist('BG')
-		BG = BeliefGraph(in_lcsas,P_u,P_x0,'verbosity',debug_flag);
+		bg_timer_start = tic;
+		BG = BeliefGraph(in_lcsas,P_u,P_x0,'verbosity',debug_flag,'accel_flag',true);
+		BG_creation_time = toc(bg_timer_start);
 	end
 	
 	if debug_flag > 0
@@ -101,12 +103,12 @@ function [BG,contr,opt_out] = synth_robust_reach_contr( varargin )
 			if exist('P_target')
 				[ Pi1{dual_var_ind} , Piu{dual_var_ind} , temp_constrs ] = cg.get_robust_reachability_constraints(	in_lcsas, possible_word, ...
 																						P_x0, Q{blang_idx},r{blang_idx}, ...
-																						'eta_des', M3 ,'P_u' , P_u);
+																						'P_des', P_target ,'P_u' , P_u);
 				constraints = constraints + temp_constrs;
 
 				[ Pi2{dual_var_ind} , Piu2{dual_var_ind} , temp_constrs ] = cg.get_robust_invariance_constraints(	in_lcsas, possible_word , ...
 																						P_x0,Q{blang_idx},r{blang_idx}, ...
-																						'P_des', P_target, 'P_u' , P_u );
+																						'eta_des', M2 , 'P_u' , P_u );
 
 				constraints = constraints + temp_constrs;
 			else
@@ -183,7 +185,7 @@ function [BG,contr,opt_out] = synth_robust_reach_contr( varargin )
 		opt_out.M2 = value(M2);
 		opt_out.M3 = value(M3);
 
-		contr = POB_Controller(BG,F_set,u0_set);
+		contr = POB_Feedback(BG,F_set,u0_set);
 	end
 
 end

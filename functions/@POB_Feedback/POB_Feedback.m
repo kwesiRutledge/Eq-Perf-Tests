@@ -68,7 +68,8 @@ classdef POB_Feedback < handle
 			%% Algorithm %%
 			%%%%%%%%%%%%%%%
 
-			contr.BG = BG;				
+			contr.BG = BG;
+
 			contr.F_set = F_set;
 			contr.u0_set = u0_set;
 
@@ -92,23 +93,13 @@ classdef POB_Feedback < handle
 			%% Input Processing %%
 			%%%%%%%%%%%%%%%%%%%%%%
 
-			if (nargin < 2) || (nargin > 3)
-				error('Expected 2 or 3 inputs.')
+			if (nargin < 2) || (nargin > 2)
+				error('Expected 2 inputs.')
 			end
 
 			obj = varargin{1};
-			switch nargin
-				case 2
-					y_mat = varargin{2};
-					mode_prop = 'unobserved';
-				case 3
-					observed_w = varargin{2};
-					y_mat = varargin{3};
-
-					mode_prop = 'observed';
-				otherwise
-					error('Expected 2 or 3 inputs.')
-			end
+			y_mat = varargin{2};
+			mode_prop = 'unobserved';
 
 			%%%%%%%%%%%%%%%%%%%%%%
 			%% Useful Constants %%
@@ -116,39 +107,20 @@ classdef POB_Feedback < handle
 
 			p = size(y_mat,1);
 
-			if ~isempty(obj.L)
-				num_words = length(obj.L.words);
-				m = size(obj.F_set{1},1) / length(obj.L.words{1});
-				%p = size(obj.F_set{1},2) / length(obj.L.words{1});
-			elseif ~isempty(obj.BG)
-				num_words = length(obj.BG.BeliefLanguage.words);
-				T1 = length(obj.BG.BeliefLanguage.words{1});
-				m = size(obj.F_set{1},1) / T1;
-				%p = size(obj.F_set{1},2) / T1;
-			else
-				error('There is not an available Language or BeliefGraph object in the controller.')
-			end
+			num_words = length(obj.BG.BeliefLanguage.words);
+			T1 = length(obj.BG.BeliefLanguage.words{1});
+			m = size(obj.F_set{1},1) / T1;
+			%p = size(obj.F_set{1},2) / T1;
 
 			y_vec = reshape(y_mat,prod(size(y_mat)),1);
-
-			switch mode_prop
-				case 'unobserved'
-					num_obsvs = length(y_vec)/p;
-				case 'observed'
-					num_obsvs = length(observed_w);
-			end
+			num_obsvs = length(y_vec)/p;
 
 			%%%%%%%%%%%%%%%
 			%% Algorithm %%
 			%%%%%%%%%%%%%%%
 
-			switch mode_prop
-				case 'observed'
-					gain_idx = obj.prefix_detection( observed_w );
-				case 'unobserved'
-					gain_idx = obj.prefix_detection( y_mat );
-					obj.BG.BeliefLanguage.words{gain_idx};
-			end
+			gain_idx = obj.prefix_detection( y_mat );
+			obj.BG.BeliefLanguage.words{gain_idx};
 
 			%Obtain the correct feedback matrices
 			F_t  = obj.F_set{gain_idx}([m*(num_obsvs-1)+1:m*num_obsvs],[1:p*num_obsvs]);
@@ -187,156 +159,85 @@ classdef POB_Feedback < handle
 			%			for a feasible realization of the random variables associated
 			%			with the tuple (ad,M1,sigma)
 
-			%++++++++++++++++
-			%Input Processing
+			%%%%%%%%%%%%%%%%%%%%%%
+			%% Input Processing %%
+			%%%%%%%%%%%%%%%%%%%%%%
+			
 			obj = varargin{1};
 			in_sys = varargin{2};
 			M1 = varargin{3};
 
-			if (~isa(in_sys,'Aff_Dyn')) && (~isa(in_sys,'LCSAS'))
-				error('The input system must be an LCSAS or Aff_Dyn object.')
+			if (~isa(in_sys,'LCSAS'))
+				error('The input system must be an LCSAS object.')
 			end
 
 			x_0_t = []; y_0_t=[]; sig = []; u_0_tm1 = [];
 
-			if isa(in_sys,'Aff_Dyn')
-				ad = in_sys;
+			%Save system in a new container
+			lcsas = in_sys;
 
-				if nargin < 4
-					rand_word_ind = randi(length(obj.L.words),1);
-					sig = obj.L.words{rand_word_ind};
-					T = length(sig);
-				else
-					if isa(varargin{4},'char')
-						%This means that the newer version of simulate_1run is being called.
-						%Read the characters.
-						[sig,T,in_w,x0] = obj.simulate_1run_input_helper( varargin );
-					elseif isa(varargin{4},'double')
-						%This means that the older version of simulate_1run is being called.
-						%Read the double.
-						sig = varargin{4};
-					else
-						error('Unrecognized type for fourth argument.')
-					end
+			in_w = []; x0 = [];
+
+			if nargin < 4
+				rand_word_ind = randi(length(lcsas.L.words),1);
+				sig = lcsas.L.words{rand_word_ind};
+				T = length(sig);
+			else
+				[sig,T,in_w,x0] = obj.simulate_1run_input_helper( varargin );
+			end
+
+			%%%%%%%%%%%%%%%
+			%% Algorithm %%
+			%%%%%%%%%%%%%%%
+
+			%Constants
+			% T = size(obj.L,2);
+			n = size(lcsas.Dyn(1).A,1);
+			wd = size(lcsas.Dyn(1).B_w,2);
+			vd = size(lcsas.Dyn(1).C_v,2);
+
+			%Generate Random Variables
+			if isempty(x0)
+				x0 = obj.gen_rand_vars( lcsas , sig , 'x0' , M1 );
+			end
+
+			if ~isempty(in_w)
+				w = in_w;
+			else
+				w = obj.gen_rand_vars( lcsas , sig , 'w' );
+			end
+
+			v = obj.gen_rand_vars( lcsas , sig , 'v' );
+
+			%Simulate system forward.
+			x_t = x0;
+			q_t = sig(1);
+
+			y_t = lcsas.Dyn(q_t).C*x0 + lcsas.Dyn(q_t).C_v*v(:,1);
+			
+			x_0_t = x_t;
+			y_0_t = y_t;
+			x_tp1 = Inf(n,1);
+
+			for t = 0:T-1
+				q_t = sig(t+1);
+
+				%Use Affine Dynamics with proper control law.
+				x_tp1 = lcsas.Dyn(q_t).A * x_t + ...
+						lcsas.Dyn(q_t).B * obj.apply_control( y_0_t ) + ...
+						lcsas.Dyn(q_t).B_w * w(:,t+1) + ...
+						lcsas.Dyn(q_t).f ;
+				%Update other variables in system
+				x_t = x_tp1;
+				x_0_t = [x_0_t, x_t];
+
+				if( t == T-1 )
+					continue;
 				end
+				q_tp1 = sig(t+2);
 
-				%%%%%%%%%%%%%%%
-				%% Algorithm %%
-				%%%%%%%%%%%%%%%
-
-				%Constants
-				% T = size(obj.L,2);
-				n = size(ad.A,1);
-				wd = size(ad.B_w,2);
-				vd = size(ad.C_v,2);
-
-				%Generate Random Variables
-				if isempty('x0')
-					x0 = obj.gen_rand_vars( ad , sig , 'x0' , M1 );
-				end
-
-				if ~isempty('in_w')
-					w = in_w;
-				else
-					w = obj.gen_rand_vars( ad , sig , 'w' );
-				end
-
-				v = obj.gen_rand_vars( ad , sig , 'v' );
-
-				%Simulate system forward.
-				x_t = x0;
-				y_t = ad.C*x0 + ad.C_v*v(:,1);
-				
-				x_0_t = x_t;
-				y_0_t = y_t;
-				x_tp1 = Inf(n,1);
-				sig = [sig,1];
-				for t = 0:T-1
-					%Use Affine Dynamics with proper control law.
-					x_tp1 = ad.A * x_t + ...
-							ad.B * obj.apply_control( sig([1:t+1]) , y_0_t ) + ...
-							ad.B_w * w(:,t+1) + ...
-							ad.f ;
-					%Update other variables in system
-					x_t = x_tp1;
-					x_0_t = [x_0_t, x_t];
-
-					if( t == T-1 )
-						continue;
-					end
-
-					y_t = sig(t+2)*(ad.C*x_t + ad.C_v*v(:,t+1));
-					y_0_t = [y_0_t, y_t];
-				end
-
-			elseif isa(in_sys,'LCSAS')
-				%Save system in a new container
-				lcsas = in_sys;
-
-				in_w = []; x0 = [];
-
-				if nargin < 4
-					rand_word_ind = randi(length(lcsas.L.words),1);
-					sig = lcsas.L.words{rand_word_ind};
-					T = length(sig);
-				else
-					[sig,T,in_w,x0] = obj.simulate_1run_input_helper( varargin );
-				end
-
-				%%%%%%%%%%%%%%%
-				%% Algorithm %%
-				%%%%%%%%%%%%%%%
-
-				%Constants
-				% T = size(obj.L,2);
-				n = size(lcsas.Dyn(1).A,1);
-				wd = size(lcsas.Dyn(1).B_w,2);
-				vd = size(lcsas.Dyn(1).C_v,2);
-
-				%Generate Random Variables
-				if isempty(x0)
-					x0 = obj.gen_rand_vars( lcsas , sig , 'x0' , M1 );
-				end
-
-				if ~isempty(in_w)
-					w = in_w;
-				else
-					w = obj.gen_rand_vars( lcsas , sig , 'w' );
-				end
-
-				v = obj.gen_rand_vars( lcsas , sig , 'v' );
-
-				%Simulate system forward.
-				x_t = x0;
-				q_t = sig(1);
-
-				y_t = lcsas.Dyn(q_t).C*x0 + lcsas.Dyn(q_t).C_v*v(:,1);
-				
-				x_0_t = x_t;
-				y_0_t = y_t;
-				x_tp1 = Inf(n,1);
-				%sig = [sig,1];
-				for t = 0:T-1
-					q_t = sig(t+1);
-
-					%Use Affine Dynamics with proper control law.
-					x_tp1 = lcsas.Dyn(q_t).A * x_t + ...
-							lcsas.Dyn(q_t).B * obj.apply_control( y_0_t ) + ...
-							lcsas.Dyn(q_t).B_w * w(:,t+1) + ...
-							lcsas.Dyn(q_t).f ;
-					%Update other variables in system
-					x_t = x_tp1;
-					x_0_t = [x_0_t, x_t];
-
-					if( t == T-1 )
-						continue;
-					end
-					q_tp1 = sig(t+2);
-
-					y_t = lcsas.Dyn(q_tp1).C*x_t + lcsas.Dyn(q_tp1).C_v*v(:,t+1);
-					y_0_t = [y_0_t, y_t];
-				end
-
+				y_t = lcsas.Dyn(q_tp1).C*x_t + lcsas.Dyn(q_tp1).C_v*v(:,t+1);
+				y_0_t = [y_0_t, y_t];
 			end
 
 			u_0_tm1 = obj.u_hist;

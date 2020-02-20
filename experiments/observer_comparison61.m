@@ -17,6 +17,9 @@ function [results] = observer_comparison60( varargin )
 		c_sq.dim_y = varargin{3};
 	end
 
+	if nargin >= 4
+		verbosity = varargin{4};
+	end
 
 	%%%%%%%%%%%%%%%
 	%% Constants %%
@@ -27,6 +30,10 @@ function [results] = observer_comparison60( varargin )
 		c_sq.dim_y = 2;
 	end
 	
+	if ~exist('verbosity')
+		verbosity = 0;
+	end
+
 	dt = 0.1;
 
 	in_sys = get_consensus_dyn(c_sq.dim_x,c_sq.dim_y,dt);
@@ -79,20 +86,25 @@ function [results] = observer_comparison60( varargin )
 
 	timing_at_t = [];
 	for t = 1:5
+
+		if verbosity > 0
+			disp(['- Analysis of Consistency Sets at time t = ' num2str(t)])
+		end
+
 		tic;
-		[C_q1, ~] = in_sys.consistent_set(t,Language({q1}),Pu,Px0);
+		[C_q1, ~] = in_sys.consistent_set(t,Language({q1}),Pu,Px0,'fb_method','output','reduce_representation',true);
 		time_for.C_q1 = toc;
 
 		tic;
-		[C_q2, ~] = in_sys.consistent_set(t,Language({q2}),Pu,Px0);
+		[C_q2, ~] = in_sys.consistent_set(t,Language({q2}),Pu,Px0,'fb_method','output','reduce_representation',true);
 		time_for.C_q2 = toc;
 
 		tic;
-		[C_q3, ~] = in_sys.consistent_set(t,Language({q3}),Pu,Px0);
+		[C_q3, ~] = in_sys.consistent_set(t,Language({q3}),Pu,Px0,'fb_method','output','reduce_representation',true);
 		time_for.C_q3 = toc;
 
 		tic;
-		[C_L2, ~] = in_sys.consistent_set(t,in_sys.L,Pu,Px0);
+		[C_L2, ~] = in_sys.consistent_set(t,in_sys.L,Pu,Px0,'fb_method','output','reduce_representation',true);
 		time_for.C_L = toc;
 
 		tic;
@@ -100,8 +112,15 @@ function [results] = observer_comparison60( varargin )
 		C_L_prime = C_L2_prime.intersect(C_q3);
 		time_for.C_L_prime = toc;
 
+		%How do C_L2 and C_L_prime compare?
+		disp('How do C_L_prime and C_L2 compare?')
+		disp(['- Is C_L_prime a subset of C_L2? ' num2str(C_L_prime.contains(C_L2)) ])
+		disp(['- Is C2 a subset of C_L_prime? ' num2str(C_L2.contains(C_L_prime)) ])
+
+
 		%Text Update
 		disp(['Completed timing at t = ' num2str(t) '.'])
+		disp(' ')
 
 		%Save timing data to an array of structs
 		timing_at_t = [timing_at_t,time_for];
@@ -133,5 +152,7 @@ function [results] = observer_comparison60( varargin )
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	%% Save The Larger Variables to a Data File %%
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+	save([ save_file_name '.mat'])
 
 end

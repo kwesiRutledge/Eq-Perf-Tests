@@ -13,17 +13,21 @@ function [Consist_set, full_set ] = consistent_set(varargin)
 	%			- w_t belongs to the set W_{q_t} which varies with the mode
 	%
 	%Inputs:
-	%	lcsas 	- An array of Aff_Dyn() objects. Hopefully the dimensions are all appropriately checked so that
-	%			  the state is the proper size in all Aff_Dyn(). Inputs as well, etc.
-	%	t 		- The time of interest
-	%	L 		- The set of words under consideration.
-	%			  We would like to find the set of states for which it is possible to reach when under ALL switching
-	%			  sequences in this set with the same inputs (albeit with different disturbances).
+	%	lcsas 		- An array of Aff_Dyn() objects. Hopefully the dimensions are all appropriately checked so that
+	%				  the state is the proper size in all Aff_Dyn(). Inputs as well, etc.
+	%	t 			- The time of interest
+	%	L 			- The set of words under consideration.
+	%				  We would like to find the set of states for which it is possible to reach when under ALL switching
+	%				  sequences in this set with the same inputs (albeit with different disturbances).
+	%	use_proj 	- Boolean (true or false).
+	%				  Used to tell the function to either skip the creation of Consist_set (false) or complete the
+	%				  computation of Consist_set (true) which requires projection operations to be called and may be very slow.
 	%
 	%Example Usage:
 	%	[Phi_t_L] = consistency_set(lcsas,t,L)
 	%	[Consist_set, full_set] = consistency_set(lcsas,t,L,P_u,P_x0)
 	%	[Consist_set, full_set] = consistency_set(lcsas,t,L,P_u,P_x0,'fb_method','state')
+	%	[Consist_set, full_set] = consistency_set(lcsas,t,L,P_u,P_x0,'fb_method','state','use_proj',false)
 	%
 	%Assumptions:
 	%	This formulation assumes that the system does not include a disturbed measurements. i.e. We can perfectly observe the state
@@ -60,16 +64,22 @@ function [Consist_set, full_set ] = consistent_set(varargin)
 					error(['Invalid feedback type: ' fb_type ])
 				end
 				varargin_idx = varargin_idx + 2;
+			case 'use_proj'
+				use_proj = varargin{varargin_idx+1};
+				if ~islogical( use_proj )
+					error('The flag for ''use_proj'' should be a boolean.')
+				end
+				varargin_idx = varargin_idx + 2;
+			case 'reduce_representation'
+				reduce_flag = varargin{varargin_idx+1};
+				if ~islogical( reduce_flag )
+					error('The flag for ''reduce_flag'' should be a boolean.')
+				end
+				varargin_idx = varargin_idx + 2;
 			otherwise
 				error('Unexpected additional input.')
 		end
 	end
-
-	if ~exist('fb_type')
-		fb_type = 'state';
-	end
-
-
 
 	if (t < 0)
 		error(['t must have a value greater than 0.'])
@@ -90,6 +100,18 @@ function [Consist_set, full_set ] = consistent_set(varargin)
 	n_w = size(lcsas.Dyn(1).B_w,2);
 	n_y = size(lcsas.Dyn(1).C,1);
 	n_v = size(lcsas.Dyn(1).C_v,2);
+
+	if ~exist('fb_type')
+		fb_type = 'state';
+	end
+
+	if ~exist('use_proj')
+		use_proj = true;
+	end
+
+	if ~exist('reduce_flag')
+		reduce_flag = false;
+	end
 
 	%%%%%%%%%%%%%%%
 	%% Algorithm %%
@@ -118,12 +140,12 @@ function [Consist_set, full_set ] = consistent_set(varargin)
 	end
 
 	H_block = []; S_block = []; J_block = []; f_block = [];
-	I_blockx = []; I_blockx2 = []; I_blocky = [];
+	I_blockx = []; I_blockx2 = [];  I_blocky = [];
 	C_block = []; Cv_block = [];
 	for word_ind = 1:length(L.words)
-		H_block(end+[1:size(Hc{word_ind},1)],end+[1:size(Bwc{word_ind},2)]) = -Hc{word_ind}*Bwc{word_ind};
-		S_block(end+[1:size(Sc{word_ind},1)],[1:size(Sc{word_ind},2)]) = -Sc{word_ind};
-		J_block(end+[1:size(Jc{word_ind},1)],end+[1:size(Jc{word_ind},2)]) = -Jc{word_ind};
+		H_block(end+[1:size(Hc{word_ind},1)],end+[1:size(Bwc{word_ind},2)]) = Hc{word_ind}*Bwc{word_ind};
+		S_block(end+[1:size(Sc{word_ind},1)],[1:size(Sc{word_ind},2)]) = Sc{word_ind};
+		J_block(end+[1:size(Jc{word_ind},1)],end+[1:size(Jc{word_ind},2)]) = Jc{word_ind};
 		f_block(end+[1:size(Hc{word_ind}*fc{word_ind},1)],1) = Hc{word_ind}*fc{word_ind};
 
 		I_blockx(end+[1:n_x*(t+1)],[1:n_x*(t+1)]) = eye(n_x*(t+1));
@@ -133,6 +155,12 @@ function [Consist_set, full_set ] = consistent_set(varargin)
 		Cv_block(end+[1:n_y*(t+1)],end+[1:n_v*(t+1)]) = [Cvc{word_ind},zeros(size(Cvc{word_ind},1),n_v);zeros(n_y,size(Cvc{word_ind},2)), lcsas.Dyn( L.words{word_ind}(t+1) ).C_v ];
 		I_blockx2(end+[1:n_x*(t+1)],end+[1:n_x*(t+1)]) = eye(n_x*(t+1));
 	end
+
+	% I_block_x0 = []; 
+	% block_select_x0 = zeros(L.cardinality()*n_x,size(I_blockx2));
+	% for word_ind = 1:L.cardinality()
+	% 	block_select_x0(end+[1:n_x],:) = [ zeros(n_x,(n_x*(t+1))*(word_ind-1)) eye(n_x)  ]
+	% end
 
 	%% Constructing the Sets
 	if strcmp(fb_type,'state')
@@ -146,11 +174,8 @@ function [Consist_set, full_set ] = consistent_set(varargin)
 		end
 
 		%Create the set of feasible (x,u,w,x0) tuples
-		full_set = Polyhedron('A',[zeros(size(P_eta.A,1),n_x*(t+1)),P_eta.A],'b',P_eta.b,'Ae',[I_blockx, S_block, H_block, J_block],'be',f_block );
+		full_set = Polyhedron('A',[zeros(size(P_eta.A,1),n_x*(t+1)),P_eta.A],'b',P_eta.b,'Ae',[-I_blockx, S_block, H_block, J_block],'be',-f_block );
 
-		%Project the above set to create the set of feasible observed trajectories (x,u)
-		Consist_set = [ eye(n_x*(t+1) + n_u*t), zeros(n_x*(t+1) + n_u*t, length(L.words)*(n_w*t + n_x) ) ] * full_set;
-	
 	else
 		%Also introduce the measurement disturbance into the equation
 		P_vT = 1; 
@@ -164,18 +189,42 @@ function [Consist_set, full_set ] = consistent_set(varargin)
 
     	%Create the set of feasible (x,u,w,x0) tuples
     	full_set = Polyhedron(	'A',[zeros(size(P_eta.A,1),n_y*(t+1)),P_eta.A,zeros(size(P_eta.A,1),length(L.words)*n_x*(t+1))],'b',P_eta.b, ...
-    							'Ae',[zeros(size(S_block,1),size(I_blocky,2)),S_block, H_block, zeros(size(S_block,1),size(Cv_block,2)), J_block, I_blockx2; ...
+    							'Ae',[zeros(size(S_block,1),size(I_blocky,2)),S_block, H_block, zeros(size(S_block,1),size(Cv_block,2)), J_block, -I_blockx2; ...
     								  I_blocky, zeros(size(I_blocky,1),size(S_block,2)+size(H_block,2)), -Cv_block , zeros(size(I_blocky,1),size(J_block,2)) , -C_block ], ...
-    							'be', [f_block;zeros(size(I_blocky,1),1)] );
+    							'be', [-f_block;zeros(size(I_blocky,1),1)] );
 
-    	if ~full_set.isEmptySet
+	end
+
+	if (~full_set.isEmptySet) && reduce_flag
+		full_set.minHRep; %Make sure to do this to simplify some of the future projections.
+	end
+
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	%% Constructing the Consistency Sets %%
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+	if use_proj
+
+		if strcmp(fb_type,'state')
+
 			%Project the above set to create the set of feasible observed trajectories (x,u)
-			%Consist_set = [ eye(n_y*(t+1) + n_u*t), zeros(n_x*(t+1) + n_u*t, length(L.words)*(n_w*t + n_v*(t+1) + n_x + n_x*(t+1)) ) ] * full_set;
-			%Consist_set = full_set.affineMap([ eye(n_y*(t+1) + n_u*t), zeros(n_x*(t+1) + n_u*t, length(L.words)*(n_w*t + n_v*(t+1) + n_x + n_x*(t+1)) ) ],'vrep')
-			Consist_set = full_set.projection([1:n_y*(t+1) + n_u*t]);
+			Consist_set = [ eye(n_x*(t+1) + n_u*t), zeros(n_x*(t+1) + n_u*t, length(L.words)*(n_w*t + n_x) ) ] * full_set;
+		
 		else
-			Consist_set = Polyhedron('A',[ [1;-1], ones(2,n_y*(t+1) + n_u*t-1) ],'b',[1;-2]);
+
+	    	if ~full_set.isEmptySet
+				%Project the above set to create the set of feasible observed trajectories (x,u)
+				%Consist_set = [ eye(n_y*(t+1) + n_u*t), zeros(n_x*(t+1) + n_u*t, length(L.words)*(n_w*t + n_v*(t+1) + n_x + n_x*(t+1)) ) ] * full_set;
+				%Consist_set = full_set.affineMap([ eye(n_y*(t+1) + n_u*t), zeros(n_x*(t+1) + n_u*t, length(L.words)*(n_w*t + n_v*(t+1) + n_x + n_x*(t+1)) ) ],'vrep')
+				Consist_set = full_set.projection([1:n_y*(t+1) + n_u*t]);
+			else
+				Consist_set = Polyhedron('A',[ [1;-1], zeros(2,n_y*(t+1) + n_u*t-1) ],'b',[1;-2]);
+			end
 		end
+		Consist_set.minHRep; %Used to make sure that future projections are simpler to compute.
+
+	else
+		Consist_set = [];
 	end
 		
 

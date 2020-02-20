@@ -276,6 +276,10 @@ classdef Language
 			char_arr = [char_arr,' }'];
 		end
 
+		function char_arr = lang2str( obj )
+			char_arr = obj.langtostr();
+		end
+
 	end
 
 end

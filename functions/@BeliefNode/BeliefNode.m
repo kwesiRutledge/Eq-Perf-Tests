@@ -18,10 +18,16 @@ classdef BeliefNode
 	%	- find_longest_horizon
 	%
 
+	properties(SetAccess = protected)
+		c_set_present;
+		phi_set_present;
+	end
+
 	properties
 		subL;
 		t;
 		c_set;
+		FullTrajectorySet; %Also known as Phi
 	end
 
 	methods
@@ -34,6 +40,7 @@ classdef BeliefNode
 			%Usage:
 			%	BN = BeliefNode(subset_L,t0)
 			%	BN = BeliefNode(subset_L,t0,c_set)
+			%	BN = BeliefNode(subset_L,t0,c_set,phi_set)
 
 			debug_flag = 0;
 
@@ -48,13 +55,17 @@ classdef BeliefNode
 			subset_L = varargin{1};
 			t0 = varargin{2};
 
-			if nargin == 2
-				if debug_flag > 0
-					warning('This method for initializing Belief Nodes is deprecated. Please use the 3 argument version.')
-				end
-			elseif nargin == 3
-				c_set = varargin{3};
-				BN.c_set = c_set;
+			switch nargin
+				case 2
+					%warning('This method for initializing Belief Nodes is deprecated. Please use the 3 argument version.')
+					1;
+				case 3
+					c_set = varargin{3};
+				case 4
+					c_set = varargin{3};
+					phi_set = varargin{4};
+				otherwise
+					error(['It is not allowable to call this class with ' num2str(nargin) ' arguments.' ])
 			end
 
 			if ~(iscell(subset_L) || isa(subset_L,'Language') )
@@ -70,12 +81,31 @@ classdef BeliefNode
 				subset_L.words = temp_arr;
 			end
 
+			%%%%%%%%%%%%%%%
+			%% Constants %%
+			%%%%%%%%%%%%%%%
+
+			if ~exist('c_set')
+				c_set = [];
+			end
+
+			if ~exist('phi_set')
+				phi_set = [];
+			end
+
 			%%%%%%%%%%%%%%%%%%%%%%%%%
 			%% Assigning Variables %%
 			%%%%%%%%%%%%%%%%%%%%%%%%%
 
 			BN.subL = subset_L;
 			BN.t = t0;
+
+			BN.c_set = c_set;
+			BN.FullTrajectorySet = phi_set;
+
+			BN.c_set_present = ~isempty(c_set);
+			BN.phi_set_present = ~isempty(phi_set);
+
 		end
 
 		function subsets = idx_powerset_of_subL(obj)

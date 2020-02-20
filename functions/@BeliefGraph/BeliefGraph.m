@@ -16,6 +16,12 @@ classdef BeliefGraph < handle
 	%	- prepend_any_valid_node
 	%	- get_belief_language
 
+	properties(SetAccess = protected)
+		UsedProjection;
+		FeedbackMethod;
+		UsedAcceleratedAlgorithms;
+	end
+
 	properties
 		E;
 		N;
@@ -29,14 +35,27 @@ classdef BeliefGraph < handle
 			%Description:
 			%
 			%Inputs:
-			%	in_sys 	- An array of Aff_Dyn() objects. May eventually become its own class/data type soon.
-			%	in_lcsas- An LCSAS object representing the desired system.
+			%	in_sys 	 	- An array of Aff_Dyn() objects. May eventually become its own class/data type soon.
+			%	in_lcsas 	- An LCSAS object representing the desired system.
+			%	P_u 		- A Polyhedron() object that defines the input constraints.
+			%				  The input at each time must lie within the polyhedron.
+			%	P_x0 		- A Polyhedron() object that defines the set of states from which the initial state is contained.
+			%
+			%	fb_method 	- A string indicating if the controller has access to the state or a measurement of the state.
+			%				  Options include: 'output', 'state'
+			%	post_flag 	- A string indicating if the Belief Graph construction algorithm uses the original version of post,
+			%				  or any other.
+			%				  Options include: 'minimal','no projection'
+			%
 			%
 			%Usage:
 			%	BG = BeliefGraph(in_sys,L,P_u,P_x0)
 			%	BG = BeliefGraph(in_sys,L,P_u,P_x0,'verbosity',verbosity)
 			%	BG = BeliefGraph(in_lcsas,P_u,P_x0,'verbosity',verbosity)
-			%
+			%	BG = BeliefGraph(in_lcsas,P_u,P_x0,'verbosity',verbosity,'fb_method',fb_method)
+			%	BG = BeliefGraph(in_lcsas,P_u,P_x0,'accel_flag',accel_flag)
+			%	BG = BeliefGraph(in_lcsas,P_u,P_x0,'use_proj_flag',tf)
+			%	BG = BeliefGraph(in_lcsas,P_u,P_x0,'use_unobservability_checks',tf)
 
 
 			% disp('Created empty Belief Graph. Please call the construct() function next.')
@@ -83,6 +102,18 @@ classdef BeliefGraph < handle
 					case 'fb_method'
 						fb_method = varargin{varargin_idx+1};
 						varargin_idx = varargin_idx + 2;
+					case 'post_flag'
+						post_flag = varargin{varargin_idx+1};
+						varargin_idx = varargin_idx + 2;
+					case 'accel_flag'
+						accel_flag = varargin{varargin_idx+1};
+						varargin_idx = varargin_idx + 2;
+					case 'use_proj_flag'
+						use_proj_flag = varargin{varargin_idx+1};
+						varargin_idx = varargin_idx + 2;
+					case 'use_unobservability_checks'
+						use_unobservability_checks = varargin{varargin_idx+1};
+						varargin_idx = varargin_idx + 2;
 					otherwise
 						error(['Unrecognized input to the function: ' varargin{varargin_idx}])
 				end
@@ -102,8 +133,6 @@ classdef BeliefGraph < handle
 				end
 			end
 
-			disp('Worked through inputs.')
-
 			%%%%%%%%%%%%%%%
 			%% Constants %%
 			%%%%%%%%%%%%%%%
@@ -116,9 +145,29 @@ classdef BeliefGraph < handle
 				fb_method = 'output';
 			end
 
+			if ~exist('accel_flag')
+				accel_flag = false;
+			end
+
+			if ~exist('use_proj_flag')
+				use_proj_flag = true;
+			end
+
+			if ~exist('use_unobservability_checks')
+				use_unobservability_checks = true;
+			end
+
+			BG.UsedProjection = use_proj_flag;
+			BG.FeedbackMethod = fb_method;
+			BG.UsedAcceleratedAlgorithms = accel_flag;
+
 			%%%%%%%%%%%%%%%%%%%%%%%%%%%
 			%% Building Belief Graph %%
 			%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+			if verbosity > 1
+				disp('Worked through inputs.')
+			end
 
 			BG.lcsas = in_sys;
 			BG.ModeLanguage = L;
@@ -134,12 +183,21 @@ classdef BeliefGraph < handle
 
 			for tau = 1:T_max-1
 				%Each belief will be indexed by a time. (i.e. I hold X belieft at time t)
+
+				if verbosity > 0
+					disp(['- tau = ' num2str(tau) ])
+				end
+
 				for node_idx = 1:length(c_level) %Iterate through all nodes that are stored in the c_level array
 					%Current node
 					c_node = c_level(node_idx);
 
 					%Calculate the ancestors of this Belief Node
-					temp_post = BG.post(c_node,P_u,P_x0,'debug',verbosity, 'fb_method',fb_method);
+					if use_proj_flag
+						temp_post = BG.post(c_node,P_u,P_x0,'debug',verbosity, 'fb_method',fb_method , 'accel_flag' , accel_flag , 'use_unobservability_checks' , use_unobservability_checks );
+					else
+						temp_post = BG.post_noproj(c_node,P_u,P_x0,'debug',verbosity, 'fb_method',fb_method , 'accel_flag' , accel_flag);
+					end
 					
 					%Add the ancestors to the BeliefGraph's set of nodes if they don't already exist in the set.
 					for node_idx = 1:length(temp_post)

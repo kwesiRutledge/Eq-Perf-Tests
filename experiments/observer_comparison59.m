@@ -27,7 +27,7 @@ function [results] = observer_comparison59( varargin )
 	verbosity = 1; %Verbosity of Functions. Gives debugging info
 
 	%Data file parameters.
-	save_file_name = 'data/oc58_interm_results.mat';
+	save_file_name = 'data/oc59_interm_results.mat';
 	load_data_flag = false;
 	run_opt_flag = true;
 

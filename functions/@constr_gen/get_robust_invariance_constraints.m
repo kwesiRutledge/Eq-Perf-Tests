@@ -1,6 +1,6 @@
 function [ varargout ] = get_robust_invariance_constraints(varargin)
 	%Description:
-	%	Gets the variables necessary to define a finite horizon reachability problem.
+	%	Gets the variables necessary to define a finite horizon invariance problem.
 	%	- Q-Parameterized versions of the feedback gains (F,f) [Notation used is the NAHS submission variety.]
 	%	- Dual variable that satisfy polytope inclusion of the state
 	%	- Dual variable that is used to define satisfaction of the input constraint.

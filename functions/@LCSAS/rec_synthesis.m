@@ -14,7 +14,7 @@ function [ fb_law , opt_out , constraints ] = rec_synthesis(varargin)
 	%%%%%%%%%%%%%%%%%%%%%%
 
 	if nargin < 2
-		error('Expected at least 3 inputs. Please see usage comment. (help LCSAS.rec_synthesis)')
+		error('Expected at least 2 inputs. Please see usage comment. (help LCSAS.rec_synthesis)')
 	end
 
 	lcsas = varargin{1};
@@ -88,7 +88,7 @@ function [ fb_law , opt_out , constraints ] = rec_synthesis(varargin)
 		r_set{pattern_ind} = value(r{pattern_ind});
 	end
 
-	fb_law = FHAE_pb(BG,Q_set,r_set);
+	fb_law = POB_Feedback(BG,Q_set,r_set);
 	
 	%% Optimization flags
 	opt_out = optim0;

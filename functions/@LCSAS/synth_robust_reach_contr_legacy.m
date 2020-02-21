@@ -1,6 +1,7 @@
-function [BG,contr,opt_out,BG_creation_time] = synth_robust_reach_contr( varargin )
+function [BG,contr,opt_out,BG_creation_time] = synth_robust_reach_contr_legacy( varargin )
 	%Description:
-	%	Testing the all mode observer construction algorithm
+	%	Synthesizes a controller that robustly reaches a provided target set.
+	%	When there is no target set provided, then the algorithm tries to minimize a hypercube at the final time.
 	%
 	%Usage:
 	%	[BG,contr] = lcsas.synth_robust_reach_contr( P_x0 , P_u )
@@ -63,27 +64,9 @@ function [BG,contr,opt_out,BG_creation_time] = synth_robust_reach_contr( varargi
 
 	ops = sdpsettings('verbose',debug_flag);
 
-	if ~exist('legacy_flag')
-		legacy_flag = false;
-	end
-
 	%%%%%%%%%%%%%%%
 	%% Algorithm %%
 	%%%%%%%%%%%%%%%
-
-	if legacy_flag
-		if exist('P_target') && exist('BG')
-			[BG,contr,opt_out,BG_creation_time] = synth_robust_reach_contr_legacy( P_x0 , P_u , 'P_target' , P_target , 'debug_flag' , debug_flag , 'BG' , BG );
-		elseif exist('P_target')
-			[BG,contr,opt_out,BG_creation_time] = synth_robust_reach_contr_legacy( P_x0 , P_u , 'P_target' , P_target , 'debug_flag' , debug_flag );
-		elseif exist('BG')
-			[BG,contr,opt_out,BG_creation_time] = synth_robust_reach_contr_legacy( P_x0 , P_u , 'BG' , BG , 'debug_flag' , debug_flag );
-		else
-			[BG,contr,opt_out,BG_creation_time] = synth_robust_reach_contr_legacy( P_x0 , P_u , 'debug_flag' , debug_flag );
-		end
-		return;
-	end
-	
 	if ~exist('BG')
 		bg_timer_start = tic;
 		BG = BeliefGraph(in_lcsas,P_u,P_x0,'verbosity',debug_flag,'accel_flag',true);

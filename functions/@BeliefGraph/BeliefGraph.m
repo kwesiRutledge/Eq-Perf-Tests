@@ -20,6 +20,7 @@ classdef BeliefGraph < handle
 		UsedProjection;
 		FeedbackMethod;
 		UsedAcceleratedAlgorithms;
+		UsedUnobservabilityChecks;
 	end
 
 	properties
@@ -160,6 +161,7 @@ classdef BeliefGraph < handle
 			BG.UsedProjection = use_proj_flag;
 			BG.FeedbackMethod = fb_method;
 			BG.UsedAcceleratedAlgorithms = accel_flag;
+			BG.UsedUnobservabilityChecks = use_unobservability_checks;
 
 			%%%%%%%%%%%%%%%%%%%%%%%%%%%
 			%% Building Belief Graph %%
@@ -193,12 +195,8 @@ classdef BeliefGraph < handle
 					c_node = c_level(node_idx);
 
 					%Calculate the ancestors of this Belief Node
-					if use_proj_flag
-						temp_post = BG.post(c_node,P_u,P_x0,'debug',verbosity, 'fb_method',fb_method , 'accel_flag' , accel_flag , 'use_unobservability_checks' , use_unobservability_checks );
-					else
-						temp_post = BG.post_noproj(c_node,P_u,P_x0,'debug',verbosity, 'fb_method',fb_method , 'accel_flag' , accel_flag);
-					end
-					
+					temp_post = BG.post(c_node,P_u,P_x0,'debug',verbosity);
+										
 					%Add the ancestors to the BeliefGraph's set of nodes if they don't already exist in the set.
 					for node_idx = 1:length(temp_post)
 						if BG.find_node_idx(temp_post(node_idx)) == -1

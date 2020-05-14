@@ -10,6 +10,15 @@ classdef LCSAS
 	%	- consistency_set
 	%	- get_mpc_matrices
 	%
+	%Member Variables:
+	%	- Dyn
+	%	- n_modes
+	%	- L
+	%	- domain (*)
+	%	- X0 (*)
+	%	* = This member variable may or may not be defined in the variable instance.
+	%		You should check to see if it exists before using it.
+	%
 	%Requires:
 	%	Aff_Dyn() class.
 
@@ -18,6 +27,7 @@ classdef LCSAS
 		n_modes;
 		L;
 		domain;
+		X0; %X0
 	end
 
 	methods
@@ -33,19 +43,43 @@ classdef LCSAS
 			%Usage:
 			%	out_sys = LCSAS(ad_arr,L)
 			%	out_sys = LCSAS(ad_arr,L,Domain)
+			%	out_sys = LCSAS(ad_arr,L,'Domain',Domain)
+			%	out_sys = LCSAS(ad_arr,L,'X0',X0)
 
 			%%%%%%%%%%%%%%%%%%%%%%
 			%% Input Processing %%
 			%%%%%%%%%%%%%%%%%%%%%%
 
+			if nargin >= 2
+				ad_arr = varargin{1};
+				L = varargin{2};
+			end
+
+			argin_idx = 3;
+
+			if (nargin == 3) & (isa(varargin{3},'Polyhedron'))
+				%Detected a Domain input
+				domain = varargin{3};
+				argin_idx = argin_idx + 1;
+			end
+
+			while argin_idx <= nargin
+				switch varargin{argin_idx}
+				case 'Domain'
+					domain = varargin{argin_idx+1};
+					argin_idx = argin_idx + 2;
+				case 'X0'
+					X0_in = varargin{argin_idx+1};
+					argin_idx = argin_idx + 2;
+				otherwise
+					error(['Unexpected input to LCSAS: See Argument ' num2str(argin_idx) '.' ])
+				end
+			end
+
 			switch nargin
 			case 2
 				ad_arr = varargin{1};
 				L = varargin{2};
-			case 3
-				ad_arr = varargin{1};
-				L = varargin{2};
-				domain = varargin{3};
 			otherwise
 				error(['Unexpected number of input arguments: ' num2str(nargin) ])
 			end
@@ -75,6 +109,10 @@ classdef LCSAS
 			out_sys.L = L;
 			if exist('domain')
 				out_sys.domain = domain;
+			end
+
+			if exist('X0_in')
+				out_sys.X0 = X0_in;
 			end
 
 		end

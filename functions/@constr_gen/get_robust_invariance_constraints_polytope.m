@@ -1,4 +1,4 @@
-function [ varargout ] = get_robust_invariance_constraints(varargin)
+function [ varargout ] = get_robust_invariance_constraints_polytope(varargin)
 	%Description:
 	%	Gets the variables necessary to define a finite horizon invariance problem.
 	%	- Q-Parameterized versions of the feedback gains (F,f) [Notation used is the NAHS submission variety.]
@@ -83,10 +83,6 @@ function [ varargout ] = get_robust_invariance_constraints(varargin)
 		param_flag = 'Q';
 	end
 
-	if ~exist('P_des')
-		P_des = P_x0;
-	end
-
 	% Create Gain Variables
 	switch param_flag
 	case 'Q'
@@ -113,17 +109,6 @@ function [ varargout ] = get_robust_invariance_constraints(varargin)
 	%q_des = size(P_des.A,1);
 
 	select_m = @(t,T_r) [zeros(n,t*n), eye(n), zeros(n,(T_r-t)*n) ];
-
-	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-	%% Use Helper Function If Possible %%
-	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-	% If the target set, P_target, is a Polyhedron, then use the simple helper function get_robust_reachability_constraints_polytope.m
-	if length(P_des) == 1
-		[ Pi1 , Piu , constraints ] = cg.get_robust_reachability_constraints_polytope(varargin{2:end});
-		varargout = {Pi1,Piu,constraints};
-		return
-	end
 
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	%% Define the Dual Variables for Robust Reachability %%

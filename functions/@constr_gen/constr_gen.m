@@ -7,11 +7,22 @@ classdef constr_gen
 
 	methods
 		%Constructor
-		function [generator] = constr_gen()
+		function [generator] = constr_gen(varargin)
 			%Description:
 			%	The constructor for this class does nothing.
 
-			disp('constr_gen() does not initialize any member variables.')
+			switch nargin
+			case 0
+				disp('constr_gen() does not initialize any member variables.')
+			case 1
+				verbosity = varargin{1};
+				if verbosity > 0
+					disp('constr_gen() does not initialize any member variables.')
+				end	
+			otherwise
+				error(['Unexpected number of inputs to constr_gen (' num2str(nargin) '). Expect 0 or 1.' ])
+			end
+
 			% generator = [];
 
 		end

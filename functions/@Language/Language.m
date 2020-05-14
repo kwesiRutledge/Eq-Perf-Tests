@@ -64,7 +64,7 @@ classdef Language
 			end
 		end
 
-		function in_lang_flag = contains(obj,word_in)
+		function [in_lang_flag,pos_in_lang] = contains(obj,word_in)
 			%Description:
 			%	Returns true if the word 'word_in' is in the language's words/
 			%	Otherwise returns false.
@@ -75,6 +75,7 @@ classdef Language
 			%% Variables
 
 			in_lang_flag = false;
+			pos_in_lang = -1;
 
 			%% Algorithm
 
@@ -82,6 +83,7 @@ classdef Language
 				if size(obj.words{lang_idx},2) == size(word_in,2)
 					if all(obj.words{lang_idx} == word_in)
 						in_lang_flag = true;
+						pos_in_lang = lang_idx;
 					end
 				end
 			end

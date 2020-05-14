@@ -41,9 +41,9 @@ function [J] = calc_J_mat(varargin)
 		T = varargin{2};
 
 		%Creating matrix.
-		J = A;
+		J = eye(size(A,1));
 
-		for i = 1 : T
+		for i = 1 : (T-1)
 			J = [J; (A^i)];
 		end
 	else

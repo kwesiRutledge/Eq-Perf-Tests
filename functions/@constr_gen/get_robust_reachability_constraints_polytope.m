@@ -1,4 +1,4 @@
-function varargout = get_robust_reachability_constraints(varargin)
+function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints_polytope(varargin)
 	%Description:
 	%	Gets the variables necessary to define a finite horizon reachability problem.
 	%	- Q-Parameterized versions of the feedback gains (F,f) [Notation used is the NAHS submission variety.]
@@ -11,8 +11,6 @@ function varargout = get_robust_reachability_constraints(varargin)
 	%	[ Pi1 , Piu , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,Q,r,'P_des',P_des, 'P_u' , P_u)
 	%	[ Pi1 , Piu , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,Q,r,'eta_des',M3, 'P_u' , P_u)
 	%	[ Pi1 , Piu , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,Q,r,'P_des',P_des, 'P_u' , P_u , 'u_des' , u_d)
-	%
-	%	[ Pi1 , Piu , constraints , bv1 ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,Q,r,'P_des',P_des, 'P_u' , P_u , 'u_des' , u_d)
 	%
 	%	[ Pi1 , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,P_des,gain1,gain2,'param_type',param_flag)
 	%	[ Pi1 , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,P_des,Q,r,'param_type','Q')
@@ -124,19 +122,6 @@ function varargout = get_robust_reachability_constraints(varargin)
 		P_des = P_x0;
 	end
 
-	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-	%% Use Helper Function If Possible %%
-	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-	% If the target set, P_target, is a Polyhedron, then use the simple helper function get_robust_reachability_constraints_polytope.m
-	if ~exist('eta_des') && exist('P_des')
-		if length(P_des) == 1
-			[ Pi1 , Piu , constraints ] = cg.get_robust_reachability_constraints_polytope(varargin{2:end});
-			varargout = { Pi1 , Piu , constraints };
-			return
-		end
-	end
-
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	%% Define the Dual Variables for Robust Reachability %%
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -238,20 +223,5 @@ function varargout = get_robust_reachability_constraints(varargin)
 
 
 	end
-
-	%%%%%%%%%%%%%%%%%%%%%%%
-	%% Computing Outputs %%
-	%%%%%%%%%%%%%%%%%%%%%%%
-
-	varargout{1} = Pi1;
-
-	argout_idx = 2;
-
-	if ~exist('Piu')
-		varargout{argout_idx} = Piu;
-		argout_idx = argout_idx + 1;
-	end
-
-	varargout{argout_idx} = constraints;
 
 end

@@ -1,5 +1,5 @@
 function [Consist_set, full_set ] = consistent_set(varargin)
-	%consistency_set.m
+	%consistent_set.m
 	%Description:
 	%	Finds a polyhedron that describes what pairs of states and input sequences are compatible/feasible from ALL
 	%	switching sequences defined by L.
@@ -11,6 +11,13 @@ function [Consist_set, full_set ] = consistent_set(varargin)
 	%	where:
 	%			- q_t is a natural number that describes the current mode at time t
 	%			- w_t belongs to the set W_{q_t} which varies with the mode
+	%	The consistency set can also be written as"
+	%					{ [y]  | }
+	%					{ [u]  | }
+	%		C(\sigma) = { [w]  | }
+	%					{ [v]  | }
+	%					{ [x0] | }
+	%					{ [x]  | }
 	%
 	%Inputs:
 	%	lcsas 		- An array of Aff_Dyn() objects. Hopefully the dimensions are all appropriately checked so that
@@ -24,10 +31,10 @@ function [Consist_set, full_set ] = consistent_set(varargin)
 	%				  computation of Consist_set (true) which requires projection operations to be called and may be very slow.
 	%
 	%Example Usage:
-	%	[Phi_t_L] = consistency_set(lcsas,t,L)
-	%	[Consist_set, full_set] = consistency_set(lcsas,t,L,P_u,P_x0)
-	%	[Consist_set, full_set] = consistency_set(lcsas,t,L,P_u,P_x0,'fb_method','state')
-	%	[Consist_set, full_set] = consistency_set(lcsas,t,L,P_u,P_x0,'fb_method','state','use_proj',false)
+	%	[Phi_t_L] = consistent_set(lcsas,t,L)
+	%	[Consist_set, full_set] = consistent_set(lcsas,t,L,P_u,P_x0)
+	%	[Consist_set, full_set] = consistent_set(lcsas,t,L,P_u,P_x0,'fb_method','state')
+	%	[Consist_set, full_set] = consistent_set(lcsas,t,L,P_u,P_x0,'fb_method','state','use_proj',false)
 	%
 	%Assumptions:
 	%	This formulation assumes that the system does not include a disturbed measurements. i.e. We can perfectly observe the state
@@ -110,7 +117,7 @@ function [Consist_set, full_set ] = consistent_set(varargin)
 	end
 
 	if ~exist('reduce_flag')
-		reduce_flag = false;
+		reduce_flag = true;
 	end
 
 	%%%%%%%%%%%%%%%
@@ -167,14 +174,9 @@ function [Consist_set, full_set ] = consistent_set(varargin)
 	    
 		P_eta = P_uT * P_wT * P_x0_L;
 
-		% Create the Equality Constraints
-		Hc = {}; Sc = {}; Jc = {}; fc = {};
-		for word_ind = 1:length(L.words)
-			[Hc{word_ind},Sc{word_ind},~,Jc{word_ind},fc{word_ind}] = lcsas.get_mpc_matrices('word',L.words{word_ind}(1:t));
-		end
-
 		%Create the set of feasible (x,u,w,x0) tuples
-		full_set = Polyhedron('A',[zeros(size(P_eta.A,1),n_x*(t+1)),P_eta.A],'b',P_eta.b,'Ae',[-I_blockx, S_block, H_block, J_block],'be',-f_block );
+		full_set = Polyhedron(	'A',[zeros(size(P_eta.A,1),n_x*(t+1)),P_eta.A],'b',P_eta.b, ...
+								'Ae',[-I_blockx, S_block, H_block, J_block],'be',-f_block );
 
 	else
 		%Also introduce the measurement disturbance into the equation

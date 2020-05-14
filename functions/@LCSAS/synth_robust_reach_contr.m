@@ -39,6 +39,9 @@ function [BG,contr,opt_out,BG_creation_time] = synth_robust_reach_contr( varargi
 					error('P_target needs to be a Polyhedron!')
 				end
 				varargin_idx = varargin_idx + 2;
+			case 'legacy_flag'
+				legacy_flag = varargin{varargin_idx+1};
+				varargin_idx = varargin_idx+2;
 
 			otherwise
 				error(['Unexpected flag for this function: ' varargin{varargin_idx}])

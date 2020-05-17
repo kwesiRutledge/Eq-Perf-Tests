@@ -57,6 +57,7 @@ classdef BeliefGraph < handle
 			%	BG = BeliefGraph(in_lcsas,P_u,P_x0,'accel_flag',accel_flag)
 			%	BG = BeliefGraph(in_lcsas,P_u,P_x0,'use_proj_flag',tf)
 			%	BG = BeliefGraph(in_lcsas,P_u,P_x0,'use_unobservability_checks',tf)
+			%	BG = BeliefGraph(in_lcsas,P_u,P_x0,'return_empty',tf)
 
 
 			% disp('Created empty Belief Graph. Please call the construct() function next.')
@@ -115,6 +116,9 @@ classdef BeliefGraph < handle
 					case 'use_unobservability_checks'
 						use_unobservability_checks = varargin{varargin_idx+1};
 						varargin_idx = varargin_idx + 2;
+					case 'return_empty'
+						return_empty_flag = varargin{varargin_idx+1};
+						varargin_idx = varargin_idx + 2;
 					otherwise
 						error(['Unrecognized input to the function: ' varargin{varargin_idx}])
 				end
@@ -154,6 +158,10 @@ classdef BeliefGraph < handle
 				use_proj_flag = true;
 			end
 
+			if ~exist('return_empty_flag')
+				return_empty_flag = false;
+			end
+
 			if ~exist('use_unobservability_checks')
 				use_unobservability_checks = true;
 			end
@@ -166,6 +174,15 @@ classdef BeliefGraph < handle
 			%%%%%%%%%%%%%%%%%%%%%%%%%%%
 			%% Building Belief Graph %%
 			%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+			if return_empty_flag
+				BG.lcsas = in_sys;
+				BG.ModeLanguage = L;
+				BG.E = [];
+				BG.N = [];
+				BG.BeliefLanguage = [];
+				return
+			end
 
 			if verbosity > 1
 				disp('Worked through inputs.')

@@ -202,24 +202,22 @@ function ancest_nodes = post_accel(varargin)
 			% 	end
 			% end
 
-			temp_diff = Consist_sets{ut_idx} \ Consist_sets{ch_idx};
-			%Check to see if temp_diff is a single Polyhedron/Polytope (if it is multiple then the set difference is not empty)
-			if length(temp_diff) == 1
-				if (temp_diff.isEmptySet) %&& (~(Consist_sets{ch_idx}.isEmptySet))
-					if debug_flag >= 2
-						disp(['temp_diff.isEmptySet = ' num2str(temp_diff.isEmptySet) ' for:'])
-						disp(['- Phi1(' num2str([subL_p_set(ut_idx).words{:}]) ')' ])
-						disp(['- Phi2(' num2str([subL_p_set(ch_idx).words{:}]) ')' ])
-						disp(' ')
-					end
-					visible_transitions(ut_idx) = 0;
-					empty_log(ut_idx,ch_idx) = 1;
-					break;
-				% elseif (ch_idx == ind_ut) && (~Projx_Phi1.isEmptySet)
-				% 	visible_transitions(ind_ut) = ch_idx;
-				end 
-			end
-			
+            %temp_diff = Consist_sets{ut_idx} \ Consist_sets{ch_idx};
+			%Checking emptiness of the set difference is equivalent to the
+			%following line
+            if Consist_sets{ch_idx}.contains(Consist_sets{ut_idx})
+                if debug_flag >= 2
+                    disp(['temp_diff.isEmptySet = for:'])
+                    disp(['- Phi1(' num2str([subL_p_set(ut_idx).words{:}]) ')' ])
+                    disp(['- Phi2(' num2str([subL_p_set(ch_idx).words{:}]) ')' ])
+                    disp(' ')
+                end
+                visible_transitions(ut_idx) = 0;
+                empty_log(ut_idx,ch_idx) = 1;
+                break;
+            % elseif (ch_idx == ind_ut) && (~Projx_Phi1.isEmptySet)
+            % 	visible_transitions(ind_ut) = ch_idx;
+            end 
 		end
 	end
 	%Process visible_transitions matrix

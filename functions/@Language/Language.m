@@ -124,9 +124,25 @@ classdef Language
 
 		end
 
-		function powerset_L = powerset(obj)
+		function [powerset_L,powerset_word_indices] = powerset(obj)
 			%Description:
 			%	Computes an array of languages where each language in the array is composed of some subset of obj.
+			%
+			%Outputs:
+			%	powerset_L = An array of language objects where each language object is a subset
+			%				 of the language object obj.
+			%	powerset_word_indices = A cell array of indices corresponding to the word indexes
+			%							that make up powerset_L. See example for explanation.
+			%
+			%Example:
+			%	Consider the language L = Language([1,2,3,4],[5,6,5,8],[9,10,11,12])
+			%	The results of [powerset_L,powerset_word_indices] = L.powerset() should be the following
+			%		powerset_L = [ Language([1,2,3,4]) , Language([5,6,7,8]) , Language([9,10,11,12]) , ...
+			%					   Language([1,2,3,4],[5,6,7,8]) , Language([1,2,3,4],[9,10,11,12]) , ...
+			%					   Language([5,6,7,8],[9,10,11,12]) , Language([1,2,3,4],[5,6,5,8],[9,10,11,12]) ]
+			%		powerset_word_indices = { [1] , [2] , [3] , [1,2] , [1,3] , [2,3] , [1,2,3] }
+			%	Note that powerset_word_indices is very compact, but loses the information of WHAT the
+			%	words in the language L are.
 
 			%%%%%%%%%%%%%%%
 			%% Constants %%
@@ -137,6 +153,7 @@ classdef Language
 			%%%%%%%%%%%%%%%
 
 			powerset_L = [];
+			powerset_word_indices = {};
 
 			for comb_length = 1:length(obj.words)
 				temp_combs = nchoosek([1:length(obj.words)],comb_length);
@@ -146,6 +163,7 @@ classdef Language
 					temp_lang.words = { obj.words{temp_combs(comb_ind,:)} };
 					% Update the powerset
 					powerset_L = [powerset_L, temp_lang ];
+					powerset_word_indices{end+1} = temp_combs(comb_ind,:);
 				end
 			end
 

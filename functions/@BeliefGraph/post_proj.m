@@ -89,7 +89,7 @@ function ancest_nodes = post_proj(varargin)
 
 	%Get All Combinations of the node's subset
 	%node_p_set = BN.idx_powerset_of_subL();
-	subL_p_set = BN.subL.powerset();
+	[subL_powerset, subL_index_powerset] = subL.powerset();
 
 	n = size(lcsas.Dyn(1).A,1);
 	m = size(lcsas.Dyn(1).B,2);
@@ -110,66 +110,77 @@ function ancest_nodes = post_proj(varargin)
 		disp('- Creating Consistency Sets.')
 	end
 
-	Phi_sets = {};
-	Consist_sets = {};
-	visible_transitions = [1:length(subL_p_set)];
-	for p_set_idx = 1:length(subL_p_set)
-		if debug_flag > 1
-			disp(['  + p_set_idx = ' num2str(p_set_idx)]);
-		end
-		
-		temp_lang = subL_p_set(p_set_idx);
-		temp_BN = BeliefNode(temp_lang,BN.t+1);
-
-		[ Consist_sets{p_set_idx} , Phi_sets{p_set_idx} ] = lcsas.consistent_set(BN.t+1,subL_p_set(p_set_idx),P_u,P_x0,'fb_method',fb_method);
-
-	end
+	[ consistency_sets , PhiSets ] = lcsas.get_consistency_sets_for_language( ...
+										BN.t+1,subL,P_u,P_x0, ...
+										'fb_method',fb_method,'debug_flag',debug_flag);
 
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	%% Identify Which Consistency Sets Can Be Independently Detected %%
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+	%Extend the number of consistency sets by performing intersections.
+	consistency_set_is_empty = false(subL.cardinality(),1);
+	for powerset_idx = (subL.cardinality()+1):length(subL_powerset)
+		powerset_idcs_elt = subL_index_powerset{powerset_idx};
+		consistency_sets(powerset_idx) = consistency_sets(powerset_idcs_elt(1));
+		
+		for elt_idx = 2:length(powerset_idcs_elt)
+			consistency_sets(powerset_idx) = consistency_sets(powerset_idx).intersect( consistency_sets(powerset_idcs_elt(elt_idx)) );
+		end
+
+		%Update list tracking emptiness
+		% consistency_set_is_empty(powerset_idx) = consistency_sets(powerset_idx).isEmptySet;
+	end
+
 	%Check to see if the set is visible. i.e. Each set is
-	%	- somehow unique compared to its 'parents', and
+	%	- somehow unique compared to its 'siblings', and
 	%	- not empty.
 
 	if debug_flag > 0
 		disp('- Detecting whether or not the Consistency Sets are independent enough to be found.')
 	end
 
-	for p_set_idx = 1:length(subL_p_set)
-		
-		if debug_flag > 1
-			disp(['  + p_set_idx = ' num2str(p_set_idx) ])
+
+
+	[ ~ , empty_set_flags ] = BG.find_empty_observation_polyhedra( consistency_sets );
+
+	if use_unobs_checks
+
+		containment_matrix = false(length(subL_powerset));
+		for x_idx = 1:size(containment_matrix,1)
+			containment_matrix(x_idx,x_idx) = true;
 		end
 
-		c_set_p = Consist_sets{p_set_idx};
-		if use_unobs_checks
-			%Search through all previous c_sets
-			for prev_cset_idx = (p_set_idx+1):length(subL_p_set)
-				future_c_set = Consist_sets{prev_cset_idx};
-				temp_diff = c_set_p \ future_c_set;
-				if length(temp_diff) == 1
-					if temp_diff.isEmptySet
-						visible_transitions(p_set_idx) = 0;
-					end
-				end
+
+		for x_idx = 1:size(containment_matrix,1)
+			potential_y_idcs = [1:size(containment_matrix,2)];
+			potential_y_idcs = potential_y_idcs( potential_y_idcs ~= x_idx );
+			for y_idx = potential_y_idcs
+				%Consider the temporary combination
+				%disp(['x_idx = ' num2str(x_idx) ', y_idx = ' num2str(y_idx) ])
+
+				% Observe if Y_Set of X is contained by the Y_Set of Y
+				ObservationSetX = consistency_sets(x_idx);
+				ObservationSetY = consistency_sets(y_idx);
+				
+				containment_matrix(x_idx,y_idx) = (ObservationSetX <= ObservationSetY);
 			end
 		end
 
-		if c_set_p.isEmptySet
-			visible_transitions(p_set_idx) = 0;
-		end 
+		[ ~ , observation_set_is_observable ] = BG.containment_mat2observable_combos( containment_matrix );
 
 	end
-
-	%Process visible_transitions matrix
-	visible_transitions = visible_transitions(visible_transitions ~= 0);
-	visible_transitions = unique(visible_transitions);
 
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	%% Create Ancestor Nodes %%
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+	visible_transitions = [1:length(empty_set_flags)];
+	if use_unobs_checks
+		visible_transitions = visible_transitions( (~empty_set_flags) & observation_set_is_observable );
+	else
+		visible_transitions = visible_transitions( ~empty_set_flags );	
+	end
 
 	if debug_flag > 0
 		disp('- Creating Belief Nodes.')
@@ -177,11 +188,11 @@ function ancest_nodes = post_proj(varargin)
 
 	ancest_nodes = [];
 	for trans_idx = 1:length(visible_transitions)
-		temp_L = subL_p_set(visible_transitions(trans_idx));
-		temp_consist_set = Consist_sets{visible_transitions(trans_idx)};
-		temp_full_set = Phi_sets{visible_transitions(trans_idx)};
+		temp_L = subL_powerset(visible_transitions(trans_idx));
+		temp_consist_set = consistency_sets(visible_transitions(trans_idx));
+		%temp_full_set = PhiSets(visible_transitions(trans_idx));
 
-		c_node = BeliefNode(temp_L,BN.t+1,temp_consist_set,temp_full_set);
+		c_node = BeliefNode(temp_L,BN.t+1,temp_consist_set);
 		ancest_nodes = [ancest_nodes,c_node];
 	end
 

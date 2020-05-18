@@ -76,14 +76,6 @@ classdef LCSAS
 				end
 			end
 
-			switch nargin
-			case 2
-				ad_arr = varargin{1};
-				L = varargin{2};
-			otherwise
-				error(['Unexpected number of input arguments: ' num2str(nargin) ])
-			end
-
 			if ~isa(ad_arr,'Aff_Dyn')
 				error('Expected the input to LCSAS to be an array of Aff_Dyn objects.')
 			end

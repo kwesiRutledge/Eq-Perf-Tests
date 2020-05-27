@@ -36,7 +36,7 @@ aff_dyn_list = [	Aff_Dyn(A1,B1,f1,C1,Pw1,Pv1), ...
 					Aff_Dyn(A1,B1,f1,C1,Pw1,Pv2) ];
 
 lcsas0 = LCSAS( aff_dyn_list , L1 , 'X0' , P_x0 );
-lcsas0.X0 = P_x0;
+% lcsas0.X0 = P_x0;
 
 empty_bg = BeliefGraph( lcsas0 , P_u , P_x0 , 'return_empty' , true );
 

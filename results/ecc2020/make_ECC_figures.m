@@ -2,6 +2,8 @@
 
 cd ../..
 
+mptopt('lpsolver','mosek')
+
 %Create the images for simple belief graph things
 ot1 = observer_tests(56,{'true'});
 

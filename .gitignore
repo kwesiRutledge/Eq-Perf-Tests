@@ -4,6 +4,7 @@
 *.eps
 *.mov
 *.avi
+*.mp4
 
 #ignore saved data files
 *.mat
@@ -13,3 +14,6 @@ functions/@constr_gen/.ipynb_checkpoints/
 
 #ignore this weird temprorary file DS_Store
 .DS_Store
+
+# Gurobi Log File
+gurobi.log

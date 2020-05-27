@@ -10,6 +10,7 @@ classdef BeliefNode
 	%			Assumed to be between 0 and the length of the longest word in subset_L.
 	%
 	%	- c_set:	A Polyhedron that represents what trajectories (y_[0:t],u_[0:t-1])
+	%	- FullTrajectorySet: 
 	%
 	%Methods:
 	%	- idx_powerset_of_subL
@@ -41,6 +42,7 @@ classdef BeliefNode
 			%	BN = BeliefNode(subset_L,t0)
 			%	BN = BeliefNode(subset_L,t0,c_set)
 			%	BN = BeliefNode(subset_L,t0,c_set,phi_set)
+			%	BN = BeliefNode(subset_L,t0,'FullTrajectorySet',phi_set)
 
 			debug_flag = 0;
 
@@ -55,18 +57,43 @@ classdef BeliefNode
 			subset_L = varargin{1};
 			t0 = varargin{2};
 
-			switch nargin
-				case 2
-					%warning('This method for initializing Belief Nodes is deprecated. Please use the 3 argument version.')
-					1;
-				case 3
-					c_set = varargin{3};
-				case 4
-					c_set = varargin{3};
-					phi_set = varargin{4};
-				otherwise
-					error(['It is not allowable to call this class with ' num2str(nargin) ' arguments.' ])
+			varargin_idx = 3;
+			while varargin_idx < nargin
+				if isa(varargin{varargin_idx},'Polyhedron')
+					switch varargin_idx
+						case 3
+							c_set = varargin{varargin_idx};
+						case 4
+							phi_set = varargin{varargin_idx};
+						otherwise
+							error('Unrecognized BeliefNode Constructor.')
+					end
+					continue;
+				end
+
+
+				switch varargin{varargin_idx}
+					case 'FullTrajectorySet'
+						phi_set = varargin{varargin_idx+1};
+						varargin_idx = varargin_idx+2;
+					otherwise
+						error(['Unrecognized BeliefNode Constructor input: ' varargin{varargin_idx} ])
+				end
+
 			end
+
+			% switch nargin
+			% 	case 2
+			% 		%warning('This method for initializing Belief Nodes is deprecated. Please use the 3 argument version.')
+			% 		1;
+			% 	case 3
+			% 		c_set = varargin{3};
+			% 	case 4
+			% 		c_set = varargin{3};
+			% 		phi_set = varargin{4};
+			% 	otherwise
+			% 		error(['It is not allowable to call this class with ' num2str(nargin) ' arguments.' ])
+			% end
 
 			if ~(iscell(subset_L) || isa(subset_L,'Language') )
 				error('Expected subset of language to be a cell array or a Language object.')

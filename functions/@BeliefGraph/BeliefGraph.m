@@ -1,11 +1,26 @@
 classdef BeliefGraph < handle
 	%Description:
 	%
+	%Member Variables (Protected):
+	%	UsedProjection 			- Boolean.
+	%					  Flag that is used to tell the BeliefGraph constructor to not use projection in the construction.
+	%	FeedbackMethod 			- String.
+	%					  Options: 'output' , 'state'
+	%					  Feedback method used when constructing consistency sets.
+	%	UsedAcceleratedAlgorithms 	- Boolean.
+	%					  Uses accelerated version of the post algorithm in the construction if true.
+	%	UsedUnobservabilityChecks 	- Boolean.
+	%					  Does not perform obserability (containment) checks if true.
+	%
 	%Member Variables:
-	%	E 	- An n_E x 2 matrix of strictly positive integers, where each row represents an edge in the graph.
-	%		  For a row E_i, the first entry (first column) is the INDEX of the edge's source node (i.e. N(E_i(1)) is
-	%		  the source node of the edge) and the second entry (second column) is the INDEX of the edge's
-	%		  destination node (i.e. N(E_i(2)) is the destination node of the edge).
+	%	E		- An n_E x 2 matrix of strictly positive integers, where each row represents an edge in the graph.
+	%			  For a row E_i, the first entry (first column) is the INDEX of the edge's source node (i.e. N(E_i(1)) is
+	%			  the source node of the edge) and the second entry (second column) is the INDEX of the edge's
+	%			  destination node (i.e. N(E_i(2)) is the destination node of the edge).
+	%	N		- 
+	%	lcsas 		- Language Constrained Switched Affine System. (LCSAS object)
+	%	ModeLanguage 	-
+	%	BeliefLanguage 	-
 	%
 	%Member Functions
 	%	- find_node_idx
@@ -63,9 +78,6 @@ classdef BeliefGraph < handle
 			% disp('Created empty Belief Graph. Please call the construct() function next.')
 			% BT.E = [];
 			% BT.N = [];
-
-			%%
-			warning('The BeliefGraph() class was designed with the assumption that the affine dynamics contain the same state, input, and disturbance size throughout the entire language.')
 
 			%%%%%%%%%%%%%%%%%%%%%%
 			%% Input Processing %%
@@ -174,6 +186,10 @@ classdef BeliefGraph < handle
 			%%%%%%%%%%%%%%%%%%%%%%%%%%%
 			%% Building Belief Graph %%
 			%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+			if verbosity > 1
+				warning('The BeliefGraph() class was designed with the assumption that the affine dynamics contain the same state, input, and disturbance size throughout the entire language.')
+			end
 
 			if return_empty_flag
 				BG.lcsas = in_sys;

@@ -44,65 +44,72 @@ function [ initial_nodes ] = get_initial_beliefnodes( varargin )
 	%%%%%%%%%%%%%%%
 
 	%% Collect all Y Sets
+	[initial_eb_sets,initial_ib_sets] = lcsas_in.get_consistency_sets_for_language(0,L,Polyhedron(),X0, ...
+																					'use_proj', bg.UsedProjection);
 
-	Y_Set_of = [];
-	for word_idx = 1:L.cardinality();
-		%For each word, create the output set of the system.
-		temp_sigma = L.words{word_idx};
-		first_symb = temp_sigma(1);
 
-		%Compute Sets
-		Y_Set_of = [Y_Set_of, lcsas_in.Dyn(first_symb).C * X0 + lcsas_in.Dyn(first_symb).P_v];
-	end
+	if bg.UsedProjection
+		eb_sets = initial_eb_sets;
 
-	for powerset_idx = (L.cardinality()+1):length(word_idx_powerset)
-		powerset_elt = word_idx_powerset{powerset_idx};
-		powerset_elt_L = L_powerset(powerset_idx);
+		for powerset_idx = (L.cardinality()+1):length(word_idx_powerset)
+			powerset_elt = word_idx_powerset{powerset_idx};
+			powerset_elt_L = L_powerset(powerset_idx);
 
-		%For each word, create the output set of the system.
-		temp_sigma = powerset_elt_L.words{1};
-		[ ~ , L_idx_of_sigma ] = L.contains(temp_sigma);
-
-		%Compute Sets
-		Y_Set_of = [Y_Set_of, Y_Set_of(L_idx_of_sigma)];
-		for sigma_idx = 2:powerset_elt_L.cardinality()
 			%For each word, create the output set of the system.
-			temp_sigma = powerset_elt_L.words{sigma_idx};
+			temp_sigma = powerset_elt_L.words{1};
 			[ ~ , L_idx_of_sigma ] = L.contains(temp_sigma);
 
-			Y_Set_of(end) = Y_Set_of(end).intersect( Y_Set_of(L_idx_of_sigma) );
+			%Compute Sets
+			eb_sets = [eb_sets, eb_sets(L_idx_of_sigma)];
+			for sigma_idx = 2:powerset_elt_L.cardinality()
+				%For each word, create the output set of the system.
+				temp_sigma = powerset_elt_L.words{sigma_idx};
+				[ ~ , L_idx_of_sigma ] = L.contains(temp_sigma);
+
+				eb_sets(end) = eb_sets(end).intersect( eb_sets(L_idx_of_sigma) );
+			end
+
 		end
-
-	end	
-
-	%% Find which Y_Sets contain others
-	
-	containment_matrix = false(length(word_idx_powerset));
-	for word_idx = 1:length(word_idx_powerset)
-		%word at word_idx always contains itself.
-		containment_matrix(word_idx,word_idx) = true;
 	end
 
-	for x_idx = 1:size(containment_matrix,1)
-		potential_y_idcs = [1:size(containment_matrix,2)];
-		potential_y_idcs = potential_y_idcs( potential_y_idcs ~= x_idx );
-		for y_idx = potential_y_idcs
-			%Consider the temporary combination
-			%disp(['x_idx = ' num2str(x_idx) ', y_idx = ' num2str(y_idx) ])
+	ib_sets = bg.get_all_consistent_internal_behavior_sets( initial_ib_sets );
 
-			% Observe if Y_Set of X is contained by the Y_Set of Y
-			ObservationSetX = Y_Set_of(x_idx);
-			ObservationSetY = Y_Set_of(y_idx);
-			
-			containment_matrix(x_idx,y_idx) = (ObservationSetX <= ObservationSetY);
+	%% Find which Y_Sets contain others
+	if bg.UsedProjection
+		containment_matrix = false(length(word_idx_powerset));
+		for word_idx = 1:length(word_idx_powerset)
+			%word at word_idx always contains itself.
+			containment_matrix(word_idx,word_idx) = true;
 		end
+
+		for x_idx = 1:size(containment_matrix,1)
+			potential_y_idcs = [1:size(containment_matrix,2)];
+			potential_y_idcs = potential_y_idcs( potential_y_idcs ~= x_idx );
+			for y_idx = potential_y_idcs
+				%Consider the temporary combination
+				%disp(['x_idx = ' num2str(x_idx) ', y_idx = ' num2str(y_idx) ])
+
+				% Observe if Y_Set of X is contained by the Y_Set of Y
+				ObservationSetX = eb_sets(x_idx);
+				ObservationSetY = eb_sets(y_idx);
+				
+				containment_matrix(x_idx,y_idx) = (ObservationSetX <= ObservationSetY);
+			end
+		end
+	else
+		containment_matrix = bg.internal_behavior_sets2containment_mat( ib_sets );
 	end
 
 	% containment_matrix
 
 	%% Create Nodes Based on containment_matrix and whether set is nonempty %%
 
-	[ ~ , empty_set_flags ] = bg.find_empty_observation_polyhedra( Y_Set_of );
+	if bg.UsedProjection
+		[ ~ , empty_set_flags ] = bg.find_empty_observation_polyhedra( eb_sets );
+	else
+		[ ~ , empty_set_flags ] = bg.find_empty_observation_polyhedra( ib_sets );
+	end
+
 	[ ~ , observation_set_is_observable ] = bg.containment_mat2observable_combos( containment_matrix );
 
 	valid_powerset_idcs = [1:length(L_powerset)];
@@ -115,18 +122,17 @@ function [ initial_nodes ] = get_initial_beliefnodes( varargin )
 		temp_comb = word_idx_powerset{temp_powerset_idx};
 
 		%Create Language for temp_comb
-		temp_lang = Language(L.words{temp_comb(1)});
-		for word_idx = 2:length(temp_comb)
-			temp_lang = temp_lang.union(Language( L.words{temp_comb(word_idx)} ));
-		end
+		temp_lang = L_powerset(valid_powerset_idcs(bn_idx));
 
 		%Create Consistency Set for temp_comb
-		temp_cs = Y_Set_of(temp_comb(1));
-		for word_idx = 2:length(temp_comb)
-			temp_cs = temp_cs.intersect( Y_Set_of( temp_comb(word_idx) ) );
+		if bg.UsedProjection
+			temp_cs = eb_sets(valid_powerset_idcs(bn_idx));
+			initial_nodes = [initial_nodes, BeliefNode( temp_lang , 0 , temp_cs )];
+		else
+			temp_ib_set = ib_sets(valid_powerset_idcs(bn_idx));
+			initial_nodes = [initial_nodes, BeliefNode( temp_lang , 0 , ...
+														'FullTrajectorySet', temp_ib_set )];
 		end
-
-		initial_nodes = [initial_nodes, BeliefNode( temp_lang , 0 , temp_cs )];
 	end
 
 end

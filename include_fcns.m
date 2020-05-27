@@ -22,7 +22,8 @@ if strcmp(getenv('USER'),'kwesirutledge') %Suggests the laptop is in use
                     warning('MPT3 Toolbox does not appear in path! Attempting one method to fix this...')
                     try
                         %Add All MPT Toolbox folders AND subfolders to path.
-                        addpath(genpath([ '../../' 'toolboxes/tbxmanager/toolboxes/mpt/3.1.8/all/mpt3-3_1_8/mpt']) )
+                        cd([ '../../' 'toolboxes/tbxmanager/toolboxes/mpt/3.1.8/all/mpt3-3_1_8/mpt'])
+                        mpt_init
                         Polyhedron()
                     catch
                         error('MPT3 not added to path.')
@@ -47,6 +48,31 @@ if strcmp(getenv('USER'),'kwesirutledge') %Suggests the laptop is in use
                     Polyhedron();
                 catch
                     error('tbxmanager was not added to path.')
+                end
+            case 'mosek'
+                try
+                    mosekdiag
+                catch
+                    try
+                        addpath(genpath('~/External_Libraries/mosek/9.2/'))
+                        mosekdiag
+                    catch
+                        error('Mosek was not properly added to path.')
+                    end
+                end
+            case 'gurobi'
+                if (exist('gurobi.m') == 2 )
+                    %Gurobi is already on the path continue
+                    disp('gurobi.m exists!')
+                    1;
+                else
+                    addpath(genpath('/Library/gurobi811/mac64/matlab/'))
+                    %Try to find it again
+                    if exist('gurobi.m') ~= 2
+                        %If the gurobi function still cannot be found,
+                        %then produce an error.
+                        error('gurobi is still not on path!')
+                    end
                 end
 
             otherwise

@@ -223,10 +223,11 @@ function [Consist_set, full_set ] = consistent_set(varargin)
 				Consist_set = Polyhedron('A',[ [1;-1], zeros(2,n_y*(t+1) + n_u*t-1) ],'b',[1;-2]);
 			end
 		end
-		Consist_set.minHRep; %Used to make sure that future projections are simpler to compute.
+		%Consist_set.minHRep; %Used to make sure that future projections are simpler to compute.
 
 	else
-		Consist_set = [];
+		Consist_set = Polyhedron('A',[[1;-1],zeros(2,n_x*(t+1) + n_u*t-1)], ...
+								 'b',[1;-2]);
 	end
 		
 

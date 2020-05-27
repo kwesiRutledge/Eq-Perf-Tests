@@ -5,7 +5,7 @@ function [results] = observer_tests( varargin )
 
 	% Add experiments and functions to the path
 	%include_fcns('tbxmanager','YALMIP')
-	include_fcns('tbxmanager')
+	include_fcns('mosek','gurobi','MPT3')
 
 	if isempty(strfind(path,'./functions/'))
 		addpath('./functions/')

@@ -1,4 +1,4 @@
-function [Consist_set, full_set ] = consistent_set(varargin)
+function [Consist_set, full_set ] = consistency_set2(varargin)
 	%consistent_set.m
 	%Description:
 	%	Finds a polyhedron that describes what pairs of states and input sequences are compatible/feasible from ALL
@@ -12,12 +12,12 @@ function [Consist_set, full_set ] = consistent_set(varargin)
 	%			- q_t is a natural number that describes the current mode at time t
 	%			- w_t belongs to the set W_{q_t} which varies with the mode
 	%	The consistency set can also be written as"
-	%					{ [y]  | }
-	%					{ [u]  | }
-	%		C(\sigma) = { [w]  | }
-	%					{ [v]  | }
-	%					{ [x0] | }
-	%					{ [x]  | }
+	%
+	%							{ [y]  | 			[y]  }
+	%		full_set(\sigma) =	{ [u]  | \exists 	[u]  }
+	%							{  					[w]  }
+	%							{  					[x0]  }
+	%
 	%
 	%Inputs:
 	%	lcsas 		- An array of Aff_Dyn() objects. Hopefully the dimensions are all appropriately checked so that
@@ -159,7 +159,7 @@ function [Consist_set, full_set ] = consistent_set(varargin)
 		I_blocky(end+[1:n_y*(t+1)],[1:n_y*(t+1)]) = eye(n_y*(t+1));
 
 		C_block(end+[1:n_y*(t+1)],end+[1:n_x*(t+1)]) = [Cc{word_ind} ; zeros(n_y,n_x*t), lcsas.Dyn( L.words{word_ind}(t+1) ).C ];
-		Cv_block(end+[1:n_y*(t+1)],end+[1:n_v*(t+1)]) = [Cvc{word_ind},zeros(size(Cvc{word_ind},1),n_v);zeros(n_y,size(Cvc{word_ind},2)), lcsas.Dyn( L.words{word_ind}(t+1) ).C_v ];
+		%Cv_block(end+[1:n_y*(t+1)],end+[1:n_v*(t+1)]) = [Cvc{word_ind},zeros(size(Cvc{word_ind},1),n_v);zeros(n_y,size(Cvc{word_ind},2)), lcsas.Dyn( L.words{word_ind}(t+1) ).C_v ];
 		I_blockx2(end+[1:n_x*(t+1)],end+[1:n_x*(t+1)]) = eye(n_x*(t+1));
 	end
 
@@ -172,11 +172,13 @@ function [Consist_set, full_set ] = consistent_set(varargin)
 	%% Constructing the Sets
 	if strcmp(fb_type,'state')
 	    
-		P_eta = P_uT * P_wT * P_x0_L;
+		error('Feedback type is unsupported at the moment.')
 
-		%Create the set of feasible (x,u,w,x0) tuples
-		full_set = Polyhedron(	'A',[zeros(size(P_eta.A,1),n_x*(t+1)),P_eta.A],'b',P_eta.b, ...
-								'Ae',[-I_blockx, S_block, H_block, J_block],'be',-f_block );
+		% P_eta = P_uT * P_wT * P_x0_L;
+
+		% %Create the set of feasible (x,u,w,x0) tuples
+		% full_set = Polyhedron(	'A',[zeros(size(P_eta.A,1),n_x*(t+1)),P_eta.A],'b',P_eta.b, ...
+		% 						'Ae',[-I_blockx, S_block, H_block, J_block],'be',-f_block );
 
 	else
 		%Also introduce the measurement disturbance into the equation
@@ -187,13 +189,12 @@ function [Consist_set, full_set ] = consistent_set(varargin)
 			end
     	end
 
-    	P_eta = P_uT * P_wT * P_vT * P_x0_L;
+    	P_eta = P_uT * P_wT * P_x0_L;
 
     	%Create the set of feasible (x,u,w,x0) tuples
-    	full_set = Polyhedron(	'A',[zeros(size(P_eta.A,1),n_y*(t+1)),P_eta.A,zeros(size(P_eta.A,1),length(L.words)*n_x*(t+1))],'b',P_eta.b, ...
-    							'Ae',[zeros(size(S_block,1),size(I_blocky,2)),S_block, H_block, zeros(size(S_block,1),size(Cv_block,2)), J_block, -I_blockx2; ...
-    								  I_blocky, zeros(size(I_blocky,1),size(S_block,2)+size(H_block,2)), -Cv_block , zeros(size(I_blocky,1),size(J_block,2)) , -C_block ], ...
-    							'be', [-f_block;zeros(size(I_blocky,1),1)] );
+    	full_set = Polyhedron(	'A',[	zeros(size(P_eta.A,1),n_y*(t+1)) , P_eta.A;
+    									P_vT.A*[ I_blocky , -C_block*S_block , -C_block*H_block,-C_block*J_block ] ], ...
+    							'b',[ 	P_eta.b ; P_vT.b + P_vT.A*C_block*f_block ]	);
 
 	end
 
@@ -219,13 +220,6 @@ function [Consist_set, full_set ] = consistent_set(varargin)
 				%Consist_set = [ eye(n_y*(t+1) + n_u*t), zeros(n_x*(t+1) + n_u*t, length(L.words)*(n_w*t + n_v*(t+1) + n_x + n_x*(t+1)) ) ] * full_set;
 				%Consist_set = full_set.affineMap([ eye(n_y*(t+1) + n_u*t), zeros(n_x*(t+1) + n_u*t, length(L.words)*(n_w*t + n_v*(t+1) + n_x + n_x*(t+1)) ) ],'vrep')
 				Consist_set = full_set.projection([1:n_y*(t+1) + n_u*t]);
-
-				%If the projection is erroneously empty, then compute the V-Representation before projecting.
-				if Consist_set.isEmptySet
-					full_set.computeVRep();
-					Consist_set = full_set.projection([1:n_y*(t+1) + n_u*t]);
-				end
-
 			else
 				Consist_set = Polyhedron('A',[ [1;-1], zeros(2,n_y*(t+1) + n_u*t-1) ],'b',[1;-2]);
 			end
@@ -233,8 +227,9 @@ function [Consist_set, full_set ] = consistent_set(varargin)
 		%Consist_set.minHRep; %Used to make sure that future projections are simpler to compute.
 
 	else
-		Consist_set = Polyhedron('A',[[1;-1],zeros(2,n_y*(t+1) + n_u*t-1)], ...
+		Consist_set = Polyhedron('A',[[1;-1],zeros(2,n_x*(t+1) + n_u*t-1)], ...
 								 'b',[1;-2]);
 	end
+		
 
 end

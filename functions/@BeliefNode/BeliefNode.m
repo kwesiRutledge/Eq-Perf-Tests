@@ -16,6 +16,7 @@ classdef BeliefNode
 	%	- idx_powerset_of_subL
 	%	- post
 	%	- is_eq
+	%	- "=="
 	%	- find_longest_horizon
 	%
 
@@ -43,6 +44,7 @@ classdef BeliefNode
 			%	BN = BeliefNode(subset_L,t0,c_set)
 			%	BN = BeliefNode(subset_L,t0,c_set,phi_set)
 			%	BN = BeliefNode(subset_L,t0,'FullTrajectorySet',phi_set)
+			%	BN = BeliefNode(subset_L,t0,'ConsistencySet',c_set)
 
 			debug_flag = 0;
 
@@ -57,14 +59,16 @@ classdef BeliefNode
 			subset_L = varargin{1};
 			t0 = varargin{2};
 
-			varargin_idx = 3;
-			while varargin_idx < nargin
-				if isa(varargin{varargin_idx},'Polyhedron')
-					switch varargin_idx
+			arg_idx = 3;
+			while arg_idx <= nargin
+				if isa(varargin{arg_idx},'Polyhedron')
+					switch arg_idx
 						case 3
-							c_set = varargin{varargin_idx};
+							c_set = varargin{arg_idx};
+							arg_idx = arg_idx+1;
 						case 4
-							phi_set = varargin{varargin_idx};
+							phi_set = varargin{arg_idx};
+							arg_idx = arg_idx+1;
 						otherwise
 							error('Unrecognized BeliefNode Constructor.')
 					end
@@ -72,12 +76,15 @@ classdef BeliefNode
 				end
 
 
-				switch varargin{varargin_idx}
+				switch varargin{arg_idx}
 					case 'FullTrajectorySet'
-						phi_set = varargin{varargin_idx+1};
-						varargin_idx = varargin_idx+2;
+						phi_set = varargin{arg_idx+1};
+						arg_idx = arg_idx+2;
+					case 'ConsistencySet'
+						c_set = varargin{arg_idx+1};
+						arg_idx = arg_idx + 2;
 					otherwise
-						error(['Unrecognized BeliefNode Constructor input: ' varargin{varargin_idx} ])
+						error(['Unrecognized BeliefNode Constructor input: ' varargin{arg_idx} ])
 				end
 
 			end
@@ -300,6 +307,10 @@ classdef BeliefNode
 				eq_flag = false;
 			end
 
+		end
+
+		function tf = eq(obj,BN)
+			tf = obj.is_eq(BN);
 		end
 
 		function longest_T = find_longest_horizon(obj)

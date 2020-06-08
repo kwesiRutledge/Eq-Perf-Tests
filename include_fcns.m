@@ -24,7 +24,7 @@ if strcmp(getenv('USER'),'kwesirutledge') %Suggests the laptop is in use
                         %Add All MPT Toolbox folders AND subfolders to path.
                         cd([ '../../' 'toolboxes/tbxmanager/toolboxes/mpt/3.1.8/all/mpt3-3_1_8/mpt'])
                         mpt_init
-                        Polyhedron()
+                        Polyhedron();
                     catch
                         error('MPT3 not added to path.')
                     end
@@ -54,7 +54,7 @@ if strcmp(getenv('USER'),'kwesirutledge') %Suggests the laptop is in use
                     mosekdiag
                 catch
                     try
-                        addpath(genpath('~/External_Libraries/mosek/9.2/'))
+                        addpath(genpath('~/External_Libraries/mosek/9.2/toolbox/r2015a/'))
                         mosekdiag
                     catch
                         error('Mosek was not properly added to path.')

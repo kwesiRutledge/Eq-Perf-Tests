@@ -5,9 +5,11 @@ function [ initial_nodes ] = get_initial_beliefnodes( varargin )
 	%Usage:
 	%	[ initial_nodes ] = bg.get_initial_beliefnodes()
 	%	[ initial_nodes ] = bg.get_initial_beliefnodes(P_x0)
+	%	[ initial_nodes ] = bg.get_initial_beliefnodes(P_x0, 'verbosity' , 0)
 
 	%% Input Processing %%
 	bg = varargin{1};
+	arg_idx = 2;
 
 	%Check to see if the initial state set is embedded in the belief graph's LCSAS member.
 	lcsas_in = bg.lcsas;
@@ -18,6 +20,28 @@ function [ initial_nodes ] = get_initial_beliefnodes( varargin )
 			error('Two arguments are needed if LCSAS does not have an initial state set defined.')
 		end
 		X0 = varargin{2};
+		arg_idx = 3;
+	end
+
+	while arg_idx <= nargin
+		switch varargin{arg_idx}
+			case 'verbosity'
+				verbosity = varargin{arg_idx+1};
+				arg_idx = arg_idx + 2;
+			case 'OverrideProjFlag'
+				proj_flag = varargin{arg_idx+1};
+				arg_idx = arg_idx+2;
+			otherwise
+				error(['Unexpected input to get_initial_beliefnodes: ' varargin{arg_idx} ])
+		end
+	end
+
+	if ~exist('verbosity')
+		verbosity = 0;
+	end
+
+	if ~exist('proj_flag')
+		proj_flag = bg.UsedProjection;
 	end
 
 	%%%%%%%%%%%%%%%
@@ -45,10 +69,11 @@ function [ initial_nodes ] = get_initial_beliefnodes( varargin )
 
 	%% Collect all Y Sets
 	[initial_eb_sets,initial_ib_sets] = lcsas_in.get_consistency_sets_for_language(0,L,Polyhedron(),X0, ...
-																					'use_proj', bg.UsedProjection);
+																					'use_proj', proj_flag, ...
+																					'ConsistencySetVersion', bg.ConsistencySetVersion );
 
 
-	if bg.UsedProjection
+	if proj_flag
 		eb_sets = initial_eb_sets;
 
 		for powerset_idx = (L.cardinality()+1):length(word_idx_powerset)
@@ -75,7 +100,7 @@ function [ initial_nodes ] = get_initial_beliefnodes( varargin )
 	ib_sets = bg.get_all_consistent_internal_behavior_sets( initial_ib_sets );
 
 	%% Find which Y_Sets contain others
-	if bg.UsedProjection
+	if proj_flag
 		containment_matrix = false(length(word_idx_powerset));
 		for word_idx = 1:length(word_idx_powerset)
 			%word at word_idx always contains itself.
@@ -97,14 +122,14 @@ function [ initial_nodes ] = get_initial_beliefnodes( varargin )
 			end
 		end
 	else
-		containment_matrix = bg.internal_behavior_sets2containment_mat( ib_sets );
+		containment_matrix = bg.internal_behavior_sets2containment_mat( ib_sets , 'verbosity' , verbosity );
 	end
 
 	% containment_matrix
 
 	%% Create Nodes Based on containment_matrix and whether set is nonempty %%
 
-	if bg.UsedProjection
+	if proj_flag
 		[ ~ , empty_set_flags ] = bg.find_empty_observation_polyhedra( eb_sets );
 	else
 		[ ~ , empty_set_flags ] = bg.find_empty_observation_polyhedra( ib_sets );
@@ -125,7 +150,7 @@ function [ initial_nodes ] = get_initial_beliefnodes( varargin )
 		temp_lang = L_powerset(valid_powerset_idcs(bn_idx));
 
 		%Create Consistency Set for temp_comb
-		if bg.UsedProjection
+		if proj_flag
 			temp_cs = eb_sets(valid_powerset_idcs(bn_idx));
 			initial_nodes = [initial_nodes, BeliefNode( temp_lang , 0 , temp_cs )];
 		else

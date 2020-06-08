@@ -6,6 +6,7 @@ function [ ConsistencySets , PhiSets ] = get_consistency_sets_for_language(varar
 %	[ ConsistencySets , PhiSets ] = lcsas.get_consistency_sets_for_language(t,L,P_u,P_x0,'debug_flag',1)
 %	[ ConsistencySets , PhiSets ] = lcsas.get_consistency_sets_for_language(t,L,P_u,P_x0,'fb_method','output')
 %	[ ConsistencySets , PhiSets ] = lcsas.get_consistency_sets_for_language(t,L,P_u,P_x0,'use_proj',false)
+%	[ ConsistencySets , PhiSets ] = lcsas.get_consistency_sets_for_language(t,L,P_u,P_x0,'use_proj',false,'ConsistencySetVersion',1)
 
 	%%%%%%%%%%%%%%%%%%%%%%
 	%% Input Processing %%
@@ -53,6 +54,9 @@ function [ ConsistencySets , PhiSets ] = get_consistency_sets_for_language(varar
 			case 'debug_flag'
 				debug_flag = varargin{varargin_idx+1};
 				varargin_idx = varargin_idx + 2;
+			case 'ConsistencySetVersion'
+				ConsistencySetVersion = varargin{varargin_idx+1};
+				varargin_idx = varargin_idx + 2;
 			otherwise
 				error('Unexpected additional input.')
 		end
@@ -63,7 +67,7 @@ function [ ConsistencySets , PhiSets ] = get_consistency_sets_for_language(varar
 	%%%%%%%%%%%%%%%
 
 	if ~exist('fb_method')
-		fb_method = 'state';
+		fb_method = 'output';
 	end
 
 	if ~exist('use_proj')
@@ -78,6 +82,10 @@ function [ ConsistencySets , PhiSets ] = get_consistency_sets_for_language(varar
 		debug_flag = 0;
 	end
 
+	if ~exist('ConsistencySetVersion')
+		ConsistencySetVersion = 1;
+	end
+
 	n_x = P_x0.Dim;
 	n_y = size(lcsas.Dyn(1).C,1);
 	n_v = size(lcsas.Dyn(1).C_v,2);
@@ -89,8 +97,8 @@ function [ ConsistencySets , PhiSets ] = get_consistency_sets_for_language(varar
 	%% Algorithm %%
 	%%%%%%%%%%%%%%%
 
-	% PhiSets = [];
-	% ConsistencySets = [];
+	t;
+	ConsistencySetVersion;
 
 	if t > 0
 		for word_idx = 1:L.cardinality()
@@ -100,12 +108,29 @@ function [ ConsistencySets , PhiSets ] = get_consistency_sets_for_language(varar
 			
 			temp_lang = Language( L.words{word_idx} );
 
-			[ ConsistencySets(word_idx) , PhiSets(word_idx) ] = lcsas.consistent_set(t,temp_lang,P_u,P_x0, ...
-																	'fb_method',fb_method,'use_proj',use_proj, ...
-																	'reduce_representation',reduce_flag );
+			switch ConsistencySetVersion
+				case 1
+					[ ConsistencySets(word_idx) , PhiSets(word_idx) ] = lcsas.consistent_set(	t,temp_lang,P_u,P_x0, ...
+																								'fb_method',fb_method,'use_proj',use_proj, ...
+																								'reduce_representation',reduce_flag );
+				case 2
+					[ ConsistencySets(word_idx) , PhiSets(word_idx) ] = lcsas.consistency_set2(	t,temp_lang,P_u,P_x0, ...
+																								'fb_method',fb_method,'use_proj',use_proj, ...
+																								'reduce_representation',reduce_flag );
+
+				otherwise
+					error(['Unsupported ConsistencySetVersion value: ' num2str(ConsistencySetVersion)])
+			end
+			
 
 		end
 	elseif t == 0
+		% switch ConsistencySetVersion
+		% 	case case_expression
+		% 		body
+		% 	otherwise
+		% 		body
+		% end
 		for word_idx = 1:L.cardinality()
 			if debug_flag > 1
 				disp(['  + word_idx = ' num2str(word_idx)]);
@@ -124,12 +149,21 @@ function [ ConsistencySets , PhiSets ] = get_consistency_sets_for_language(varar
 				ConsistencySets(word_idx) = Polyhedron();
 			end
 
-			PhiSets(word_idx) = Polyhedron(	'A',[ zeros(q_x0,n_y) , P_x0.A , zeros(q_x0,n_v+n_x);
+			switch ConsistencySetVersion
+				case 1
+					PhiSets(word_idx) = Polyhedron(	'A',[ zeros(q_x0,n_y) , P_x0.A , zeros(q_x0,n_v+n_x);
 												  zeros(q_v,n_y+n_x) , temp_dyn.P_v.A , zeros(q_v,n_x);
-												  zeros(q_v,n_y+n_x+n_v), P_x0.A ], ...
+												  zeros(q_x0,n_y+n_x+n_v), P_x0.A ], ...
 											'b',[ P_x0.b ; temp_dyn.P_v.b; P_x0.b ] ,...
 											'Ae',[ -eye(n_y) , temp_dyn.C , temp_dyn.C_v , zeros(n_y,n_x)  ] , ...
-											'be', zeros(n_y,1) )
+											'be', zeros(n_y,1) );
+				case 2
+					PhiSets(word_idx) = Polyhedron( 'A',[ 	zeros(q_x0,n_y) , P_x0.A ;
+														temp_dyn.P_v.A*(eye(n_y)), -temp_dyn.P_v.A*temp_dyn.C ], ...
+													'b', [P_x0.b; temp_dyn.P_v.b] )
+				otherwise
+					error(['Invalid ConsistencySetVersion: ' num2str(ConsistencySetVersion) ])
+			end
 
 		end
 

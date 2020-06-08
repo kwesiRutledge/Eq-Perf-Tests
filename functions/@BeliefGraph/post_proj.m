@@ -110,7 +110,7 @@ function ancest_nodes = post_proj(varargin)
 		disp('- Creating Consistency Sets.')
 	end
 
-	[ consistency_sets , PhiSets ] = lcsas.get_consistency_sets_for_language( ...
+	[ consistency_sets , initial_PhiSets ] = lcsas.get_consistency_sets_for_language( ...
 										BN.t+1,subL,P_u,P_x0, ...
 										'fb_method',fb_method,'debug_flag',debug_flag);
 
@@ -119,7 +119,6 @@ function ancest_nodes = post_proj(varargin)
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 	%Extend the number of consistency sets by performing intersections.
-	consistency_set_is_empty = false(subL.cardinality(),1);
 	for powerset_idx = (subL.cardinality()+1):length(subL_powerset)
 		powerset_idcs_elt = subL_index_powerset{powerset_idx};
 		consistency_sets(powerset_idx) = consistency_sets(powerset_idcs_elt(1));
@@ -127,10 +126,9 @@ function ancest_nodes = post_proj(varargin)
 		for elt_idx = 2:length(powerset_idcs_elt)
 			consistency_sets(powerset_idx) = consistency_sets(powerset_idx).intersect( consistency_sets(powerset_idcs_elt(elt_idx)) );
 		end
-
-		%Update list tracking emptiness
-		% consistency_set_is_empty(powerset_idx) = consistency_sets(powerset_idx).isEmptySet;
 	end
+
+	PhiSets = BG.get_all_consistent_internal_behavior_sets( initial_PhiSets );
 
 	%Check to see if the set is visible. i.e. Each set is
 	%	- somehow unique compared to its 'siblings', and
@@ -141,7 +139,7 @@ function ancest_nodes = post_proj(varargin)
 	end
 
 
-
+	%Check for emptiness of the consistency set.
 	[ ~ , empty_set_flags ] = BG.find_empty_observation_polyhedra( consistency_sets );
 
 	if use_unobs_checks
@@ -190,9 +188,9 @@ function ancest_nodes = post_proj(varargin)
 	for trans_idx = 1:length(visible_transitions)
 		temp_L = subL_powerset(visible_transitions(trans_idx));
 		temp_consist_set = consistency_sets(visible_transitions(trans_idx));
-		%temp_full_set = PhiSets(visible_transitions(trans_idx));
+		temp_full_set = PhiSets(visible_transitions(trans_idx));
 
-		c_node = BeliefNode(temp_L,BN.t+1,temp_consist_set);
+		c_node = BeliefNode(temp_L,BN.t+1,'ConsistencySet',temp_consist_set,'FullTrajectorySet',temp_full_set);
 		ancest_nodes = [ancest_nodes,c_node];
 	end
 

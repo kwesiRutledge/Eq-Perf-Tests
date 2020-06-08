@@ -1,10 +1,10 @@
-function [ ancest_nodes ] = post_experimental(varargin)
+function [ ancest_nodes ] = post_experimental2(varargin)
 	%Description:
 	%
 	%Usage:
-	%	BG.post_experimental(BN,P_u,P_x0)
-	%	BG.post_experimental(BN,P_u,P_x0,'debug',debug_flag)
-	%	BG.post_experimental(BN,P_u,P_x0,'debug',debug_flag,'')
+	%	BG.post_experimental2(BN,P_u,P_x0)
+	%	BG.post_experimental2(BN,P_u,P_x0,'debug',debug_flag)
+	%	BG.post_experimental2(BN,P_u,P_x0,'debug',debug_flag)
 	%	
 	%Assumption:
 	%	This function assumes that the BeliefGraph function contains the following member variables
@@ -84,13 +84,26 @@ function [ ancest_nodes ] = post_experimental(varargin)
 		disp('  + Creating Consistency Sets.')
 	end
 
-	[ ~ , phi_sets ] = lcsas.get_consistency_sets_for_language( ...
-										BN.t+1,subL,P_u,P_x0, ...
-										'fb_method',fb_method,'debug_flag',debug_flag, ...
-										'use_proj',BG.UsedProjection );
+	[ consistency_sets , initial_ib_sets ] = lcsas.get_consistency_sets_for_language( ...
+												BN.t+1,subL,P_u,P_x0, ...
+												'fb_method',fb_method,'debug_flag',debug_flag, ...
+												'use_proj',BG.UsedProjection, ...
+												'ConsistencySetVersion', 2 );
 
 	%Extend the number of consistency sets by performing intersections.
-	extended_internal_behavior_sets = BG.get_all_consistent_internal_behavior_sets( phi_sets );
+	consistency_set_is_empty = false(subL.cardinality(),1);
+	for powerset_idx = (subL.cardinality()+1):length(subL_powerset)
+		powerset_idcs_elt = subL_index_powerset{powerset_idx};
+		consistency_sets(powerset_idx) = consistency_sets(powerset_idcs_elt(1));
+		
+		for elt_idx = 2:length(powerset_idcs_elt)
+			consistency_sets(powerset_idx) = consistency_sets(powerset_idx).intersect( consistency_sets(powerset_idcs_elt(elt_idx)) );
+		end
+
+		%Update list tracking emptiness
+		% consistency_set_is_empty(powerset_idx) = consistency_sets(powerset_idx).isEmptySet;
+	end
+	%extended_internal_behavior_sets = BG.get_all_consistent_internal_behavior_sets( initial_ib_sets , 'verbosity' , debug_flag );
 
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	%% Identify Which Consistency Sets Can Be Independently Detected %%
@@ -104,11 +117,32 @@ function [ ancest_nodes ] = post_experimental(varargin)
 		disp('  + Detecting whether or not the Consistency Sets are independent enough to be found.')
 	end
 
-	[ ~ , empty_set_flags ] = BG.find_empty_observation_polyhedra( extended_internal_behavior_sets );
+	containment_matrix = false(length(subL_powerset));
+	for x_idx = 1:size(containment_matrix,1)
+		containment_matrix(x_idx,x_idx) = true;
+	end
 
-	containment_matrix_ib = BG.internal_behavior_sets2containment_mat( extended_internal_behavior_sets , 'verbosity' , debug_flag > 1 );
 
-	[ ~ , observation_set_is_observable ] = BG.containment_mat2observable_combos( containment_matrix_ib );
+	for x_idx = 1:size(containment_matrix,1)
+		potential_y_idcs = [1:size(containment_matrix,2)];
+		potential_y_idcs = potential_y_idcs( potential_y_idcs ~= x_idx );
+		for y_idx = potential_y_idcs
+			%Consider the temporary combination
+			%disp(['x_idx = ' num2str(x_idx) ', y_idx = ' num2str(y_idx) ])
+
+			% Observe if Y_Set of X is contained by the Y_Set of Y
+			ObservationSetX = consistency_sets(x_idx);
+			ObservationSetY = consistency_sets(y_idx);
+			
+			containment_matrix(x_idx,y_idx) = (ObservationSetX <= ObservationSetY);
+		end
+	end
+
+	[ ~ , observation_set_is_observable ] = BG.containment_mat2observable_combos( containment_matrix );
+
+	[ ~ , empty_set_flags ] = BG.find_empty_observation_polyhedra( consistency_sets );
+
+	% [ ~ , observation_set_is_observable ] = BG.containment_mat2observable_combos( containment_matrix_eb );
 
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	%% Create Ancestor Nodes %%
@@ -128,10 +162,10 @@ function [ ancest_nodes ] = post_experimental(varargin)
 	ancest_nodes = [];
 	for trans_idx = 1:length(visible_transitions)
 		temp_L = subL_powerset(visible_transitions(trans_idx));
-		%temp_consist_set = consistency_sets(visible_transitions(trans_idx));
-		temp_full_set = extended_internal_behavior_sets(visible_transitions(trans_idx));
+		temp_consist_set = consistency_sets(visible_transitions(trans_idx));
+		%temp_full_set = extended_internal_behavior_sets(visible_transitions(trans_idx));
 
-		c_node = BeliefNode(temp_L,BN.t+1,'FullTrajectorySet',temp_full_set);
+		c_node = BeliefNode(temp_L,BN.t+1,'ConsistencySet',temp_consist_set);
 		ancest_nodes = [ancest_nodes,c_node];
 	end
 

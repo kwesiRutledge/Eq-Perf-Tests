@@ -36,6 +36,7 @@ classdef BeliefGraph < handle
 		FeedbackMethod;
 		UsedAcceleratedAlgorithms;
 		UsedUnobservabilityChecks;
+		ConsistencySetVersion;
 	end
 
 	properties
@@ -131,6 +132,9 @@ classdef BeliefGraph < handle
 					case 'return_empty'
 						return_empty_flag = varargin{varargin_idx+1};
 						varargin_idx = varargin_idx + 2;
+					case 'ConsistencySetVersion'
+						ConsistencySetVersion = varargin{varargin_idx+1};
+						varargin_idx = varargin_idx + 2;
 					otherwise
 						error(['Unrecognized input to the function: ' varargin{varargin_idx}])
 				end
@@ -178,10 +182,15 @@ classdef BeliefGraph < handle
 				use_unobservability_checks = true;
 			end
 
+			if ~exist('ConsistencySetVersion')
+				ConsistencySetVersion = 1;
+			end
+
 			BG.UsedProjection = use_proj_flag;
 			BG.FeedbackMethod = fb_method;
 			BG.UsedAcceleratedAlgorithms = accel_flag;
 			BG.UsedUnobservabilityChecks = use_unobservability_checks;
+			BG.ConsistencySetVersion = ConsistencySetVersion;
 
 			%%%%%%%%%%%%%%%%%%%%%%%%%%%
 			%% Building Belief Graph %%
@@ -273,7 +282,7 @@ classdef BeliefGraph < handle
 			end
 		end
 
-		function [subN] = get_all_nodes_at_time(obj,tau)
+		function [ subN , bn_indices_at_t ] = get_all_nodes_at_time(obj,tau)
 			%Description:
 			%	Retrieves all belief nodes that have time value provided.
 			%
@@ -283,11 +292,16 @@ classdef BeliefGraph < handle
 			%Outputs:
 			%	subN - 	An array of BeliefNode objects.
 
-			subN = [];
+			%% Input Processing %%
+
+			%% Algorithm %%
+
+			subN = []; bn_indices_at_t = [];
 			for node_idx = 1:length(obj.N)
 				temp_BN = obj.N(node_idx);
 				if temp_BN.t == tau
 					subN = [subN,temp_BN];
+					bn_indices_at_t = [bn_indices_at_t,node_idx];
 				end
 			end
 
@@ -424,6 +438,115 @@ classdef BeliefGraph < handle
 				belief_lang = belief_lang.union(sub_lang);
 			end
 		end
+
+		function tf = is_covered_by(obj,BG_in)
+			%BeliefGraph.is_covered_by()
+			%Description:
+			%	Observes if all the nodes and edges in the current belief graph are in the input Belief Graph.
+			%
+			%Usage:
+			%	tf = bg0.is_covered_by( bg1 )
+
+			%% Constants %%
+
+			my_nodes = obj.N;
+			my_edges = obj.E;
+
+			%% Algorithm %%
+
+			tf = true;
+
+			% Consider every node in current object.	
+			for mn_idx = 1:length(my_nodes)
+				temp_bn = my_nodes(mn_idx);
+
+				bn_contained = false;
+				for bgin_node_idx = 1:length(BG_in.N)
+					target_bn = BG_in.N( bgin_node_idx );
+					%Identify if target BeliefNode is the same as temp_bn.
+					bn_match_test = temp_bn == target_bn;
+
+					bn_contained = bn_contained | bn_match_test;
+					
+					%If the two nodes match, then exit this loop.
+					if bn_match_test
+						break;
+					end
+				end
+
+				tf = tf & bn_contained;
+			end
+
+			% Consider every edge object.
+			for me_idx = 1:size(my_edges,1)
+				temp_edge = my_edges(me_idx,:);
+				
+				bn_source = my_nodes( temp_edge(1) );
+				bn_dest = my_nodes( temp_edge(2) );
+
+				edge_contained = false;
+				for bgin_edge_idx = 1:size(BG_in.E,1)
+					target_edge = BG_in.E( bgin_edge_idx , : );
+
+					source_and_dest_match_test = ( bn_source == BG_in.N( target_edge(1) ) ) & ( bn_dest == BG_in.N( target_edge(2) ) );
+					edge_contained = edge_contained | source_and_dest_match_test;
+
+					%If the two edges match then exit this loop.
+					if source_and_dest_match_test
+						break;
+					end
+				end
+
+				tf = tf & edge_contained;
+
+			end
+
+		end
+
+		function tf = is_abstracted_by(obj,BG_in)
+			%BeliefGraph.is_covered_by()
+			%Description:
+			%	Observes if, at each time, there exists a node in BG_in which ABSTRACTS the current BeliefGraph (obj).
+			%
+			%Usage:
+			%	tf = bg0.is_abstracted_by( bg1 )
+
+			%% Constants %%
+
+			my_nodes = obj.N;
+			my_edges = obj.E;
+
+			%% Algorithm %%
+
+			tf = true;
+
+			% Consider every node in current object.	
+			for mn_idx = 1:length(my_nodes)
+				temp_bn = my_nodes(mn_idx);
+				temp_t  = temp_bn.t;
+
+				bn_contained = false;
+				[ bgin_level_t , ~ ] = BG_in.get_all_nodes_at_time( temp_t );
+				for bgin_node_idx = 1:length(bgin_level_t)
+					target_bn = bgin_level_t( bgin_node_idx );
+					%Identify if target BeliefNode's language contains the language of temp_bn.
+					bn_match_test = temp_bn.subL.subseteq( target_bn.subL );
+
+					bn_contained = bn_contained | bn_match_test;
+					
+					%If the two nodes match, then exit this loop.
+					if bn_match_test
+						break;
+					end
+				end
+
+				tf = tf & bn_contained;
+			end
+			
+
+		end
+
+
 
 	end
 

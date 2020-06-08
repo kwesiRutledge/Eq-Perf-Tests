@@ -38,10 +38,10 @@ function testContainmentMatrixFunctions1(testCase)
 	%Create BeliefGraph
 	empty_bg = BeliefGraph( lcsas0 , P_u , P_x0 , 'return_empty' , true , 'use_proj_flag' , false );
 
-	N0 = empty_bg.get_initial_beliefnodes();
+	debug_flag = 0;
+	N0 = empty_bg.get_initial_beliefnodes('verbosity',debug_flag);
 	n0 = N0(1);
 
-	debug_flag = 0;
 	[ initial_external_behavior_sets , initial_internal_behavior_sets ] = lcsas0.get_consistency_sets_for_language( ...
 												n0.t+1, n0.subL, P_u,P_x0, ...
 												'fb_method','output','debug_flag',debug_flag, ...
@@ -108,10 +108,10 @@ function testContainmentMatrixFunctions2(testCase)
 	%Create BeliefGraph
 	empty_bg = BeliefGraph( lcsas0 , P_u , P_x0 , 'return_empty' , true , 'use_proj_flag' , true );
 
-	N0 = empty_bg.get_initial_beliefnodes();
+	debug_flag = 0;
+	N0 = empty_bg.get_initial_beliefnodes('verbosity',debug_flag);
 	n0 = N0(1);
 
-	debug_flag = 0;
 	[ initial_external_behavior_sets , initial_internal_behavior_sets ] = lcsas0.get_consistency_sets_for_language( ...
 												n0.t+1, n0.subL, P_u, P_x0, ...
 												'fb_method','output', 'debug_flag',debug_flag, ...
@@ -302,9 +302,9 @@ function testContainmentMatrixFunctions4(testCase)
 			containment_matrix_eb(x_idx,y_idx) = (ObservationSetX <= ObservationSetY);
 		end
 	end
-	containment_matrix_eb
+	containment_matrix_eb;
 
 	%Create the continment matrix using Internal Behavior Sets + Sufficient Condition
-	containment_matrix_ib = empty_bg.internal_behavior_sets2containment_mat( extended_internal_behavior_sets )
+	containment_matrix_ib = empty_bg.internal_behavior_sets2containment_mat( extended_internal_behavior_sets );
 
 	assert( all( containment_matrix_eb( containment_matrix_ib ) ) )

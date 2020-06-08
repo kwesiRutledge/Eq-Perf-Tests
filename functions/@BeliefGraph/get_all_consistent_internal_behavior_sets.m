@@ -1,4 +1,4 @@
-function [ extended_internal_behavior_sets ] = get_all_consistent_internal_behavior_sets( belief_graph_in , initial_internal_behavior_sets )
+function [ extended_internal_behavior_sets ] = get_all_consistent_internal_behavior_sets( varargin )
 	% get_consistent_internal_behavior_sets.m
 	%Description:
 	%	Computes the consistent internal behavior sets for combinations of the sets in initial_internal_behavior_sets.
@@ -10,6 +10,28 @@ function [ extended_internal_behavior_sets ] = get_all_consistent_internal_behav
 	%
 	%Usage:
 	%	extended_internal_behavior_sets = bg.get_all_consistent_internal_behavior_sets( initial_internal_behavior_sets )
+	%	extended_internal_behavior_sets = bg.get_all_consistent_internal_behavior_sets( initial_internal_behavior_sets , 'verbosity' , 0 )
+
+	%%%%%%%%%%%%%%%%%%%%%%
+	%% Input Processing %%
+	%%%%%%%%%%%%%%%%%%%%%%
+
+	belief_graph_in = varargin{1};
+	initial_internal_behavior_sets = varargin{2};
+
+	arg_idx = 3;
+	while arg_idx <= nargin
+		switch varargin{arg_idx}
+			case 'verbosity'
+				verbosity = varargin{arg_idx+1};
+				arg_idx = arg_idx + 2;
+			case 'ConsistencySetVersion'
+				ConsistencySetVersion = varargin{arg_idx+1};
+				arg_idx = arg_idx + 2;
+			otherwise
+				error('Unrecognized input to the function.')
+		end
+	end
 
 	%%%%%%%%%%%%%%%
 	%% Constants %%
@@ -32,18 +54,12 @@ function [ extended_internal_behavior_sets ] = get_all_consistent_internal_behav
 	n_x = size(lcsas_in.Dyn(1).A,1);
 	n_u = size(lcsas_in.Dyn(1).B,2);
 	n_w = size(lcsas_in.Dyn(1).B_w,2);
-	if strcmp(fb_method,'output')
-		n_y = size(lcsas_in.Dyn(1).C,1);
-		n_v = size(lcsas_in.Dyn(1).C_v,2);
+	n_y = size(lcsas_in.Dyn(1).C,1);
+	n_v = size(lcsas_in.Dyn(1).C_v,2);
 
-		t = (dim-n_y-n_v-2*n_x)/(n_y+n_u+n_w+n_v+n_x);
-		
-	elseif strcmp(fb_method,'state')
-		t = (dim - 2*n_x)/(n_x+n_u+n_w);
-	else
-		error('Unrecognized feedback method.')
-	end
-		
+	t = lcsas_in.behavior_set2time( initial_internal_behavior_sets(1) , 'InternalBehaviorSet_1word' , ...
+									'ConsistencySetVersion' , belief_graph_in.ConsistencySetVersion , ...
+									'FeedbackMethod' , belief_graph_in.FeedbackMethod );		
 
 
 	%%%%%%%%%%%%%%%

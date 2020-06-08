@@ -40,12 +40,12 @@ function testInternalBehaviorSets1(testCase)
 	empty_bg = BeliefGraph( lcsas0 , P_u , P_x0 , 'return_empty' , true , 'use_proj_flag' , false );
 
 	%Create initial node set
-	N0 = empty_bg.get_initial_beliefnodes();
+	debug_flag = 0;
+	N0 = empty_bg.get_initial_beliefnodes('verbosity',debug_flag);
 
 	n0 = N0(1);
 
 	fb_method = 'output';
-	debug_flag = 0;
 	[ ~ , initial_internal_behavior_sets ] = lcsas0.get_consistency_sets_for_language( ...
 												n0.t+1, n0.subL, P_u,P_x0, ...
 												'fb_method',fb_method,'debug_flag',debug_flag, ...
@@ -97,12 +97,12 @@ function testInternalBehaviorSets2(testCase)
 	empty_bg = BeliefGraph( lcsas0 , P_u , P_x0 , 'return_empty' , true , 'use_proj_flag' , false );
 
 	%Create initial node set
-	N0 = empty_bg.get_initial_beliefnodes();
+	debug_flag = 0;
+	N0 = empty_bg.get_initial_beliefnodes('verbosity',debug_flag);
 
 	n0 = N0(1);
 
 	fb_method = 'output';
-	debug_flag = 0;
 	[ ~ , initial_internal_behavior_sets ] = lcsas0.get_consistency_sets_for_language( ...
 												n0.t+1, n0.subL, P_u,P_x0, ...
 												'fb_method',fb_method,'debug_flag',debug_flag, ...

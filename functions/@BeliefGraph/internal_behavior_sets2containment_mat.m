@@ -1,11 +1,30 @@
-function [containment_matrix] = internal_behavior_sets2containment_mat( belief_graph_in , internal_behavior_sets_in )
+function [containment_matrix] = internal_behavior_sets2containment_mat( varargin )
 	%Description:
 	%
 	%
 	%Usage:
-	%	[containment_matrix] = bg.internal_behavior_sets2containment_mat( t_in , internal_behavior_sets_in )
+	%	[containment_matrix] = bg.internal_behavior_sets2containment_mat( internal_behavior_sets_in )
+	%	[containment_matrix] = bg.internal_behavior_sets2containment_mat( internal_behavior_sets_in , 'verbosity' , 0)
+	%	
 	%
 
+	%%%%%%%%%%%%%%%%%%%%%%
+	%% Input Processing %%
+	%%%%%%%%%%%%%%%%%%%%%%
+
+	belief_graph_in = varargin{1};
+	internal_behavior_sets_in = varargin{2};
+
+	arg_idx = 3;
+	while arg_idx <= nargin
+		switch varargin{arg_idx}
+			case 'verbosity'
+				verbosity = varargin{arg_idx+1};
+				arg_idx = arg_idx + 2;
+			otherwise
+				error('Unrecognized input to the function.')
+		end
+	end
 
 	%%%%%%%%%%%%%%%
 	%% Constants %%
@@ -23,17 +42,12 @@ function [containment_matrix] = internal_behavior_sets2containment_mat( belief_g
 	n_x = size(lcsas_in.Dyn(1).A,1);
 	n_u = size(lcsas_in.Dyn(1).B,2);
 	n_w = size(lcsas_in.Dyn(1).B_w,2);
-	if strcmp(fb_method,'output')
-		n_y = size(lcsas_in.Dyn(1).C,1);
-		n_v = size(lcsas_in.Dyn(1).C_v,2);
+	n_y = size(lcsas_in.Dyn(1).C,1);
+	n_v = size(lcsas_in.Dyn(1).C_v,2);
 
-		t = (ib_dim-n_y-n_v-2*n_x)/(n_y+n_u+n_w+n_v+n_x);
-
-	elseif strcmp(fb_method,'state')
-		t = (ib_dim - 2*n_x)/(n_x+n_u+n_w);
-	else
-		error('Unrecognized feedback method.')
-	end
+	t = lcsas_in.behavior_set2time( internal_behavior_sets_in(1) , 'InternalBehaviorSet_1word' , ...
+									'ConsistencySetVersion' , belief_graph_in.ConsistencySetVersion , ...
+									'FeedbackMethod' , belief_graph_in.FeedbackMethod );	
 
 	external_beh_dim = n_y*(t+1)+n_u*t;
 

@@ -5,6 +5,7 @@ function [results] = observer_tests( varargin )
 
 	% Add experiments and functions to the path
 	is_on_personal_mac = strcmp(getenv('USER'),'kwesirutledge');
+	is_on_great_lakes = (strcmp(getenv('USER'),'krutledg') && isunix) ;
 
 	%include_fcns('tbxmanager','YALMIP')
 	if is_on_personal_mac

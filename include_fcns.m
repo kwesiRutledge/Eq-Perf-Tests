@@ -80,6 +80,68 @@ if strcmp(getenv('USER'),'kwesirutledge') %Suggests the laptop is in use
         end
     end
     disp(['All Libraries successfully added to path.'])
+elseif (strcmp(getenv('USER'),'krutledg') && isunix) 
+    %If the user variable is that of Kwesi's uniqname and this is a Unix machine,
+    %then the program is running on the Great Lakes cluster.
+    %Use directory paths/structure for that machine instead of Kwesi's own structures.
+
+    for arg_ind = 1:nargin
+        switch varargin{arg_ind}
+            case 'MPT3'
+                %% Include MPT3
+                try
+                    disp('- Testing MPT3')
+                    Polyhedron();
+                    disp('  + MPT3 is already included.')
+                catch
+                    disp('  + MPT3 Toolbox does not appear in path! Attempting one method to fix this...')
+                    try
+                        %Add All MPT Toolbox folders AND subfolders to path.
+                        addpath(genpath([ path_to_repo_top '../' 'tbxmanager/']) )
+                        Polyhedron()
+                        disp('  + Successfully added MPT3 to path.')
+                    catch
+                        error('MPT3 not added to path.')
+                    end
+                end
+            case 'YALMIP'
+                %Include YALMIP
+                try
+                    disp('- Testing YALMIP')
+                    sdpvar(1,1,'full');
+                    disp('  + YALMIP is already included in the path.')
+                catch    
+                    disp('  + YALMIP is not currently included on the path! Attempting a fix... ')
+                    try
+                        %Add 
+                        addpath(genpath([ path_to_repo_top '../' 'YALMIP-Master']) )
+                        sdpvar(1,1,'full');
+                        disp('  + Successfully added YALMIP to path.')
+                    end
+                end
+            case 'tbxmanager'
+                %Include YALMIP
+                try
+                    disp('- Testing tbxmanager')
+                    sdpvar(1,1,'full');
+                    disp('  + tbxmanager is already included in the path.')
+                catch    
+                    disp('  + YALMIP is not currently included on the path! Attempting a fix... ')
+                    try
+                        %Add 
+                        addpath(genpath([ path_to_repo_top '../' 'YALMIP-Master']) )
+                        sdpvar(1,1,'full');
+                        disp('  + Successfully added YALMIP to path.')
+                    end
+                end
+            otherwise
+                error(['Unrecognized input to include_fcns (' varargin{arg_ind} ').' ] )
+        end
+    
+    end
+
+    disp('Completed adding libraries to the path.')
+
 else
     %Depending on the Toolbox, do different things.
     for arg_ind = 1:nargin

@@ -39,7 +39,7 @@ module load gurobi
 
 # The job command(s):
 echo " "
-echo "Running test_job0.sbat"
+echo "Running run_ecc2020_test.sbat"
 echo " "
 echo "Warning: This shell script is designed for the Great Lakes Unix System."
 echo "Results not guaranteed for other operating systems."

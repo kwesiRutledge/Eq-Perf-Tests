@@ -38,6 +38,11 @@ module load gcc
 module load gurobi
 
 # The job command(s):
+
+##############
+## Preamble ##
+##############
+
 echo " "
 echo "Running run_ecc2020_test.sbat"
 echo " "
@@ -50,6 +55,16 @@ echo " "
 echo "Modules successfully loaded."
 echo " "
 
-## Run The MATLAB Script for ACC
-cd ..
-./gen_tables_gl.sh
+# Check to See if the saved_data folder exists
+
+if [ -d "../saved_data" ]; then
+	echo " - saved_data directory does not exist. Creating it now."
+	cd ..
+	mkdir saved_data
+fi
+
+# Run the script make_ECC_figures_gl
+
+cd matlab_files/
+matlab -nodisplay -r "try make_ECC_figures_gl; catch; end; exit"
+

@@ -34,7 +34,7 @@
 
 # The modules to load:
 module load matlab
-module load gcc
+# module load gcc
 module load gurobi
 
 # The job command(s):

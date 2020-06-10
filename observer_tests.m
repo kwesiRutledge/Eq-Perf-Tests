@@ -4,8 +4,14 @@ function [results] = observer_tests( varargin )
 	%
 
 	% Add experiments and functions to the path
+	is_on_personal_mac = strcmp(getenv('USER'),'kwesirutledge');
+
 	%include_fcns('tbxmanager','YALMIP')
-	include_fcns('mosek','gurobi','tbxmanager')
+	if is_on_personal_mac
+		include_fcns('mosek','gurobi','tbxmanager')
+	elseif is_on_great_lakes
+		include_fcns('tbxmanager')
+	end
 
 	if isempty(strfind(path,'./functions/'))
 		addpath('./functions/')

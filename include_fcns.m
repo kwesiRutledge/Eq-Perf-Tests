@@ -85,6 +85,8 @@ elseif (strcmp(getenv('USER'),'krutledg') && isunix)
     %then the program is running on the Great Lakes cluster.
     %Use directory paths/structure for that machine instead of Kwesi's own structures.
 
+    path_to_top_of_gl = '~';
+
     for arg_ind = 1:nargin
         switch varargin{arg_ind}
             case 'MPT3'
@@ -97,7 +99,7 @@ elseif (strcmp(getenv('USER'),'krutledg') && isunix)
                     disp('  + MPT3 Toolbox does not appear in path! Attempting one method to fix this...')
                     try
                         %Add All MPT Toolbox folders AND subfolders to path.
-                        addpath(genpath([ path_to_repo_top '../' 'tbxmanager/']) )
+                        addpath(genpath([ path_to_top_of_gl '/matlab_toolboxes/tbxmanager/']) )
                         Polyhedron()
                         disp('  + Successfully added MPT3 to path.')
                     catch
@@ -114,7 +116,7 @@ elseif (strcmp(getenv('USER'),'krutledg') && isunix)
                     disp('  + YALMIP is not currently included on the path! Attempting a fix... ')
                     try
                         %Add 
-                        addpath(genpath([ path_to_repo_top '../' 'YALMIP-Master']) )
+                        addpath(genpath([ path_to_top_of_gl '/matlab_toolboxes/YALMIP-Master']) )
                         sdpvar(1,1,'full');
                         disp('  + Successfully added YALMIP to path.')
                     end
@@ -123,14 +125,14 @@ elseif (strcmp(getenv('USER'),'krutledg') && isunix)
                 %Include YALMIP
                 try
                     disp('- Testing tbxmanager')
-                    sdpvar(1,1,'full');
+                    tbxmanager show installed
                     disp('  + tbxmanager is already included in the path.')
                 catch    
-                    disp('  + YALMIP is not currently included on the path! Attempting a fix... ')
+                    disp('  + tbxmanager is not currently included on the path! Attempting a fix... ')
                     try
                         %Add 
-                        addpath(genpath([ path_to_repo_top '../' 'YALMIP-Master']) )
-                        sdpvar(1,1,'full');
+                        addpath(genpath([ path_to_top_of_gl '/matlab_toolboxes/tbxmanager/']) )
+                        tbxmanager show installed
                         disp('  + Successfully added YALMIP to path.')
                     end
                 end

@@ -66,5 +66,5 @@ fi
 # Run the script make_ECC_figures_gl
 
 cd matlab_files/
-matlab -nodisplay -r "try make_ECC_figures_gl; catch; end; exit"
+matlab -batch "try make_ECC_figures_gl; catch; end; exit"
 

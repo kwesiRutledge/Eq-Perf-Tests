@@ -71,5 +71,5 @@ matlab -batch "make_ECC_figures_gl"
 cd ../../..
 
 EMAIL_TEXT=$'make_ECC_figures_gl has completed.\nCheck this email for the results.'
-echo "$EMAIL_TEXT" | mail -s "make_ECC_figures_gl has finished." -a data/ecc2020/eccfig_data.mat results/ecc2020/oc56_belief_graph_sys1.png results/ecc2020/oc56_belief_graph_sys2.png results/ecc2020/oc56_trajectories_sys1.png
+echo "$EMAIL_TEXT" | mail -s "make_ECC_figures_gl has finished." -a data/ecc2020/eccfig_data.mat -a results/ecc2020/oc56_belief_graph_sys1.png -a results/ecc2020/oc56_belief_graph_sys2.png -a results/ecc2020/oc56_trajectories_sys1.png krutledg@umich.edu
 

@@ -11,7 +11,7 @@ function [results] = observer_tests( varargin )
 	if is_on_personal_mac
 		include_fcns('mosek','gurobi','tbxmanager')
 	elseif is_on_great_lakes
-		include_fcns('tbxmanager')
+		include_fcns('tbxmanager','YALMIP')
 	end
 
 	if isempty(strfind(path,'./functions/'))

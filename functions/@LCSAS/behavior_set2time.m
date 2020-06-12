@@ -83,12 +83,11 @@ function [t_out] = behavior_set2time( varargin )
 						t_out = (dim-n_y-n_v-2*n_x)/(n_y+n_u+n_w+n_v+n_x);
 					elseif strcmp(FeedbackMethod,'state')
 						t_out = (dim - 2*n_x)/(n_x+n_u+n_w);
-						warning('Untested use of behavior_set2time!')
 					end
 				case 2
 					if strcmp(FeedbackMethod,'output')
 						t_out = (dim - n_y - n_x)/(n_y+n_u+n_w);
-					else
+					elseif strcmp(FeedbackMethod,'state')
 						error('This part is not implemented!')
 					end
 				otherwise

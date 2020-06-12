@@ -113,3 +113,4 @@ function testInternalBehaviorSets2(testCase)
 	[ ~ , empty_set_flags ] = empty_bg.find_empty_observation_polyhedra( extended_internal_behavior_sets );
 
 	assert( all( empty_set_flags == false(length(empty_set_flags),1) ) )
+

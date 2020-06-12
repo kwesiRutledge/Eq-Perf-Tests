@@ -133,7 +133,7 @@ elseif (strcmp(getenv('USER'),'krutledg') && isunix)
                         %Add 
                         addpath(genpath([ path_to_top_of_gl '/matlab_toolboxes/tbxmanager/']) )
                         tbxmanager show installed
-                        disp('  + Successfully added YALMIP to path.')
+                        disp('  + Successfully added tbxmanager to path.')
                     end
                 end
             otherwise

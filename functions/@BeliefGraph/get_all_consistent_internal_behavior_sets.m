@@ -85,11 +85,13 @@ function [ extended_internal_behavior_sets ] = get_all_consistent_internal_behav
 		for tc_idx = 1:(length(temp_combination)-1)
 			if strcmp(fb_method,'output')
 				eb_size = n_y*(t+1)+n_u*t; %Size of the external behavior vector
-				temp_Ae = [	temp_Ae;
-						[zeros(eb_size,(tc_idx-1)*dim),[eye(eb_size),zeros(eb_size,dim-eb_size)],-[eye(eb_size),zeros(eb_size,dim-eb_size)],zeros(eb_size, (temp_comb_length - tc_idx - 1)*dim)] ];
-			else
-				error('This function is not fully implemented for state feedback yet.')
+			elseif strcmp(fb_method,'state')
+				eb_size = n_x*(t+1)+n_u*t; %Size of the external behavior vector
+				%error('This function is not fully implemented for state feedback yet.')
 			end
+
+			temp_Ae = [	temp_Ae;
+					[zeros(eb_size,(tc_idx-1)*dim),[eye(eb_size),zeros(eb_size,dim-eb_size)],-[eye(eb_size),zeros(eb_size,dim-eb_size)],zeros(eb_size, (temp_comb_length - tc_idx - 1)*dim)] ];
 		end
 
 		temp_be = zeros(size(temp_Ae,1),1);

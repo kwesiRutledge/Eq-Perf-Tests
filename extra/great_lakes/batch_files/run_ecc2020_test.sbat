@@ -57,9 +57,10 @@ echo " "
 
 # Check to See if the saved_data folder exists
 
-if [ -d "../saved_data" ]; then
+cd ..
+
+if [ -d "saved_data" ]; then
 	echo " - saved_data directory does not exist. Creating it now."
-	cd ..
 	mkdir saved_data
 fi
 

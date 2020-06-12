@@ -98,7 +98,7 @@ function [results] = observer_comparison56( varargin )
 
 	timing_info.plot1 = toc(timer_start);
 
-	saveas(gcf,'results/oc56_trajectories_sys1.png')
+	saveas(gcf,'results/ecc2020/oc56_trajectories_sys1.png')
 
 	%%%%%%%%%%%%%%%%%%%%%%%%%
 	%% Create Belief Graph %%

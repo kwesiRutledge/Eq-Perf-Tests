@@ -66,7 +66,7 @@ fi
 # Run the script make_ECC_figures_gl
 
 cd matlab_files/
-matlab -batch "try make_ECC_figures_gl; catch; end; exit"
+matlab -batch "make_ECC_figures_gl"
 cd ../../..
 
 EMAIL_TEXT=$'make_ECC_figures_gl has completed.\nCheck this email for the results.'

@@ -7,9 +7,12 @@ function [results] = observer_comparison56( varargin )
 	%% Input Processing %%
 	%%%%%%%%%%%%%%%%%%%%%%
 
-	switch nargin
-		case 1
-			plot_traj2 = varargin{1};
+	if nargin >= 1
+		plot_traj2 = varargin{1};
+	end
+
+	if nargin >= 2
+		plot_flag = varargin{2};
 	end
 
 	if ~exist('plot_traj2')
@@ -110,7 +113,7 @@ function [results] = observer_comparison56( varargin )
 	bg.plot();
 	disp('- Plotted BeliefGraph 1.')
 
-	saveas(gcf,'results/oc56_belief_graph_sys1.png')
+	saveas(gcf,'results/ecc2020/oc56_belief_graph_sys1.png')
 
 	results.exp1.bg = bg;
 
@@ -194,7 +197,7 @@ function [results] = observer_comparison56( varargin )
 	bg.plot();
 	disp('Plotted BeliefGraph 2.')
 
-	saveas(gcf,'results/oc56_belief_graph_sys2.png')
+	saveas(gcf,'results/ecc2020/oc56_belief_graph_sys2.png')
 
 	results.exp2.bg2 = bg;
 

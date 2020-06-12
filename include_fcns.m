@@ -106,6 +106,7 @@ elseif (strcmp(getenv('USER'),'krutledg') && isunix)
                         error('MPT3 not added to path.')
                     end
                 end
+                mpt_init; %This will accurately add Gurobi to the list of available solvers.
             case 'YALMIP'
                 %Include YALMIP
                 try
@@ -122,7 +123,7 @@ elseif (strcmp(getenv('USER'),'krutledg') && isunix)
                     end
                 end
             case 'tbxmanager'
-                %Include YALMIP
+                %Include tbxmanager (includes MPT3)
                 try
                     disp('- Testing tbxmanager')
                     tbxmanager show installed
@@ -136,6 +137,7 @@ elseif (strcmp(getenv('USER'),'krutledg') && isunix)
                         disp('  + Successfully added tbxmanager to path.')
                     end
                 end
+                mpt_init; %This will accurately add Gurobi to the list of available solvers.
             otherwise
                 error(['Unrecognized input to include_fcns (' varargin{arg_ind} ').' ] )
         end

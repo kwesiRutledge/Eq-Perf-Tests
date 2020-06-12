@@ -89,7 +89,7 @@ function [results] = observer_comparison60( varargin )
 	time_of_day_str(colon_locs) = '_';
 
 	if ~exist('save_file_name')
-		save_file_name = ['data/ecc/oc60_interm_results_' num2str(c_sq.dim_x) 'x' num2str(c_sq.dim_y) 'drones_' time_of_day_str '.mat'];
+		save_file_name = ['data/ecc2020/oc60_interm_results_' num2str(c_sq.dim_x) 'x' num2str(c_sq.dim_y) 'drones_' time_of_day_str '.mat'];
 	end
 
 	run_opt_flag = true;

@@ -22,7 +22,7 @@
 #SBATCH --mem=12g
 
 # The maximum running time of the job in days-hours:mins:sec
-#SBATCH --time=0-5:0:00
+#SBATCH --time=0-10:0:00
 
 # Partition for the job:
 #SBATCH -p standard

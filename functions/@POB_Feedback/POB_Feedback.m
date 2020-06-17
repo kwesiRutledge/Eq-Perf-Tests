@@ -198,16 +198,16 @@ classdef POB_Feedback < handle
 
 			%Generate Random Variables
 			if isempty(x0)
-				x0 = obj.gen_rand_vars( lcsas , sig , 'x0' , M1 );
+				x0 = obj.gen_rand_vars( lcsas , sig , 'x0' , M1 )
 			end
 
 			if ~isempty(in_w)
 				w = in_w;
 			else
-				w = obj.gen_rand_vars( lcsas , sig , 'w' );
+				w = obj.gen_rand_vars( lcsas , sig , 'w' )
 			end
 
-			v = obj.gen_rand_vars( lcsas , sig , 'v' );
+			v = obj.gen_rand_vars( lcsas , sig , 'v' )
 
 			%Simulate system forward.
 			x_t = x0;
@@ -229,7 +229,7 @@ classdef POB_Feedback < handle
 						lcsas.Dyn(q_t).f ;
 				%Update other variables in system
 				x_t = x_tp1;
-				x_0_t = [x_0_t, x_t];
+				x_0_t = [x_0_t, x_t]
 
 				if( t == T-1 )
 					continue;

@@ -219,11 +219,13 @@ classdef BeliefGraph < handle
 			%Create first node
 			% node0.subset = L;
 			% node0.t = 0;
-			node0 = BeliefNode(L,0,in_sys.Dyn(1).C*P_x0+in_sys.Dyn(1).C_v*in_sys.Dyn(1).P_v);
-			T_max = node0.find_longest_horizon();
+			%node0 = BeliefNode(L,0,in_sys.Dyn(1).C*P_x0+in_sys.Dyn(1).C_v*in_sys.Dyn(1).P_v);
+			init_nodes = BG.get_initial_beliefnodes( P_x0 );
+			temp_node = init_nodes(1);
+			T_max = temp_node.find_longest_horizon();
 
-			c_level = [node0];
-			BG.N = [node0];
+			c_level = init_nodes;
+			BG.N = init_nodes;
 
 			for tau = 1:T_max-1
 				%Each belief will be indexed by a time. (i.e. I hold X belieft at time t)
@@ -421,22 +423,44 @@ classdef BeliefGraph < handle
 
 			%% Initialize variables
 
-			belief_lang = [];
+			belief_lang = Language();
 
 			%% Find all leaves
 			leaf_node_idxs = obj.get_leaf_node_idxs();
 
 			%% Perform backtracking operation for every node 
-			belief_lang = Language();
 			for leaf_idx = leaf_node_idxs
 				sub_lang = Language([leaf_idx]);
-				while(~sub_lang.all_words_start_with_root())
+				while ~obj.all_words_start_with_an_initial_node( sub_lang )
 					%Until all of the words in this sub_language have reached the root node $n$ 
 					temp_lang = obj.prepend_any_valid_node(sub_lang);
 					sub_lang = temp_lang;
 				end
 				belief_lang = belief_lang.union(sub_lang);
 			end
+		end
+
+		function tf = all_words_start_with_an_initial_node(obj,Language_in)
+			%Description:
+			%	Consider the words in the language (Language_in).
+			%	Every word represents a sequence of nodes in this belief graph (obj).
+			%	Return true if and only if all words begin with an index which is in the set of initial nodes.
+
+			%% Constants %%
+
+			[~,initial_nodes] = obj.get_all_nodes_at_time(0);
+
+			%% Algorithm %%
+			tf = true;
+
+			for word_idx = 1:Language_in.cardinality()
+				temp_word = Language_in.words{word_idx};
+				first_idx = temp_word(1);
+				if ~any(first_idx == initial_nodes)
+					tf = false;
+				end
+			end
+
 		end
 
 		function tf = is_covered_by(obj,BG_in)

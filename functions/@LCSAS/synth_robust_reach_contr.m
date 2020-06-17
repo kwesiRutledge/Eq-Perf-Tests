@@ -42,7 +42,9 @@ function [BG,contr,opt_out,BG_creation_time] = synth_robust_reach_contr( varargi
 			case 'legacy_flag'
 				legacy_flag = varargin{varargin_idx+1};
 				varargin_idx = varargin_idx+2;
-
+			case 'UseProjection'
+				UseProjection = varargin{varargin_idx+1};
+				varargin_idx = varargin_idx+2;
 			otherwise
 				error(['Unexpected flag for this function: ' varargin{varargin_idx}])
 		end
@@ -70,6 +72,10 @@ function [BG,contr,opt_out,BG_creation_time] = synth_robust_reach_contr( varargi
 		legacy_flag = false;
 	end
 
+	if ~exist('UseProjection')
+		UseProjection = true;
+	end
+
 	%%%%%%%%%%%%%%%
 	%% Algorithm %%
 	%%%%%%%%%%%%%%%
@@ -89,7 +95,9 @@ function [BG,contr,opt_out,BG_creation_time] = synth_robust_reach_contr( varargi
 	
 	if ~exist('BG')
 		bg_timer_start = tic;
-		BG = BeliefGraph(in_lcsas,P_u,P_x0,'verbosity',debug_flag,'accel_flag',true);
+		BG = BeliefGraph(in_lcsas,P_u,P_x0, ...
+						'verbosity',debug_flag,'accel_flag',true, ...
+						'use_proj_flag',UseProjection);
 		BG_creation_time = toc(bg_timer_start);
 	end
 	

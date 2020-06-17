@@ -1,15 +1,17 @@
-function ancest_nodes = post_noproj(varargin)
+function [ ancest_nodes ] = post_experimental(varargin)
 	%Description:
-	%	Identifies what nodes could possibly arise after reaching the current Belief Node according to the dynamics
-	%	given in lcsas.
-	%	Does not use projection. This leads to an algorithm that should somehow contain less posterior nodes than a correct algorithm.
 	%
 	%Usage:
-	%	BG.post(BN,P_u,P_x0)
-	%	BG.post(BN,P_u,P_x0,'debug',debug_flag)
-	%	BG.post(BN,P_u,P_x0,'debug',debug_flag, 'fb_method' , fb_method )
-	%	BG.post(BN,P_u,P_x0,'debug',debug_flag, 'fb_method' , fb_method , 'accel_flag' , accel_flag )
-	%	BG.post(BN,P_u,P_x0)
+	%	BG.post_experimental(BN,P_u,P_x0)
+	%	BG.post_experimental(BN,P_u,P_x0,'debug',debug_flag)
+	%	BG.post_experimental(BN,P_u,P_x0,'debug',debug_flag,'')
+	%	
+	%Assumption:
+	%	This function assumes that the BeliefGraph function contains the following member variables
+	%		- UsedProjection: This flag indicates whether or not the method will use projection or not.
+	%		- FeedbackMethod: Indicates if the system is using state or output feedback.
+	%		- UsedAcceleratedAlgorithms: Indicates if the accelerated "post" algorithms should be used.
+	%		- UsedUnobservabilityChecks: Indicates that the "post" algorithm checks for unobservable edges/transitions.
 	%
 	%Inputs:
 	%	BG 			- A Belief Graph object.
@@ -17,10 +19,7 @@ function ancest_nodes = post_noproj(varargin)
 	%	P_u 		- A Polyhedron() object that defines the input constraints.
 	%				  The input at each time must lie within the polyhedron.
 	%	P_x0 		- A Polyhedron() object that defines the set of states from which the initial state is contained.
-	%	fb_method 	- A string representing which feedback method is being used for this example.
-	%				  Options are: 'state' or 'output'
-	%	accel_flag	- A boolean which is used to decide whethor or not to use the accelerated or simple version of the algorithm.
-	%				  Must be true or false.
+	%	debug_flag  - A nonnegative integer indicating the level of debug information that the user wants.
 
 	%%%%%%%%%%%%%%%%%%%%%%
 	%% Input Processing %%
@@ -52,136 +51,84 @@ function ancest_nodes = post_noproj(varargin)
 				case 'accel_flag'
 					accel_flag = varargin{arg_idx+1};
 					arg_idx = arg_idx + 2;
+				case 'use_unobservability_checks'
+					use_unobs_checks = varargin{arg_idx+1};
+					arg_idx = arg_idx + 2;
 				otherwise
 					error(['Unexpected input: ' varargin{arg_idx}])
 			end
 		end
 	end
 
-	%%%%%%%%%%%%%%%
-	%% Constants %%
-	%%%%%%%%%%%%%%%
+	%%%%%%%%%%%%%%
+	%% Defaults %%
+	%%%%%%%%%%%%%%
 
 	if ~exist('debug_flag')
 		debug_flag = 0;
 	end
 
-	if ~exist('fb_method')
-		fb_method = 'output';
-	end
-
-	if ~exist('accel_flag')
-		accel_flag = false;
-	end
+	%%%%%%%%%%%%%%%
+	%% Constants %%
+	%%%%%%%%%%%%%%%
 
 	lcsas = BG.lcsas;
 	subL = BN.subL;
 
 	%Get All Combinations of the node's subset
 	%node_p_set = BN.idx_powerset_of_subL();
-	subL_p_set = BN.subL.powerset();
+	[subL_powerset, subL_index_powerset] = subL.powerset();
 
 	n = size(lcsas.Dyn(1).A,1);
 	m = size(lcsas.Dyn(1).B,2);
 
-	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-	%% Perform Accelerated Computations If That Is Desired %%
-	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-	if accel_flag
-		ancest_nodes = BG.post_noproj_accel(BN,P_u,P_x0,'debug',debug_flag, 'fb_method' , fb_method );
-		return
-	end
-
+    fb_method = 'output';
+    use_unobs_checks = true;
+    
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	%% Define Consistency Sets %%
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 	if debug_flag > 0
-		disp('- Creating Consistency Sets.')
+		disp('  + Creating Consistency Sets.')
 	end
 
-	Phi_sets = {};
-	Consist_sets = {};
-	visible_transitions = [1:length(subL_p_set)];
-	for p_set_idx = 1:length(subL_p_set)
-		if debug_flag > 1
-			disp(['  + p_set_idx = ' num2str(p_set_idx)]);
-		end
-		
-		temp_lang = subL_p_set(p_set_idx);
-		temp_BN = BeliefNode(temp_lang,BN.t+1);
+	[ ~ , phi_sets ] = lcsas.get_consistency_sets_for_language( ...
+										BN.t+1,subL,P_u,P_x0, ...
+										'fb_method',fb_method,'debug_flag',debug_flag, ...
+										'use_proj',BG.UsedProjection );
 
-		[ ~ , Phi_sets{p_set_idx} ] = lcsas.consistent_set(BN.t+1,subL_p_set(p_set_idx),P_u,P_x0,'fb_method',fb_method,'use_proj',false);
-
-        if temp_lang.cardinality() == 1
-            Consist_sets{p_set_idx} = Phi_sets{p_set_idx};
-        else
-            intersect_instructions = [];
-            for word_idx = 1:BN.subL.cardinality()
-                temp_word = BN.subL.words{word_idx};
-                test_lang = Language(temp_word);
-                if test_lang.subseteq(temp_lang)
-                    intersect_instructions = [intersect_instructions,word_idx];
-                end
-            end
-            %Create "Consistency Set"
-            Consist_sets{p_set_idx} = Phi_sets{intersect_instructions(1) };
-            for instruct_idx = 2:length(intersect_instructions)
-                Consist_sets{p_set_idx} = Consist_sets{p_set_idx}.intersect(Consist_sets{intersect_instructions(instruct_idx)});
-            end
-                
-            
-        end
-        
-	end
+	%Extend the number of consistency sets by performing intersections.
+	extended_internal_behavior_sets = BG.get_all_consistent_internal_behavior_sets( phi_sets );
 
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	%% Identify Which Consistency Sets Can Be Independently Detected %%
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 	%Check to see if the set is visible. i.e. Each set is
-	%	- somehow unique compared to its 'parents', and
+	%	- somehow unique compared to its 'siblings', and
 	%	- not empty.
 
 	if debug_flag > 0
-		disp('- Detecting whether or not the Consistency Sets are independent enough to be found.')
+		disp('  + Detecting whether or not the Consistency Sets are independent enough to be found.')
 	end
 
-	for p_set_idx = 1:length(subL_p_set)
-		c_set_p = Consist_sets{p_set_idx};
+	[ ~ , empty_set_flags ] = BG.find_empty_observation_polyhedra( extended_internal_behavior_sets );
 
-		if debug_flag > 1
-			disp(['  + p_set_idx = ' num2str(p_set_idx) ])
-		end
+	containment_matrix_ib = BG.internal_behavior_sets2containment_mat( extended_internal_behavior_sets , 'verbosity' , debug_flag > 1 );
 
-		%Search through all previous c_sets
-		for prev_phi_set_idx = (p_set_idx+1):length(subL_p_set)
-			future_c_set = Consist_sets{prev_phi_set_idx};
-
-			if (~future_c_set.isEmptySet) && (~c_set_p.isEmptySet)
-				temp_diff = c_set_p \ future_c_set;
-				if length(temp_diff) == 1
-					if temp_diff.isEmptySet
-						visible_transitions(p_set_idx) = 0;
-					end
-				end
-			end
-
-		end
-
-		if Consist_sets{p_set_idx}.isEmptySet
-			visible_transitions(p_set_idx) = 0;
-		end 
-
-	end
-
-	%Process visible_transitions matrix
-	visible_transitions = visible_transitions(visible_transitions ~= 0);
-	visible_transitions = unique(visible_transitions);
+	[ ~ , observation_set_is_observable ] = BG.containment_mat2observable_combos( containment_matrix_ib );
 
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	%% Create Ancestor Nodes %%
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+	visible_transitions = [1:length(empty_set_flags)];
+	if use_unobs_checks
+		visible_transitions = visible_transitions( (~empty_set_flags) & observation_set_is_observable );
+	else
+		visible_transitions = visible_transitions( ~empty_set_flags );	
+	end
 
 	if debug_flag > 0
 		disp('- Creating Belief Nodes.')
@@ -189,11 +136,13 @@ function ancest_nodes = post_noproj(varargin)
 
 	ancest_nodes = [];
 	for trans_idx = 1:length(visible_transitions)
-		temp_L = subL_p_set(visible_transitions(trans_idx));
-		temp_phi_set = Phi_sets{visible_transitions(trans_idx)};
+		temp_L = subL_powerset(visible_transitions(trans_idx));
+		%temp_consist_set = consistency_sets(visible_transitions(trans_idx));
+		temp_full_set = extended_internal_behavior_sets(visible_transitions(trans_idx));
 
-		c_node = BeliefNode(temp_L,BN.t+1,[],temp_phi_set);
+		c_node = BeliefNode(temp_L,BN.t+1,'FullTrajectorySet',temp_full_set);
 		ancest_nodes = [ancest_nodes,c_node];
 	end
+
 
 end

@@ -31,6 +31,9 @@ function [results] = observer_comparison60( varargin )
 			case 'save_file_name'
 				save_file_name = varargin{argin_idx + 1};
 				argin_idx = argin_idx + 2;
+			case 'UseProjection'
+				UseProjection = varargin{argin_idx + 1};
+				argin_idx = argin_idx + 2;
 			otherwise
 				error(['Unexpected input to the experiment: ' varargin{argin_idx} ])
 		end
@@ -60,6 +63,16 @@ function [results] = observer_comparison60( varargin )
 		load_data_flag = false;
 	end
 
+	if ~exist('UseProjection')
+		UseProjection = true;
+	end
+
+	results.Parameters.dt = dt;
+	results.Parameters.eta_v = eta_v;
+	results.Parameters.eta_w = eta_w;
+	results.Parameters.load_data_flag = load_data_flag;
+	results.Parameters.UseProjection = UseProjection;
+
 	%%%%%%%%%%%%%%%
 	%% Constants %%
 	%%%%%%%%%%%%%%%
@@ -77,9 +90,9 @@ function [results] = observer_comparison60( varargin )
 	eta_x = 2.0;
 	Px0 = Polyhedron('lb',-eta_x*ones(1,n_x),'ub',eta_x*ones(1,n_x));	
 
-	results.params.sys = in_sys;
-	results.params.Pu = Pu;
-	results.params.Px0 = Px0;
+	results.Parameters.sys = in_sys;
+	results.Parameters.Pu = Pu;
+	results.Parameters.Px0 = Px0;
 
 	verbosity = 0; %Verbosity of Functions. Gives debugging info
 
@@ -111,7 +124,10 @@ function [results] = observer_comparison60( varargin )
 	target_set = Px0*target_set_factor;
 
 	if ~exist('BG')
-		[BG,contr,opt_data,BG_timing] = in_sys.synth_robust_reach_contr(Px0,Pu,'P_target',target_set, 'debug' , verbosity)
+		[BG,contr,opt_data,BG_timing] = in_sys.synth_robust_reach_contr(Px0,Pu, ...
+												'P_target',target_set, ...
+												'debug' , verbosity, ...
+												'UseProjection', UseProjection )
 		save(save_file_name,'contr','opt_data','BG','c_sq','eta_u','eta_x','BG_timing','target_set','Px0')
 	elseif ~exist('contr')
 		[~,contr,opt_data] = in_sys.synth_robust_reach_contr(Px0,Pu,'P_target',target_set,'BG',BG, 'debug' , verbosity)

@@ -100,8 +100,7 @@ function [t_out] = behavior_set2time( varargin )
 
 
 	if (round(t_out) ~= t_out)
-		t_out
-		error('Your choice of flags may be incorrect.\nt is not an integer.')
+		error(['Your choice of flags may be incorrect. t is not an integer (' num2str(t_out) ').'])
 	end
 
 end

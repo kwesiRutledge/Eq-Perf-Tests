@@ -96,7 +96,8 @@ function [ initial_nodes ] = get_initial_beliefnodes( varargin )
 	%% Collect all Y Sets
 	[initial_eb_sets,initial_ib_sets] = lcsas_in.get_consistency_sets_for_language(0,L,Polyhedron(),X0, ...
 																					'use_proj', proj_flag, ...
-																					'ConsistencySetVersion', bg.ConsistencySetVersion );
+																					'ConsistencySetVersion', bg.ConsistencySetVersion, ...
+                                                                                    'fb_method',bg.FeedbackMethod);
 
 
 	if proj_flag

@@ -1,5 +1,5 @@
 function tests = testConsistencySet
-	disp(localfunctions)
+	%disp(localfunctions)
 	tests = functiontests(localfunctions);
 
 function test1_ConsistencySet(testCase)

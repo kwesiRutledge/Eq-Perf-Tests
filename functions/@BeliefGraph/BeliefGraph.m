@@ -220,7 +220,7 @@ classdef BeliefGraph < handle
 			% node0.subset = L;
 			% node0.t = 0;
 			%node0 = BeliefNode(L,0,in_sys.Dyn(1).C*P_x0+in_sys.Dyn(1).C_v*in_sys.Dyn(1).P_v);
-			init_nodes = BG.get_initial_beliefnodes( P_x0 );
+			init_nodes = BG.get_initial_beliefnodes( 'X0' , P_x0 );
 			temp_node = init_nodes(1);
 			T_max = temp_node.find_longest_horizon();
 

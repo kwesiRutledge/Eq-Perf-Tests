@@ -1,5 +1,5 @@
 function tests = testContainmentMatrixFunctions
-	disp(localfunctions)
+	%disp(localfunctions)
 	tests = functiontests(localfunctions);
 
 function testContainmentMatrixFunctions1(testCase)

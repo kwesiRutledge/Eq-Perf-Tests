@@ -4,8 +4,8 @@ function [ initial_nodes ] = get_initial_beliefnodes( varargin )
 	%
 	%Usage:
 	%	[ initial_nodes ] = bg.get_initial_beliefnodes()
-	%	[ initial_nodes ] = bg.get_initial_beliefnodes(P_x0)
-	%	[ initial_nodes ] = bg.get_initial_beliefnodes(P_x0, 'verbosity' , 0)
+	%	[ initial_nodes ] = bg.get_initial_beliefnodes('X0',X0)
+	%	[ initial_nodes ] = bg.get_initial_beliefnodes('X0',X0, 'verbosity' , 0)
 
 	%%%%%%%%%%%%%%%%%%%%%%
 	%% Input Processing %%
@@ -14,43 +14,11 @@ function [ initial_nodes ] = get_initial_beliefnodes( varargin )
 	bg = varargin{1};
 	arg_idx = 2;
 
-	%Check to see if the initial state set is embedded in the belief graph's LCSAS member.
-	lcsas_in = bg.lcsas;
-	if isprop(lcsas_in,'X0')
-
-		%Check to see if LCSAS object has a polyhedron value in X0
-		x0_undefined = false;
-		if ~isa(lcsas_in.X0,'Polyhedron')
-			x0_undefined = true;
-		end
-
-		if x0_undefined & (nargin == 1)
-			error('X0 was not defined in LCSAS and needs to be provided to get_initial_beliefnodes().')
-		end
-
-		if x0_undefined & ~isa(varargin{2},'Polyhedron')
-			error('X0 was not defined by second argument to get_initial_beliefnodes().')
-		end
-
-		%Officially Define the value of X0
-		if x0_undefined
-			X0 = varargin{2};
-			arg_idx = arg_idx + 1;
-		else
-			X0 = lcsas_in.X0;
-
-			if isa(varargin{2},'Polyhedron')
-				disp('Ignoring input X0.')
-				arg_idx = arg_idx + 1;
-			end
-
-		end
-	end
-
-	disp(['arg_idx = ',num2str(arg_idx)])
-
 	while arg_idx <= nargin
 		switch varargin{arg_idx}
+			case 'X0'
+				X0 = varargin{arg_idx+1};
+				arg_idx = arg_idx + 2;
 			case 'verbosity'
 				verbosity = varargin{arg_idx+1};
 				arg_idx = arg_idx + 2;
@@ -62,12 +30,26 @@ function [ initial_nodes ] = get_initial_beliefnodes( varargin )
 		end
 	end
 
+	lcsas_in = bg.lcsas;
+
+	if isempty(lcsas_in.X0) && ~exist('X0')
+		error('X0 was not defined in LCSAS and needs to be provided to get_initial_beliefnodes().')
+	end
+
+	%%%%%%%%%%%%%%%%%%%%
+	%% Default Values %%
+	%%%%%%%%%%%%%%%%%%%%
+
 	if ~exist('verbosity')
 		verbosity = 0;
 	end
 
 	if ~exist('proj_flag')
 		proj_flag = bg.UsedProjection;
+	end
+
+	if ~exist('X0')
+		X0 = lcsas_in.X0;
 	end
 
 	%%%%%%%%%%%%%%%

@@ -4,6 +4,7 @@ function [Lambda,constrs] = get_H_polyt_inclusion_constr( obj , H_x , h_x , H_y,
 	%	where \mathbb{X} = \{ x | H_x * x <= h_x } and \mathbb{Y} = \{ y | H_y * y <= h_y }
 	%
 	%Usage:
+	%	[Lambda,constrs] = cg.get_H_polyt_inclusion_constr( H_x , h_x , H_y, h_y )
 	%
 	%Inputs:
 	%	H_x 	- Hyperplane representation of the x-polytope's normal vectors

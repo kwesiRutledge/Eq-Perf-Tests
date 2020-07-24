@@ -64,7 +64,7 @@ function [BG,contr,opt_out,BG_creation_time] = synth_robust_reach_contr( varargi
 		debug_flag = 1; %Verbosity of Functions. Gives debugging info
 	end
 
-	cg = constr_gen();
+	cg = constr_gen(debug_flag);
 
 	ops = sdpsettings('verbose',debug_flag);
 

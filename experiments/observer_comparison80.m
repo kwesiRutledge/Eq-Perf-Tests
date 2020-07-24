@@ -238,6 +238,9 @@ function [results] = observer_comparison80( varargin )
 	x4(3) = 0;
 	x4(4) = 0; 
 
+	figure;
+	cw4.plot()
+
 	assert( all(all( M(x4(1),x4(2)) == cw4.M(x4(1:2)) )) ) 
 
 end

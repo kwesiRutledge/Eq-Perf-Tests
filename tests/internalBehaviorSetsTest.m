@@ -1,5 +1,5 @@
 function tests = internalBehaviorSetsTest
-	disp(localfunctions)
+	%disp(localfunctions)
 	tests = functiontests(localfunctions);
 
 function testInternalBehaviorSets1(testCase)

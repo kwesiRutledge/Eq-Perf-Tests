@@ -1,5 +1,5 @@
 function tests = test_pob_feedback
-	disp(localfunctions)
+	%disp(localfunctions)
 	tests = functiontests(localfunctions);
 
 function [sys_out,L1,P_u,P_x0] = get_simple_1dsys()

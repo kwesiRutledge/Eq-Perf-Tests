@@ -103,6 +103,7 @@ classdef LCSAS
 				out_sys.domain = domain;
 			end
 
+			out_sys.X0 = [];
 			if exist('X0_in')
 				out_sys.X0 = X0_in;
 			end

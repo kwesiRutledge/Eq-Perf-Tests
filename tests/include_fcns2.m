@@ -1,24 +1,56 @@
-function [] = include_fcns(varargin)
+function [] = include_fcns2(varargin)
 % Description:
 %	Includes different libraries, if the user did not properly include the right toolboxes.
 %
 % Usage:
-%   include_fcns('mosek','gurobi','tbxmanager')
-%   include_fcns('tbxmanager','YALMIP')
+%   include_fcns({'mosek','gurobi','tbxmanager'})
+%   include_fcns({'tbxmanager','YALMIP'},'PathToDirectoryWithToolboxes',PathToDirectoryWithToolboxes)
 %   
 % Inputs:
 %	The inputs will be the desired toolboxes to look for. If nargin ==0 return an error.
 
+%% Input Processing
 
 if nargin == 0
 	warning('No toolboxes/libraries given to include.')
 end
 
+if ~iscell(varargin{1})
+    error('The first input must be a cell array of strings.')
+end
+
+toolbox_names = varargin{1};
+arg_ind = 2;
+
+while arg_ind <= nargin
+    switch varargin{arg_ind}
+        case 'PathToDirectoryWithToolboxes'
+            PathToDirectoryWithToolboxes = varargin{arg_ind+1};
+            arg_ind = arg_ind + 2;
+        case 'Verbose'
+            Verbose = varargin{arg_ind+1};
+            arg_ind = arg_ind + 2;
+        otherwise
+            error(['Unrecognized input to include_fcns2: ' varargin{arg_ind} ])
+    end
+end
+
+%% Constants
+if ~exist('PathToDirectoryWithToolboxes')
+    PathToDirectoryWithToolboxes = '../../';
+end
+
+if ~exist('Verbose')
+    Verbose = 1;
+end
+
+%% Algorithm
+
 if strcmp(getenv('USER'),'kwesirutledge') %Suggests the laptop is in use
 
-    for arg_ind = 1:nargin
+    for arg_ind = 1:length(toolbox_names)
         %Depending on the Toolbox, do different things.
-        switch varargin{arg_ind}
+        switch toolbox_names{arg_ind}
             case 'MPT3'
                 try
                     Polyhedron();
@@ -26,8 +58,8 @@ if strcmp(getenv('USER'),'kwesirutledge') %Suggests the laptop is in use
                     warning('MPT3 Toolbox does not appear in path! Attempting one method to fix this...')
                     try
                         %Add All MPT Toolbox folders AND subfolders to path.
-                        cd([ '../../' 'toolboxes/tbxmanager/toolboxes/mpt/3.1.8/all/mpt3-3_1_8/mpt'])
-                        mpt_init
+                        cd([ PathToDirectoryWithToolboxes 'toolboxes/tbxmanager/toolboxes/mpt/3.1.8/all/mpt3-3_1_8/mpt'])
+                        mpt_init;
                         Polyhedron();
                     catch
                         error('MPT3 not added to path.')
@@ -40,7 +72,7 @@ if strcmp(getenv('USER'),'kwesirutledge') %Suggests the laptop is in use
                 catch
                     warning('YALMIP does not appear in path! Attempting one method to fix this...');
                     try
-                        addpath(genpath([ '../../' 'toolboxes/YALMIP-master' ]));
+                        addpath(genpath([ PathToDirectoryWithToolboxes 'toolboxes/YALMIP-master' ]));
                         b = sdpvar(1,1,'full');
                     catch
                         error('YALMIP not added to path.')
@@ -48,27 +80,24 @@ if strcmp(getenv('USER'),'kwesirutledge') %Suggests the laptop is in use
                 end
             case 'tbxmanager'
                 try
-                    addpath(genpath(['../../' 'toolboxes/tbxmanager']) )
+                    addpath(genpath([PathToDirectoryWithToolboxes 'toolboxes/tbxmanager']) )
                     Polyhedron();
                 catch
                     error('tbxmanager was not added to path.')
                 end
             case 'mosek'
-                try
-                    mosekdiag
-                catch
-                    try
-                        addpath(genpath('~/External_Libraries/mosek/9.2/toolbox/r2015a/'))
-                        mosekdiag
-                    catch
+                if exist('mosekdiag') ~= 2
+                    addpath(genpath('~/External_Libraries/mosek/9.2/toolbox/r2015a/'))
+                    if exist('mosekdiag') ~= 2
                         error('Mosek was not properly added to path.')
                     end
                 end
             case 'gurobi'
                 if (exist('gurobi.m') == 2 )
                     %Gurobi is already on the path continue
-                    disp('gurobi.m exists!')
-                    1;
+                    if Verbose > 0
+                        disp('gurobi.m exists!')
+                    end
                 else
                     addpath(genpath('/Library/gurobi811/mac64/matlab/'))
                     %Try to find it again
@@ -83,7 +112,11 @@ if strcmp(getenv('USER'),'kwesirutledge') %Suggests the laptop is in use
                 error(['The toolbox name that you provided ' varargin{arg_ind} ' is not a valid library/toolbox. ' ])
         end
     end
-    disp(['All Libraries successfully added to path.'])
+
+    if Verbose > 0
+        disp('Completed adding libraries to the path.')
+    end
+    
 elseif (strcmp(getenv('USER'),'krutledg') && isunix) 
     %If the user variable is that of Kwesi's uniqname and this is a Unix machine,
     %then the program is running on the Great Lakes cluster.
@@ -91,8 +124,8 @@ elseif (strcmp(getenv('USER'),'krutledg') && isunix)
 
     path_to_top_of_gl = '~';
 
-    for arg_ind = 1:nargin
-        switch varargin{arg_ind}
+    for arg_ind = 1:length(toolbox_names)
+        switch toolbox_names{arg_ind}
             case 'MPT3'
                 %% Include MPT3
                 try
@@ -148,12 +181,14 @@ elseif (strcmp(getenv('USER'),'krutledg') && isunix)
     
     end
 
-    disp('Completed adding libraries to the path.')
+    if Verbose > 0
+        disp('Completed adding libraries to the path.')
+    end
 
 else
     %Depending on the Toolbox, do different things.
-    for arg_ind = 1:nargin
-    switch varargin{arg_ind}
+    for arg_ind = 1:length(toolbox_names)
+    switch toolbox_names{arg_ind}
         case 'MPT3'
             try
                 Polyhedron();
@@ -167,7 +202,7 @@ else
             catch
                 warning('YALMIP does not appear in path!');
                 try
-                    addpath(genpath([ '../../' 'YALMIP-master' ]));
+                    addpath(genpath([ PathToDirectoryWithToolboxes 'YALMIP-master' ]));
                     b = sdpvar(1,1,'full');
                 catch
                     error('YALMIP not added to path.')

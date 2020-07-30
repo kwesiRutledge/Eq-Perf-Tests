@@ -4,8 +4,8 @@ function ancest_nodes = post(varargin)
 	%	given in lcsas.
 	%
 	%Usage:
-	%	BG.post(BN,P_u,P_x0)
-	%	BG.post(BN,P_u,P_x0,'debug',debug_flag)
+	%	ancest_nodes = BG.post(BN,P_u,P_x0)
+	%	ancest_nodes = BG.post(BN,P_u,P_x0,'debug',debug_flag)
 	%	
 	%Assumption:
 	%	This function assumes that the BeliefGraph function contains the following member variables

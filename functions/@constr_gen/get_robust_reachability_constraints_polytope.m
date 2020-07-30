@@ -78,8 +78,14 @@ function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints_polyt
 					otherwise
 						error(['Unexpected parameterization flag: ' param_flag])
 				end
+			case 'selection_variable'
+				selection_variable = varargin{varargin_idx+1};
+				varargin_idx = varargin_idx + 2;
+			case 'M'
+				M = varargin{varargin_idx+1};
+				varargin_idx = varargin_idx + 2;
 			otherwise
-				error('Unexpected extra input.')
+				error(['Unexpected extra input: ' varargin{varargin_idx} ])
 		end
 	end
 
@@ -89,6 +95,11 @@ function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints_polyt
 
 	if ~exist('param_flag')
 		param_flag = 'Q';
+	end
+
+	%Initialize the selection variable, if it is defined.
+	if ~exist('selection_variable')
+		selection_variable = 0; %Selection variable is a binary decision variable for the containment problem.
 	end
 
 	% Create Gain Variables
@@ -122,6 +133,10 @@ function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints_polyt
 		P_des = P_x0;
 	end
 
+	if ~exist('M')
+		M = 10^3;
+	end
+
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	%% Define the Dual Variables for Robust Reachability %%
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -146,7 +161,10 @@ function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints_polyt
 						S0*Q*C_v_big ...
 						(eye(n*(T+1))+S0*Q*Cm0)*J0 ];
 
-				[Pi1,temp_constrs] = cg.get_H_polyt_inclusion_constr( P_eta.A, P_eta.b , P_des.A*select_m(T,T)*G, P_des.b-P_des.A*select_m(T,T)*(S0*r+(eye(n*(T+1))+S0*Q*Cm0)*H0*k_bar) );
+				[Pi1,temp_constrs] = cg.get_H_polyt_inclusion_constr( ...	
+											P_eta.A, P_eta.b , ...
+											P_des.A*select_m(T,T)*G, ...
+											P_des.b + selection_variable*M*ones(size(P_des.b)) - P_des.A*select_m(T,T)*(S0*r+(eye(n*(T+1))+S0*Q*Cm0)*H0*k_bar) );
 
 				constraints = constraints + temp_constrs;
 			elseif exist('eta_des')
@@ -157,7 +175,10 @@ function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints_polyt
 
 				I_t = [eye(n);-eye(n)];
 
-				[Pi1,temp_constrs] = cg.get_H_polyt_inclusion_constr( P_eta.A, P_eta.b , I_t*select_m(T,T)*G, eta_des*ones(2*n,1)-I_t*select_m(T,T)*(S0*r+(eye(n*(T+1))+S0*Q*Cm0)*H0*k_bar) );
+				[Pi1,temp_constrs] = cg.get_H_polyt_inclusion_constr( ....
+											P_eta.A, P_eta.b , ...
+											I_t*select_m(T,T)*G, ...
+											eta_des*ones(2*n,1) + selection_variable*M*ones(2*n,1) - I_t*select_m(T,T)*(S0*r+(eye(n*(T+1))+S0*Q*Cm0)*H0*k_bar) );
 
 				constraints = constraints + temp_constrs;
 			else
@@ -185,6 +206,11 @@ function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints_polyt
 			end
 
 		case 'F1'
+
+			if selection_variable ~= 0
+				error('F1 flag was not tested for use in this function.')
+			end
+
 			L_big = kron(eye(T),L);
 			temp_IpLC = (eye(size(H0,1))+ L_big*Cm0)^(-1);
 

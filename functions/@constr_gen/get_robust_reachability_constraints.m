@@ -5,12 +5,20 @@ function varargout = get_robust_reachability_constraints(varargin)
 	%	- Dual variable that satisfy polytope inclusion of the state
 	%	- Dual variable that is used to define satisfaction of the input constraint.
 	%
+	%Allowed Flags:
+	%	- 'P_des'
+	%	- 'P_u'
+	%	- 'u_des'
+	%	- 'selection_variable'
+	%	- 'param_type'
+	%
 	%Usage:
 	%	[ Pi1 , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,Q,r)
 	%	[ Pi1 , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,Q,r,'P_des',P_des)
 	%	[ Pi1 , Piu , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,Q,r,'P_des',P_des, 'P_u' , P_u)
 	%	[ Pi1 , Piu , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,Q,r,'eta_des',M3, 'P_u' , P_u)
 	%	[ Pi1 , Piu , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,Q,r,'P_des',P_des, 'P_u' , P_u , 'u_des' , u_d)
+	%	[ Pi1 , Piu , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,Q,r,'P_des',P_des, 'P_u' , P_u , 'selection_variable' , selection_variable)
 	%
 	%	[ Pi1 , Piu , constraints , bv1 ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,Q,r,'P_des',P_des, 'P_u' , P_u , 'u_des' , u_d)
 	%
@@ -80,6 +88,9 @@ function varargout = get_robust_reachability_constraints(varargin)
 					otherwise
 						error(['Unexpected parameterization flag: ' param_flag])
 				end
+			case 'selection_variable'
+				selection_variable = varargin{varargin_idx + 1};
+				varargin_idx = varargin_idx + 2;
 			otherwise
 				error('Unexpected extra input.')
 		end
@@ -161,7 +172,12 @@ function varargout = get_robust_reachability_constraints(varargin)
 						S0*Q*C_v_big ...
 						(eye(n*(T+1))+S0*Q*Cm0)*J0 ];
 
-				[Pi1,temp_constrs] = cg.get_H_polyt_inclusion_constr( P_eta.A, P_eta.b , P_des.A*select_m(T,T)*G, P_des.b-P_des.A*select_m(T,T)*(S0*r+(eye(n*(T+1))+S0*Q*Cm0)*H0*k_bar) );
+				if ~exist('selection_variable')
+					[Pi1,temp_constrs] = cg.get_H_polyt_inclusion_constr( P_eta.A, P_eta.b , P_des.A*select_m(T,T)*G, P_des.b-P_des.A*select_m(T,T)*(S0*r+(eye(n*(T+1))+S0*Q*Cm0)*H0*k_bar) );
+				else
+					[Pi1,temp_constrs] = cg.get_H_polyt_inclusion_constr( 	P_eta.A, P_eta.b + selection_variable*M*ones(size(P_eta.b)) , ...
+																			P_des.A*select_m(T,T)*G, P_des.b-P_des.A*select_m(T,T)*(S0*r+(eye(n*(T+1))+S0*Q*Cm0)*H0*k_bar) );
+				end
 
 				constraints = constraints + temp_constrs;
 			elseif exist('eta_des')
@@ -172,7 +188,13 @@ function varargout = get_robust_reachability_constraints(varargin)
 
 				I_t = [eye(n);-eye(n)];
 
-				[Pi1,temp_constrs] = cg.get_H_polyt_inclusion_constr( P_eta.A, P_eta.b , I_t*select_m(T,T)*G, eta_des*ones(2*n,1)-I_t*select_m(T,T)*(S0*r+(eye(n*(T+1))+S0*Q*Cm0)*H0*k_bar) );
+				if ~exist('selection_variable')
+					[Pi1,temp_constrs] = cg.get_H_polyt_inclusion_constr( P_eta.A, P_eta.b , I_t*select_m(T,T)*G, eta_des*ones(2*n,1)-I_t*select_m(T,T)*(S0*r+(eye(n*(T+1))+S0*Q*Cm0)*H0*k_bar) );
+				else
+					[Pi1,temp_constrs] = cg.get_H_polyt_inclusion_constr( 	P_eta.A, P_eta.b, ...
+																			I_t*select_m(T,T)*G, ...
+																			eta_des*ones(2*n,1)-I_t*select_m(T,T)*(S0*r+(eye(n*(T+1))+S0*Q*Cm0)*H0*k_bar) + selection_variable*M*ones(2*n,1) );
+				end
 
 				constraints = constraints + temp_constrs;
 			else
@@ -193,13 +215,25 @@ function varargout = get_robust_reachability_constraints(varargin)
 				%Create the G matrix for the input, H_u
 				G_u = [ Q*Cm0*H0*B_w_big, Q*C_v_big, Q*Cm0*J0 ];
 
-				[Piu, temp_constrs] = cg.get_H_polyt_inclusion_constr( P_eta.A, P_eta.b , P_uT.A*G_u, P_uT.b- P_uT.A*(r+Q*Cm0*H0*k_bar+u_d) );
+				if ~exist('selection_variable')
+					[Piu, temp_constrs] = cg.get_H_polyt_inclusion_constr( P_eta.A, P_eta.b , P_uT.A*G_u, P_uT.b- P_uT.A*(r+Q*Cm0*H0*k_bar+u_d) );
+				else
+					[Piu, temp_constrs] = cg.get_H_polyt_inclusion_constr( 	P_eta.A, P_eta.b, ...
+																			P_uT.A*G_u, ...
+																			P_uT.b- P_uT.A*(r+Q*Cm0*H0*k_bar+u_d)  + selection_variable*M*ones(2*n,1) );
+				end
 
 				constraints = constraints + temp_constrs;
 
 			end
 
 		case 'F1'
+
+			if exist('selection_variable')
+				error('Didn''t expect for selection_variable to be defined for F1')
+			end
+
+
 			L_big = kron(eye(T),L);
 			temp_IpLC = (eye(size(H0,1))+ L_big*Cm0)^(-1);
 

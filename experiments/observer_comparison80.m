@@ -190,18 +190,19 @@ function [results] = observer_comparison80( varargin )
 
 	x3 = zeros(4,1);
 	x3(1) = 7*pi/4; %Initial theta_ns
-	x3(2) = 11*pi/6; %Initial theta_s
+	x3(2) = 23*pi/12; %Initial theta_s
 	x3(3) = 0;
 	x3(4) = 0;
 
 	u3_constant = zeros(3,1);
+	u3_constant(3) = 5;
 
 	dynamics3 = @(t,x,u) ...
 				[	x(3) ; x(4) ;
 					M(x(1),x(2))^(-1) * ...
 					( -N(x(1),x(2),x(3),x(4))*[x(3);x(4)] + S*u - G(x(1),x(2)) ) ];
 
-	tspan3 = [0,1];
+	tspan3 = [0:0.0025:1];
 
 	[t3_out,x3_out] = ode45(@(t,x) dynamics3(t,x,u3_constant),tspan3,x3);
 
@@ -221,6 +222,7 @@ function [results] = observer_comparison80( varargin )
 	disp(' ')
 
 	results.test3.x3 = x3;
+	results.test3.t3_out = t3_out;
 	results.test3.x3_out = x3_out;
 	results.test3.ns_leg_passes_s_leg = ns_leg_passes_s_leg;
 
@@ -234,13 +236,42 @@ function [results] = observer_comparison80( varargin )
 
 	x4 = zeros(4,1);
 	x4(1) = 7*pi/4; %Initial theta_ns
-	x4(2) = 11*pi/6; %Initial theta_s
+	x4(2) = 23*pi/12; %Initial theta_s
 	x4(3) = 0;
 	x4(4) = 0; 
+
+	cw4.CurrentState = x4;
 
 	figure;
 	cw4.plot()
 
 	assert( all(all( M(x4(1),x4(2)) == cw4.M(x4(1:2)) )) ) 
+
+	%%%%%%%%%%%%%%%%%%%
+	%% Test 5: Class %%
+	%%%%%%%%%%%%%%%%%%%
+
+	disp('Test 5: Creating a video of the results from Test 3.')
+
+	cw5 = CompassWalker();
+
+	%Find where the compasswalker cross the alpha = pi/3
+	alpha_flags = false(length(t3_out),1);
+	alpha_traj = [];
+	for t_idx = 1:length(t3_out)
+		x_prime = x3_out(t_idx,:)';
+		cw5.CurrentState = x_prime;
+
+		alpha_flags(t_idx) = cw5.alpha() > pi/4;
+		alpha_traj = [alpha_traj,cw5.alpha()];
+	end 
+
+	disp(['sum(alpha_flags) = ' num2str(sum(alpha_flags))])
+	disp(['length(t3_out) = ' num2str(length(t3_out))])
+
+	cw5.visualize_trajectory( x3_out' , 'StoppingIndex' , 300);
+
+	results.test5.alpha_flags = alpha_flags;
+	results.test5.alpha_traj = alpha_traj;
 
 end

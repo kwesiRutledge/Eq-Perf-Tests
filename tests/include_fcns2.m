@@ -58,7 +58,7 @@ if strcmp(getenv('USER'),'kwesirutledge') %Suggests the laptop is in use
                     warning('MPT3 Toolbox does not appear in path! Attempting one method to fix this...')
                     try
                         %Add All MPT Toolbox folders AND subfolders to path.
-                        cd([ PathToDirectoryWithToolboxes 'toolboxes/tbxmanager/toolboxes/mpt/3.1.8/all/mpt3-3_1_8/mpt'])
+                        cd([ PathToDirectoryWithToolboxes 'toolboxes/mpt3_manager/toolboxes/mpt/3.2.1/all/mpt3-3_2_1/mpt'])
                         mpt_init;
                         Polyhedron();
                     catch
@@ -66,13 +66,13 @@ if strcmp(getenv('USER'),'kwesirutledge') %Suggests the laptop is in use
                     end
 
                 end
-            case 'YALMIP'
+            case {'YALMIP','yalmip'}
                 try
                     a = sdpvar(1,1,'full');
                 catch
                     warning('YALMIP does not appear in path! Attempting one method to fix this...');
                     try
-                        addpath(genpath([ PathToDirectoryWithToolboxes 'toolboxes/YALMIP-master' ]));
+                        addpath(genpath([ PathToDirectoryWithToolboxes 'toolboxes/mpt3_manager/toolboxes/yalmip/' ]));
                         b = sdpvar(1,1,'full');
                     catch
                         error('YALMIP not added to path.')
@@ -80,10 +80,10 @@ if strcmp(getenv('USER'),'kwesirutledge') %Suggests the laptop is in use
                 end
             case 'tbxmanager'
                 try
-                    addpath(genpath([PathToDirectoryWithToolboxes 'toolboxes/tbxmanager']) )
-                    Polyhedron();
+                    addpath(genpath([PathToDirectoryWithToolboxes 'toolboxes/mpt3_manager']) )
+                    tbxmanager restorepath;
                 catch
-                    error('tbxmanager was not added to path.')
+                    error('tbxmanager was not successful with restoring the path.')
                 end
             case 'mosek'
                 if exist('mosekdiag') ~= 2
@@ -144,7 +144,7 @@ elseif (strcmp(getenv('USER'),'krutledg') && isunix)
                     end
                 end
                 mpt_init; %This will accurately add Gurobi to the list of available solvers.
-            case 'YALMIP'
+            case {'YALMIP','yalmip'}
                 %Include YALMIP
                 try
                     disp('- Testing YALMIP')

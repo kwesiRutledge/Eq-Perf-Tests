@@ -140,13 +140,15 @@ function [results] = observer_comparison50(varargin)
 		for period_idx = 1:escape_periods+settle_periods
 			M_t(1+rec_tries*T+periods_in_tunnel*T2+(period_idx-1)*T3+[1:T3-1]) = history.oo4.M2;
 			M_t(1+rec_tries*T+periods_in_tunnel*T2+period_idx*T3) = history.oo4.M2;
-		end
+        end
 
 		save(['results/nahs2019/lead_foll_startup_gains_' num2str(cube_x) 'by' num2str(cube_y) '.mat'],'history','M_t','M2_temp','rec_tries');
 	else
 		load(['results/nahs2019/lead_foll_startup_gains_' num2str(cube_x) 'by' num2str(cube_y) '.mat'])
-	end
+    end
 
+    [history.oo_L_ignores,history.c_L_ignores] = ad0.rec_synthesis('Equalized','prefix','Minimize M2',1,{[zeros(1,3),ones(1,n0)]},'Pu',Pu);
+    
 	%%%%%%%%%%%%%%%%%
 	%% Create Path %%
 	%%%%%%%%%%%%%%%%%
@@ -176,7 +178,10 @@ function [results] = observer_comparison50(varargin)
 
 	t_0 = 0;
 
-	x0 = unifrnd(-M_t(1),M_t(1),n,1);
+	%x0 = unifrnd(-M_t(1),M_t(1),n,1);
+    x0 = unidrnd(2,[n,1]);
+    x0(x0==1) = -M_t(1);
+    x0(x0==2) = M_t(1);
 	x = x0;
 	for contr_num = 1:rec_tries
 		temp_traj = history.c2{contr_num}.simulate_1run( ad0 , M_t(1+contr_num*(T-1)) , 'in_sigma' , L1{1} , ...
@@ -211,7 +216,8 @@ function [results] = observer_comparison50(varargin)
 	end
 
 	x_true = x + target_pos;
-
+    results.x_trajectory = x_true;
+    
 	figure;
 	for robot_idx = 1:cube_x*cube_y
 		subplot(cube_x,cube_y,robot_idx)
@@ -393,7 +399,73 @@ function [results] = observer_comparison50(varargin)
 		
 		close(v);
 
+    end
+
+
+    %% Creating data for bad/crashing case?
+    
+    x_bad = x0;
+	for contr_num = 1:rec_tries
+		temp_traj = history.c2{contr_num}.simulate_1run( ad0 , M_t(1+contr_num*(T-1)) , 'in_sigma' , L1{1} , ...
+																						'in_w' , w(:,(contr_num-1)*T+1:contr_num*T) , ...
+																						'in_x0' , x(:,end)  );
+		x_bad = [x_bad, temp_traj(:,2:end)];
 	end
 
+	for in_channel_idx = 1:periods_in_tunnel
+		temp_traj = history.c_L_ignores.simulate_1run( ad0 , M_t(1+contr_num*(T-1)) , 'in_w' , w(:,rec_tries*T+(in_channel_idx-1)*T2+1:rec_tries*T+(in_channel_idx)*T2) , ...
+																			'in_x0' , x(:,end)  );
+		x_bad = [x_bad, temp_traj(:,2:end)];
+	end
 
+	for period_idx = 1:escape_periods+settle_periods
+		temp_traj = history.c4.simulate_1run(ad0, M_t(1+rec_tries*T+periods_in_tunnel*T2+(period_idx-1)*T3) , ...
+											'in_w' , w(:,rec_tries*T+periods_in_tunnel*T2+(period_idx-1)*T3+[1:T3]) , ...
+											'in_x0' , x(:,end)  );
+		x_bad = [x_bad,temp_traj(:,2:end)];
+    end
+
+    x_suspect = x_bad + target_pos;
+    
+    figure('DefaultAxesFontSize',fs);
+    for t_idx = 1:length(t_instances)
+        subplot(1,length(t_instances),t_idx)
+        hold on;
+        scatter(l_x(1,t_instances(t_idx)),l_x(2,t_instances(t_idx)),ms,'x')
+        for robot_idx = 1:cube_x*cube_y
+            scatter(x_suspect(robot_idx,t_instances(t_idx)), ...
+                    x_suspect(cube_x*cube_y+robot_idx,t_instances(t_idx)))
+            axis([l_0(1)-6,l_f(1)+3,-10,10])
+        end
+    end
+
+    figure('DefaultAxesFontSize',fs);
+    for t_idx = 1:length(t_instances)
+        subplot(1,length(t_instances),t_idx)
+        hold on;
+        scatter(l_x(1,t_instances(t_idx)),l_x(2,t_instances(t_idx)),ms,'x','LineWidth',lw0)
+        for robot_idx = 1:cube_x*cube_y
+            scatter(x_suspect(robot_idx,t_instances(t_idx)), ...
+                    x_suspect(cube_x*cube_y+robot_idx,t_instances(t_idx)), ...
+                    ms,follower_marker, ...
+                    'LineWidth', lw0)
+            axis(axis_lims)
+        end
+        %Draw Error Box
+        center_pos = l_x(:,t_instances(t_idx)) - [cube_x+1;0];
+        box_width = 2*((cube_x-1) + M_t(t_instances(t_idx)));
+        box_height = 2*(1+M_t(t_instances(t_idx)));
+        rectangle('Position',[center_pos(1)-(1/2)*box_width,center_pos(2)-(1/2)*box_height, ...
+                                box_width, ...
+                                box_height ],...
+                    'FaceColor','none');
+        %Create Obstacles
+        rectangle('Position',[0,(channel_width/2),l_f(1)-0,axis_lims(4)-(channel_width/2)], ...
+                    'FaceColor','red')
+        rectangle('Position',[0,axis_lims(3),l_f(1)-0,-(channel_width/2)-axis_lims(3)], ...
+                    'FaceColor','red')
+
+    end
+    set(gcf,'Units','Normalized','Position',[0,0,1,1])
+    
 end

@@ -48,7 +48,7 @@ if strcmp(getenv('USER'),'kwesirutledge') %Suggests the laptop is in use
                 end
             case 'tbxmanager'
                 try
-                    addpath(genpath(['../../' 'toolboxes/tbxmanager']) )
+                    addpath(genpath(['../' 'mpt3_manager/toolboxes/']) )
                     Polyhedron();
                 catch
                     error('tbxmanager was not added to path.')
@@ -58,7 +58,7 @@ if strcmp(getenv('USER'),'kwesirutledge') %Suggests the laptop is in use
                     mosekdiag
                 catch
                     try
-                        addpath(genpath('~/External_Libraries/mosek/9.2/toolbox/r2015a/'))
+                        addpath(genpath('~/mosek/9.2/toolbox/r2015a/'))
                         mosekdiag
                     catch
                         error('Mosek was not properly added to path.')
@@ -70,7 +70,7 @@ if strcmp(getenv('USER'),'kwesirutledge') %Suggests the laptop is in use
                     disp('gurobi.m exists!')
                     1;
                 else
-                    addpath(genpath('/Library/gurobi811/mac64/matlab/'))
+                    addpath(genpath('/Library/gurobi903/mac64/matlab/'))
                     %Try to find it again
                     if exist('gurobi.m') ~= 2
                         %If the gurobi function still cannot be found,

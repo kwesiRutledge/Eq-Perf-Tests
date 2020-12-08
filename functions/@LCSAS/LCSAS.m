@@ -109,6 +109,77 @@ classdef LCSAS
 			end
 
 		end
+
+		function n_x = Dim_x(lcsas)
+			%Description:
+			%	Computes the dimension of the state from the LCSAS.
+
+			n_x = size(lcsas.Dyn(1).A,1);
+
+		end
+
+		function n_u = Dim_u(lcsas)
+			%Description:
+			%	Computes the dimension of the input from the LCSAS.
+			%
+			%Assumptions:
+			%	This function assumes that the input is the same dimension for all modes in the system.
+			
+			n_u = size(lcsas.Dyn(1).B,2);
+
+		end
+
+		function n_y = Dim_y(lcsas)
+			%Description:
+			%	Computes the dimension of the output from the LCSAS.
+			
+			n_y = size(lcsas.Dyn(1).C,1);
+
+		end
+
+		function n_w = Dim_w(lcsas)
+			%Description:
+			%	Computes the dimension of the process noise/disturbance from the LCSAS.
+			
+			n_w = size(lcsas.Dyn(1).B_w,2);
+
+		end
+
+		function n_v = Dim_v(lcsas)
+			%Description:
+			%	Computes the dimension of the output noise/disturbance from the LCSAS.
+			
+			n_v = size(lcsas.Dyn(1).C_v,2);
+
+		end
+
+		function varargout = Dimensions(lcsas)
+			%Description:
+			%	Collects all of the interesting dimensions of the system.
+
+			switch nargout
+			case 1
+				%Create struct which will contain all values
+				varargout{1}.x = lcsas.Dim_x();
+				varargout{1}.u = lcsas.Dim_u();
+				varargout{1}.y = lcsas.Dim_y();
+				varargout{1}.w = lcsas.Dim_w();
+				varargout{1}.v = lcsas.Dim_v();
+
+			case 5
+				%Save each dimension to a new variable.
+				varargout{1} = lcsas.Dim_x();
+				varargout{2} = lcsas.Dim_u();
+				varargout{3} = lcsas.Dim_y();
+				varargout{4} = lcsas.Dim_w();
+				varargout{5} = lcsas.Dim_v();
+				
+			otherwise
+				error(['Called ''Dimensions'' with an improper number of output arguments: ' num2str(nargout) ' (expected 1 or 5).' ])
+			end
+
+		end
+
 	end
 
 end

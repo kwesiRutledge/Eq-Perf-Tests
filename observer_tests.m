@@ -30,12 +30,13 @@ function [results] = observer_tests( varargin )
 
 	test_nums = varargin{1};
 	if nargin < 2
-		test_inputs = cell(size(varargin{1}));
+		test_inputs = cell(length(varargin{1}),1);
 	else
 		test_inputs = varargin{2};
 	end
 
 	%%Run tests from 
+    results = cell(length(test_nums),1);
 	for k = 1 : length(test_nums)
 		results{k} = eval([base_name num2str(test_nums(k)) '(' test_inputs{k} ')' ]);
 	end

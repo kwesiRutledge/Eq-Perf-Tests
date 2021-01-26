@@ -2,6 +2,24 @@ function tests = behavior_set2timeTest
 	% disp(localfunctions)
 	tests = functiontests(localfunctions);
 
+function include_relevant_libraries()
+	%Description:
+	%	Attempts to add the relevant libraries/toolboxes to the path.
+
+	%% Constants
+
+	is_on_personal_mac = strcmp(getenv('USER'),'kwesirutledge');
+	is_on_great_lakes = (strcmp(getenv('USER'),'krutledg') && isunix) ;
+
+	%% Algorithm
+
+	%Include Yalmip
+	%include_fcns2({'mosek','gurobi','MPT3'})
+
+	%Add Local Functions to Path
+	addpath(genpath('../functions'));
+
+    
 function test_behavior_set2time1(testCase)
 	%test_behavior_set2time1
 	%Description:
@@ -10,6 +28,11 @@ function test_behavior_set2time1(testCase)
 	%		- constructed with method 1
 	%		- output feedback
 
+    % Include libraries
+    include_relevant_libraries();
+    
+    % Algorithm
+    
 	L1 = Language([1,1,1,1],[2,2,2,2],[3,3,3,3]);
 	T = 4;
 
@@ -71,6 +94,10 @@ function test_behavior_set2time2(testCase)
 	%		- constructed with method 1
 	%		- state feedback
 
+    % Include libraries
+    include_relevant_libraries();
+    
+    % Algorithm
 	L1 = Language([1,1,1,1],[2,2,2,2],[3,3,3,3]);
 	T = 4;
 
@@ -132,6 +159,10 @@ function test_behavior_set2time3(testCase)
 	%		- constructed with method 2
 	%		- state feedback
 
+    % Include libraries
+    include_relevant_libraries();
+    
+    % Algorithm
 	L1 = Language([1,1,1,1],[2,2,2,2],[3,3,3,3]);
 	T = 4;
 

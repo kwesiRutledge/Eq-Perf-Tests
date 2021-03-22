@@ -46,6 +46,18 @@ if strcmp(getenv('USER'),'kwesirutledge') %Suggests the laptop is in use
                         error('YALMIP not added to path.')
                     end
                 end
+            case 'YALMIP2'
+                try
+                    a = sdpvar(1,1,'full');
+                catch
+                    warning('YALMIP does not appear in path! Attempting one method to fix this...');
+                    try
+                        addpath(genpath([ '../' 'toolboxes/YALMIP-dev' ]));
+                        b = sdpvar(1,1,'full');
+                    catch
+                        error('YALMIP not added to path.')
+                    end
+                end
             case 'tbxmanager'
                 try
                     addpath(genpath(['../' 'mpt3_manager/toolboxes/']) )

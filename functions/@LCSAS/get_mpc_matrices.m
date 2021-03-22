@@ -8,8 +8,9 @@ function [varargout] = get_mpc_matrices(varargin)
 	%		Modified slightly to work with LCSAS objects.
 	%
 	%	Usage:
-	%		[H,S,C_bar,J,f_bar] = get_mpc_matrices(lcsas,'word',sigma)
-	%		[H,S,C_bar,J,f_bar,B_w_bar,C_v_bar] = get_mpc_matrices(lcsas,'word',sigma)
+	%		[ H , S , C_bar , J , f_bar ] = get_mpc_matrices(lcsas,'word',sigma)
+	%		[ H , S , C_bar , J , f_bar , B_w_bar , C_v_bar ] = get_mpc_matrices(lcsas,'word',sigma)
+	%		[ H_cell , S_cell , C_bar_cell , J_cell , f_bar_cell , B_w_bar_cell , C_v_bar_cell ] = get_mpc_matrices(lcsas,'All Words')
 	%
 	%	Inputs:
 	%		T - 		Time horizon for the MPC matrices.
@@ -45,25 +46,31 @@ function [varargout] = get_mpc_matrices(varargin)
 	%% Input Processing %%
 	%%%%%%%%%%%%%%%%%%%%%%
 
-	if (nargin ~= 3)
+	if ~any(nargin == [2,3])
 		error(['Inappropriate number of arguments. (Received ' num2str(nargin) ')'])
 	end
 
 	lcsas = varargin{1};
 	in_str  = varargin{2};
-	sigma 	= varargin{3};
 
-	if iscell(sigma)
-		error(['Do not give input word sigma as a cell array.'])
+	if nargin >= 3
+		sigma = varargin{3};
+
+		if iscell(sigma)
+			error(['Do not give input word sigma as a cell array.'])
+		end
 	end
 
 	switch in_str
+	case 'All Words'
+		varargout = get_set_of_mpc_matrices(lcsas,nargout);
+		return;
 	case 'time_horizon'
 		sigma = ones(sigma,1);
 	case 'word'
 		sigma; %Do nothing
 	otherwise
-		error('Unexpected input string. Available options: ''time_horizon'' and ''word''.')
+		error('Unexpected input string. Available options: ''All Words'', ''time_horizon'' and ''word''.')
 	end
 
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -132,4 +139,45 @@ function [varargout] = get_mpc_matrices(varargin)
 	if nargout >= 7
 		varargout{7} = C_v_bar;
 	end
+end
+
+function [ output_cell_array ] = get_set_of_mpc_matrices(lcsas,num_outputs)
+	%Description:
+	%	Returns collections of MPC Matrices for the entire set of words in the language lcsas.L
+
+	% Find H S and J matrices
+	H_cell = {}; S_cell = {}; J_cell = {}; f_bar_cell = {}; C_bar_cell = {};
+	B_w_bar_cell = {}; C_v_bar_cell = {};
+
+	for word_index = 1:lcsas.L.cardinality()
+
+		switch num_outputs
+			case 5
+				[ H_cell{word_index} , S_cell{word_index} , C_bar_cell{word_index} , J_cell{word_index} , f_bar_cell{word_index} ] = get_mpc_matrices(lcsas,'word',lcsas.L.words{word_index});
+			case 6
+				[ H_cell{word_index} , S_cell{word_index} , C_bar_cell{word_index} , J_cell{word_index} , f_bar_cell{word_index} , B_w_bar_cell{word_index} ] = get_mpc_matrices(lcsas,'word',lcsas.L.words{word_index});
+			case 7
+				[ H_cell{word_index} , S_cell{word_index} , C_bar_cell{word_index} , J_cell{word_index} , f_bar_cell{word_index} , B_w_bar_cell{word_index} , C_v_bar_cell{word_index} ] = get_mpc_matrices(lcsas,'word',lcsas.L.words{word_index});
+			otherwise
+				error(['Unexpected number of outputs. Requested ' num2str(num_outputs) ' but can only provide 5,6, or 7.'])
+		end
+	end
+
+	%Create output
+	output_cell_array{1} = H_cell;
+	output_cell_array{2} = S_cell;
+	output_cell_array{3} = C_bar_cell;
+	output_cell_array{4} = J_cell;
+	output_cell_array{5} = f_bar_cell;
+
+	if num_outputs >= 6
+		output_cell_array{6} = B_w_bar_cell;
+	end
+
+	if num_outputs >= 7
+		output_cell_array{7} = C_v_bar_cell;
+	end
+
+
+
 end

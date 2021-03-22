@@ -17,6 +17,10 @@ classdef POB_Feedback < handle
 		u0_set;
 
 		BG;
+		PossibleLSequences;
+
+		System;
+		
 		u_hist;
 		b_hist;
 	end
@@ -30,19 +34,43 @@ classdef POB_Feedback < handle
 			%
 			%Usage:
 			%	contr = POB_Feedback( BG , F_set , u0_set )
+			%	contr = POB_Feedback( lcsas , K_set , k_set )
 			%
 			%Inputs:
 			%	BG - 	A BeliefGraph() object representing how the belief might change over time.
 			%	F_set - A 1 x |L| cell array of feedback matrices which are indexed
 			%			based on the index of the matching word in L.
 			
+			%%%%%%%%%%%%%%%%%%
+			%% Set Defaults %%
+			%%%%%%%%%%%%%%%%%%
+
+			BG = [];
+			F_set = NaN;
+			u0_set = NaN;
+
+			lcsas0 = [];
+
 			%%%%%%%%%%%%%%%%%%%%%%
 			%% Input Processing %%
 			%%%%%%%%%%%%%%%%%%%%%%
 
-			BG = varargin{1};
-			F_set = varargin{2};
-			u0_set = varargin{3};
+			%% Legacy Method for Creating POB_Feedback
+			switch class(varargin{1})
+				case 'BeliefGraph'
+					BG = varargin{1};
+					F_set = varargin{2};
+					u0_set = varargin{3};
+
+					%Assign the lcsas0 to be the system from Belief Graph
+					lcsas0 = BG.lcsas;
+				case 'LCSAS'
+					lcsas0 = varargin{1};
+					F_set = varargin{2};
+					u0_set = varargin{3};
+				otherwise
+					error(['Unexpected type for first input: ' class(varargin{1}) '. Choose BeliefGraph or LCSAS object as first input.' ])
+			end
 
 			%Get any additional inputs.
 			varargin_idx = 4;
@@ -50,10 +78,13 @@ classdef POB_Feedback < handle
 				switch varargin{varargin_idx}
 					case 'fb_type'
 						error('This flag is currently not in use.')
-						fb_type = varargin{varargin_idx};
+						fb_type = varargin{varargin_idx+1};
 						if ~(strcmp(fb_type,'disturbance') || strcmp(fb_type,'output'))
 							error('Unexpected feedback type. Expecting ''disturbance'' or ''output''.')
 						end
+						varargin_idx = varargin_idx + 2;
+					case 'PossibleLSequences'
+						PossibleLSequences = varargin{varargin_idx+1};
 						varargin_idx = varargin_idx + 2;
 					otherwise
 						error(['Unrecognized input string: ' varargin{varargin_idx}])
@@ -64,11 +95,18 @@ classdef POB_Feedback < handle
 			%% Constants %%
 			%%%%%%%%%%%%%%%
 
+			if ~exist('PossibleLSequences')
+				L = lcsas0.L;
+				PossibleLSequences = L.create_unchecked_belief_sequences_of_length(length(L.words{1})); %Assume that all words are of the same length.
+			end
+
 			%%%%%%%%%%%%%%%
 			%% Algorithm %%
 			%%%%%%%%%%%%%%%
 
 			contr.BG = BG;
+			contr.PossibleLSequences = PossibleLSequences;
+			contr.System = lcsas0;
 
 			contr.F_set = F_set;
 			contr.u0_set = u0_set;

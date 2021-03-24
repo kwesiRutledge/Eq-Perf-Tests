@@ -1,4 +1,4 @@
-function [Consist_set, full_set ] = consistent_set(varargin)
+function [ Consist_set, full_set ] = consistent_set(varargin)
 	%consistent_set.m
 	%Description:
 	%	Finds a polyhedron that describes what pairs of states and input sequences are compatible/feasible from ALL
@@ -102,11 +102,7 @@ function [Consist_set, full_set ] = consistent_set(varargin)
 	%% Constants %%
 	%%%%%%%%%%%%%%%
 
-	n_x = size(lcsas.Dyn(1).A,2);
-	n_u = size(lcsas.Dyn(1).B,2);
-	n_w = size(lcsas.Dyn(1).B_w,2);
-	n_y = size(lcsas.Dyn(1).C,1);
-	n_v = size(lcsas.Dyn(1).C_v,2);
+	[ n_x , n_u , n_y , n_w , n_v ] = lcsas.Dimensions();
 
 	if ~exist('fb_type')
 		fb_type = 'state';
@@ -158,9 +154,6 @@ function [Consist_set, full_set ] = consistent_set(varargin)
 		I_blockx(end+[1:n_x*(t+1)],[1:n_x*(t+1)]) = eye(n_x*(t+1));
 		I_blocky(end+[1:n_y*(t+1)],[1:n_y*(t+1)]) = eye(n_y*(t+1));
 
-		C_block(end+[1:n_y*(t+1)],end+[1:n_x*(t+1)]) = [Cc{word_ind} ; zeros(n_y,n_x*t), lcsas.Dyn( L.words{word_ind}(t+1) ).C ];
-		Cv_block(end+[1:n_y*(t+1)],end+[1:n_v*(t+1)]) = [Cvc{word_ind},zeros(size(Cvc{word_ind},1),n_v);zeros(n_y,size(Cvc{word_ind},2)), lcsas.Dyn( L.words{word_ind}(t+1) ).C_v ];
-		I_blockx2(end+[1:n_x*(t+1)],end+[1:n_x*(t+1)]) = eye(n_x*(t+1));
 	end
 
 	% I_block_x0 = []; 
@@ -186,6 +179,13 @@ function [Consist_set, full_set ] = consistent_set(varargin)
 				P_vT = P_vT * lcsas.Dyn( L.words{word_idx}(symb_idx) ).P_v;
 			end
     	end
+
+    	% Introduce Sets
+    	for word_ind = 1:L.cardinality()
+    		C_block(end+[1:n_y*(t+1)],end+[1:n_x*(t+1)]) = [Cc{word_ind} ; zeros(n_y,n_x*t), lcsas.Dyn( L.words{word_ind}(t+1) ).C ];
+			Cv_block(end+[1:n_y*(t+1)],end+[1:n_v*(t+1)]) = [Cvc{word_ind},zeros(size(Cvc{word_ind},1),n_v);zeros(n_y,size(Cvc{word_ind},2)), lcsas.Dyn( L.words{word_ind}(t+1) ).C_v ];
+			I_blockx2(end+[1:n_x*(t+1)],end+[1:n_x*(t+1)]) = eye(n_x*(t+1));
+		end
 
     	P_eta = P_uT * P_wT * P_vT * P_x0_L;
 
@@ -214,7 +214,7 @@ function [Consist_set, full_set ] = consistent_set(varargin)
 		
 		else
 
-	    	if ~full_set.isEmptySet
+	    	% if ~full_set.isEmptySet
 				%Project the above set to create the set of feasible observed trajectories (x,u)
 				%Consist_set = [ eye(n_y*(t+1) + n_u*t), zeros(n_x*(t+1) + n_u*t, length(L.words)*(n_w*t + n_v*(t+1) + n_x + n_x*(t+1)) ) ] * full_set;
 				%Consist_set = full_set.affineMap([ eye(n_y*(t+1) + n_u*t), zeros(n_x*(t+1) + n_u*t, length(L.words)*(n_w*t + n_v*(t+1) + n_x + n_x*(t+1)) ) ],'vrep')
@@ -226,9 +226,9 @@ function [Consist_set, full_set ] = consistent_set(varargin)
 					Consist_set = full_set.projection([1:n_y*(t+1) + n_u*t]);
 				end
 
-			else
-				Consist_set = Polyhedron('A',[ [1;-1], zeros(2,n_y*(t+1) + n_u*t-1) ],'b',[1;-2]);
-			end
+			% else
+			% 	Consist_set = Polyhedron('A',[ [1;-1], zeros(2,n_y*(t+1) + n_u*t-1) ],'b',[1;-2]);
+			% end
 		end
 		%Consist_set.minHRep; %Used to make sure that future projections are simpler to compute.
 

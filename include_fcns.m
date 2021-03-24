@@ -26,7 +26,7 @@ if strcmp(getenv('USER'),'kwesirutledge') %Suggests the laptop is in use
                     warning('MPT3 Toolbox does not appear in path! Attempting one method to fix this...')
                     try
                         %Add All MPT Toolbox folders AND subfolders to path.
-                        cd([ '../../' 'toolboxes/tbxmanager/toolboxes/mpt/3.1.8/all/mpt3-3_1_8/mpt'])
+                        cd([ '../' 'toolboxes/mpt3_manager/toolboxes/'])
                         mpt_init
                         Polyhedron();
                     catch

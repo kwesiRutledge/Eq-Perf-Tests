@@ -7,16 +7,26 @@ classdef Language
 	%	L2 = Language({[1,2,3],[2,3,3]})
 	%
 	%Methods:
+	%	- Language
 	%	- contains
+	%	- contains_prefix
 	%	- subseteq
 	%	- union
 	%	- powerset
 	%	- is_eq
+	%	- eq (==)
+	%	- ne (~=)
 	%	- all_words_start_with_root
 	%	- find_longest_length
 	%	- find_shortest_length
+	%	- cardinality
+	%	- get_all_symbols_at_idx
+	%	- langtostr
+	%	- lang2str
 	%	- find_a_word_with_pref
 	%	- find_all_words_with_pref
+	%	- set_minus
+	%	- create_unchecked_belief_sequences_of_length
 	%
 	%Member Variables:
 	%	words 	- A cell array of numeric arrays.
@@ -33,6 +43,7 @@ classdef Language
 			%
 			%Examples:
 			%	L1 = Language([1,2],[3,4,5],[1,4,5])
+			%	L2 = Language({[1,2],[3,4,5],[1,4,5]})
 
 			L.words = {};
 
@@ -90,6 +101,49 @@ classdef Language
 
 		end
 
+		function [in_lang_flag,pos_in_lang] = contains_prefix(obj,prefix_in)
+			%Description:
+			%	Returns true if the word 'prefix_in' is in the language's words/
+			%	Otherwise returns false.
+			%
+			%Usage:
+			%	in_lang_flag = L.contains_prefix([1,2,1,1,1])
+			%	[in_lang_flag, pos_in_lang] = L.contains_prefix([1,2,1,1,1])
+
+			%% Input Processing
+
+			%% Variables
+
+			in_lang_flag = false;
+			pos_in_lang = [];
+
+			%% Algorithm for Vector obj
+
+			% if isvector(obj)
+			% 	%If this is a vector of languages, then search through each language.
+			% 	in_lang_flag = false;
+			% 	for obj_index = 1:length(obj)
+			% 		temp_flag = obj(obj_index).contains_prefix(prefix_in);
+			% 		if temp_flag
+			% 			in_lang_flag = true;
+			% 			pos_in_lang = [pos_in_lang,obj_index];
+			% 		end
+			% 	end
+			% end
+
+			%% Scalar Obj Algorithm
+
+			for lang_idx = 1:obj.cardinality()
+				if length(obj.words{lang_idx}) >= length(prefix_in)
+					if all(obj.words{lang_idx}([1:length(prefix_in)]) == prefix_in)
+						in_lang_flag = true;
+						pos_in_lang = [ pos_in_lang , lang_idx ] ;
+					end
+				end
+			end
+
+		end
+
 		function [L_union] = union(obj,langs_in)
 			%Description:
 			%
@@ -127,6 +181,7 @@ classdef Language
 		function [powerset_L,powerset_word_indices] = powerset(obj)
 			%Description:
 			%	Computes an array of languages where each language in the array is composed of some subset of obj.
+			%	Does not contain the emptyset which should normally be in a powerset definition.
 			%
 			%Outputs:
 			%	powerset_L = An array of language objects where each language object is a subset
@@ -142,7 +197,7 @@ classdef Language
 			%					   Language([5,6,7,8],[9,10,11,12]) , Language([1,2,3,4],[5,6,5,8],[9,10,11,12]) ]
 			%		powerset_word_indices = { [1] , [2] , [3] , [1,2] , [1,3] , [2,3] , [1,2,3] }
 			%	Note that powerset_word_indices is very compact, but loses the information of WHAT the
-			%	words in the language L are.
+			%	words in the language L are. Use it wisely.
 
 			%%%%%%%%%%%%%%%
 			%% Constants %%
@@ -200,7 +255,7 @@ classdef Language
 
 		end
 
-		function [tf] = eq( obj, L_in )
+		function [tf] = eq( obj, comparison_obj )
 			%Description:
 			%	Defines the == operator.
 			%
@@ -208,7 +263,48 @@ classdef Language
 			%	tf = L1.eq(L2)
 			%	tf = ( L1 == L2 )
 
-			tf = obj.is_eq(L_in);
+			%% Input Processing %%
+
+			sizeOfObj = size(obj);
+			sizeOfComparison = size(comparison_obj);
+
+			if ~all(all( sizeOfObj == sizeOfComparison ))
+				error('The dimensions of the two objects is not the same.')
+			end
+
+			%% Algorithm
+
+			if isscalar(obj)
+				tf = obj.is_eq(comparison_obj);
+			elseif isvector(obj)
+				tf = true;
+				for obj_index = 1:length(obj)
+					tf = tf && obj(obj_index).is_eq(comparison_obj(obj_index));
+				end
+			elseif ismatrix(obj)
+				tf = true;
+				for obj_index1 = 1:sizeOfObj(1)
+					for obj_index2 = 1:sizeOfObj(2)
+						obj_at_12 = obj(obj_index1,obj_index2);
+						comparison_at_12 = obj(obj_index1,obj_index2);
+						tf = tf && obj_at_12.is_eq( comparison_at_12 );
+					end
+				end
+			else
+				error('The equality function only supports scalar (1x1 Language objects), vector or matrix (MxN Language object matrices) comparisons.')
+			end
+
+		end
+
+		function tf = ne( obj, comparison_obj )
+			%Description:
+			%	Defines the ~= operator.
+			%
+			%Usage:
+			%	tf = L1.ne(L2)
+			%	tf = ( L1 ~= L2 )
+
+			tf = ~( obj == comparison_obj );
 
 		end
 
@@ -298,6 +394,78 @@ classdef Language
 
 		function char_arr = lang2str( obj )
 			char_arr = obj.langtostr();
+		end
+
+		function lang_out = set_minus( obj , word_in )
+			%Description: 
+			%	Computes the set minues of the current language (obj) by the input word.
+
+			% Input Processing
+
+			if iscell(word_in)
+				error('set_minus is not yet defined for inputs of type ''cell''.')
+			end
+
+			% Algorithm
+			word_collection = {};
+
+			for word_idx = 1:obj.cardinality()
+				temp_word = obj.words{word_idx};
+				if all(temp_word == word_in)
+					continue;
+				else
+					word_collection{length(word_collection)+1} = temp_word;
+				end
+			end
+
+			lang_out = Language(word_collection);
+
+		end
+
+		function [seq_matrix,LK] = create_unchecked_belief_sequences_of_length(obj,TimeHorizon)
+			%create_unchecked_belief_sequences_of_length
+			%Description:
+			%	Defines all possible belief sequences that are based on the language obj
+			%	To be a valid belief sequence, the sequence must satisfy
+			%	- the Language at time t, must be a subset or equal to the belief at time t-1
+			%
+			%Usage:
+			%	seq_matrix = L.enumerate_valid_belief_sequences_of_length(obj,T)
+			%
+			%Outputs:
+			%	seq_matrix - A matrix of "belief sequences".
+			%				 This is a matrix of Language objects, where each column represents a possible, but
+			%				 unchecked belief sequence. There should always be TimeHorizon number of rows.
+			%	LK - A cell array containing each of the "seq_matrix" objects created on the way to reaching the
+			%		 desired length of TimeHorizon
+
+			%% Constants
+
+			%% Algorithm 
+
+			LK = {};
+			t0 = 0;
+			LK{t0+1} = obj;
+			for t = 1:TimeHorizon-1
+				%Initialize next level of LK
+				LK{t+1} = [];
+				% Collect all languages available on the previous level.
+				for belief_index = 1:size(LK{t},2)
+					temp_knowl_seq = LK{t}(:,belief_index);
+					temp_last_lang = temp_knowl_seq(end);
+
+					last_lang_powerset = temp_last_lang.powerset();
+					for powerset_idx = 1:length(last_lang_powerset)
+						% Add one of the elements of the powerset to the end of the knowledge sequence.
+						LK{t+1} = [ LK{t+1} , [ temp_knowl_seq ; last_lang_powerset(powerset_idx) ] ];
+					end
+
+				end
+
+			end
+
+			seq_matrix = LK{end};
+
 		end
 
 	end

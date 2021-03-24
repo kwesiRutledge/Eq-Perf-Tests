@@ -62,7 +62,7 @@ function [BG_out,controller_out,P_target] = get_reach_contr2( lcsas_in, language
 
 	%% Algorithms %%
 
-	[BG_out,controller_out] = lcsas_in.synth_robust_reach_contr( P_x0 , P_u , 'P_target', P_target , 'debug' , 1 , 'UseProjection' , false );
+	[BG_out,controller_out] = lcsas_in.synth_robust_reach_contr( P_x0 , P_u , 'P_target', P_target , 'debug' , 0 , 'UseProjection' , false );
 
 function [BG_out] = get_unconnected_bg1()
 	%get_unconnected_bg1
@@ -137,3 +137,81 @@ function test2_simulation(testCase)
 
 	assert(P_target.contains(x(end)) )
 
+function test1_pob_feedback(testCase)
+	%Description:
+	%	Catch a bad POB_Feedback object constructor
+	%	
+
+	%% Constants
+	[sys1,L1,P_u,P_x0] = get_simple_1dsys();
+
+	%% Algorithm
+
+	try 
+		POB_Feedback(1,sys1,1)
+		assert(false)
+	catch e
+		% disp(e.message)
+		assert(strcmp(e.message,['Unexpected type for first input: double. Choose BeliefGraph or LCSAS object as first input.']))
+	end
+
+function test2_pob_feedback(testCase)
+	%Description:
+	%	Create using a simple lcsas example.
+
+	%% Constants
+	[sys1,L1,P_u,P_x0] = get_simple_1dsys();
+
+	%% Algorithm
+
+	pob1 = POB_Feedback(sys1,eye(2),ones(2,1))
+
+	assert(all(all(pob1.F_set == eye(2))) && all(pob1.u0_set == ones(2,1)))
+
+function test1_GetReachableSetAt(testCase)
+	%Description:
+	%	Testing the error catching capabilities of the function.
+
+	%% Constants
+	[sys1,L1,P_u,P_x0] = get_simple_1dsys();
+	bad_mode_val = 4;
+
+	%% Algorithm
+
+	pob1 = POB_Feedback(sys1,eye(2),ones(2,1));
+
+	try
+		pob1.GetReachableSetAt(2,bad_mode_val)
+	catch e
+		disp(e.message)
+		assert(strcmp(e.message,['There is not a word ' num2str(bad_mode_val) ' in the language L. It has only ' num2str(sys1.L.cardinality()) ' words.'  ]))
+	end
+
+function test2_GetReachableSetAt(testCase)
+	%Description:
+	%	Testing the correct behavior of the function for a simple static system.
+
+	%% Constants
+	n_x = 2; n_y = 2;
+
+	A1 = eye(2); B1 = [0;1]; C1 = eye(2);
+	eta_v = 0; eta_w = 0;
+	Pv1 = Polyhedron('lb',-eta_v*ones(1,n_y) ,'ub',eta_v*ones(1,n_y));
+	Pw1 = Polyhedron('lb',-eta_w*ones(1,n_x) ,'ub',eta_w*ones(1,n_x));
+
+	eta_x0 = 0.3;
+	P_x0 = Polyhedron('lb',-eta_x0*ones(1,n_x),'ub',eta_x0*ones(1,n_x));
+
+	d1 = Aff_Dyn(A1,B1,zeros(2,1),C1,Pw1,Pv1);
+
+	sys1 = LCSAS( [d1] , Language([1,1,1,1]) , 'X0' , P_x0 );
+
+
+	%% Algorithm
+
+	pob1 = POB_Feedback(sys1,{zeros(2)},{zeros(2,1)});
+
+	reach1 = pob1.GetReachableSetAt(1,1)
+
+	assert( (reach1 <= P_x0) && (P_x0 <= reach1) )
+	

@@ -162,3 +162,246 @@ function test_binary_inclusion_constraint3(testCase)
 	assert( (opt_out.problem == 0) && (value(iv1) == 1) )
 
 end
+
+function test_create_mccormick_envelope1(testCase)
+	%test_create_mccormick_envelope1
+	%Description:
+	%	Tests the error catching capabilities of the create_mccormick_envelope function.
+	%	This test should recognize that the input of two matrix sdpvar objects is invalid/not supported.
+
+	%% Constants 
+
+	cg = constr_gen(0);
+
+	%% Algorithm 
+	x = sdpvar(2,2,'full');
+	y = sdpvar(2,2,'symmetric');
+
+	try
+		cg.create_mccormick_envelope(x,y,[])
+	catch e
+		% disp(e.message)
+		assert(strcmp(e.message,'It must be the case that x and y are of compatible dimensions. Make sure that x,y are both scalars, both vectors, or a matrix and a vector.'))
+	end
+
+end
+
+function test_create_mccormick_envelope2(testCase)
+	%test_create_mccormick_envelope2
+	%Description:
+	%	Tests the error catching capabilities of the create_mccormick_envelope function.
+	%	This test should recognize that the length of two input vectors should be the same.
+
+	%% Constants 
+
+	cg = constr_gen(0);
+
+	%% Algorithm 
+	x = sdpvar(2,1,'full');
+	y = sdpvar(3,1,'full');
+
+	tempGridDef = struct('x_lb',0,'x_ub',1,'y_lb',0,'y_ub',1,'NumberOfRegionsInX',2,'NumberOfRegionsInY',3);
+
+	try
+		cg.create_mccormick_envelope(x,y,tempGridDef)
+	catch e
+		% disp(e.message)
+		assert(strcmp(e.message,'Expected the lengths of x and y to be the same. Instead, length(x) = 2 and length(y) = 3.'))
+	end
+
+end
+
+function test_create_mccormick_envelope3(testCase)
+	%test_create_mccormick_envelope2
+	%Description:
+	%	Tests the error catching capabilities of the create_mccormick_envelope function.
+	%	This test should recognize that the input struct does not have field NumberOfRegionsInX.
+
+	%% Constants 
+
+	cg = constr_gen(0);
+
+	%% Algorithm 
+	x = sdpvar(2,1,'full');
+	y = sdpvar(3,1,'full');
+
+	tempGridDef = struct('x_lb',0,'x_ub',1,'y_lb',0,'y_ub',1,'NumberOfRegionsInY',3);
+
+	try
+		cg.create_mccormick_envelope(x,y,tempGridDef)
+	catch e
+		%disp(e.message)
+		assert(strcmp(e.message,[ 'The field name NumberOfRegionsInX is not part of the input grid_definition.' ]))
+	end
+
+end
+
+function test_create_mccormick_envelope4(testCase)
+	%Description:
+	%	Tests to see if the expected answer of a known optimization problem matches the output
+	%	of create_mccormick_envelope().
+
+	%% Constants
+
+	cg = constr_gen(0);
+	eps0 = 10^(-1);
+
+	num_ticks_in_K = 20;
+	num_ticks_in_y = 20;
+
+	%% Algorithm
+
+	% Create Variables
+
+	K = sdpvar(1,1,'full');
+	y = sdpvar(1,1,'full');
+
+	% z = sdpvar(1,1,'full');
+	% mccormick_binvars = binvar(num_mccormick_envelopes,1,'full');
+
+	% Create Constraints
+
+	y_lb = 0;
+	y_ub = 40;
+	K_lb = eps0;
+	K_ub = 1;
+
+	range_constrs = [ K_lb <= K <= K_ub ] + [ y_lb <= y <= y_ub ];
+
+	tempGridDef = struct('x_lb',K_lb,'x_ub',K_ub,'y_lb',y_lb,'y_ub',y_ub,'NumberOfRegionsInX',num_ticks_in_K,'NumberOfRegionsInY',num_ticks_in_y);
+
+	[ z , mccormick_constraints , mccormick_binvars ] = cg.create_mccormick_envelope( K , y , tempGridDef , 'eta_z_bounds' , 10^5  );
+	
+
+	% ideal_constraint = [ K*y <= 1 ]
+
+	bounding_constraint = [ z <= 1 ];
+
+	%%%%%%%%%%%%%%%%
+	%% Optimize ? %%
+	%%%%%%%%%%%%%%%%
+
+	optimization_constraints = range_constrs + mccormick_constraints + bounding_constraint;
+
+	ops = sdpsettings('verbose',0,'debug',1);
+	ops = sdpsettings(ops, 'solver','gurobi');
+	optim0 = optimize(optimization_constraints,[-(y)],ops);
+
+	assert( (value(y) > 10-eps0) && (value(y) < 10+eps0))
+
+end
+
+function test_create_mccormick_envelope5(testCase)
+	%test_create_mccormick_envelope5
+	%Description:
+	%	Tests to see if the expected answer of a known optimization problem matches the output
+	%	of create_mccormick_envelope().
+
+	%% Constants
+
+	cg = constr_gen(0);
+	eps0 = 10^(-1);
+
+	num_ticks_in_K = [10,10];
+	num_ticks_in_w = [10,10];
+
+	Pw1 = Polyhedron('lb',[0,2],'ub',[1,3]);
+	Pw1.outerApprox;
+
+	%% Algorithm
+
+	% Create Variables
+
+	K = sdpvar(1,2,'full');
+	w = sdpvar(2,1,'full');
+
+	% z = sdpvar(1,1,'full');
+	% mccormick_binvars = binvar(num_mccormick_envelopes,1,'full');
+
+	% Create Constraints
+
+	w_lb = []; w_ub=[];
+	for dim_idx = 1:Pw1.Dim 
+		w_lb(dim_idx) = Pw1.Internal.lb(dim_idx);
+		w_ub(dim_idx) = Pw1.Internal.ub(dim_idx);
+	end
+
+	K_lb = [ -10 ; -10 ];
+	K_ub = [ 10 ; 10 ];
+
+	range_constrs = [ K_lb <= K' <= K_ub ] + [ Pw1.A*w <= Pw1.b ];
+
+	tempGridDef = struct('x_lb',K_lb,'x_ub',K_ub,'y_lb',w_lb,'y_ub',w_ub,'NumberOfRegionsInX',num_ticks_in_K,'NumberOfRegionsInY',num_ticks_in_w);
+
+	[ z , mccormick_constraints , mccormick_binvars ] = cg.create_mccormick_envelope( K , w , tempGridDef , 'eta_z_bounds' , 10^5  );
+	
+
+	% ideal_constraint = [ K*y <= 1 ]
+
+	bounding_constraint = [ z <= 1 ];
+
+	%%%%%%%%%%%%%%%%
+	%% Optimize ? %%
+	%%%%%%%%%%%%%%%%
+
+	optimization_constraints = range_constrs + mccormick_constraints + bounding_constraint;
+
+	ops = sdpsettings('verbose',0,'debug',1);
+	ops = sdpsettings(ops, 'solver','gurobi');
+	optim0 = optimize(optimization_constraints,[-(w(2))],ops);
+
+	assert( (value(w(2)) > 3-eps0) && (value(w(2)) < 3+eps0))
+
+end
+
+function test_get_H_polyt_inclusion_constr1(testCase)
+	%Description:
+	%	Verify if the symbolic version of the function works.
+
+	H_x = [1,2;3,4];
+	h_x = [5;6];
+	H_y = [7,8;9,10];
+	h_y = [11;12];
+
+	cg = constr_gen(0);
+
+	[ Lambda , eq_constr , ineq_constr ] = cg.get_H_polyt_inclusion_constr(H_x,h_x,H_y,h_y,'ReturnValueType','Symbolic')
+
+	% Check All Equality Constraint Terms
+
+	eq_row_index = 1;
+	eq_col_index = 1;
+	[c,t] = coeffs(eq_constr(eq_row_index,eq_col_index),Lambda);
+
+	assert(all(c==[1,3,-7]) )
+
+	eq_row_index = 2;
+	eq_col_index = 1;
+	[c,t] = coeffs(eq_constr(eq_row_index,eq_col_index),Lambda);
+
+	assert(all(c==[1,3,-9]))
+
+	eq_row_index = 1;
+	eq_col_index = 2;
+	[c,t] = coeffs(eq_constr(eq_row_index,eq_col_index),Lambda);
+
+	assert(all(c==[2,4,-8]) )
+
+	eq_row_index = 2;
+	eq_col_index = 2;
+	[c,t] = coeffs(eq_constr(eq_row_index,eq_col_index),Lambda);
+
+	assert(all(c==[2,4,-10]))
+
+	% Check all inequality constraints
+
+	[c,t] = coeffs(ineq_constr(1,1),Lambda);
+
+	assert(all(c==[5,6,-11]) )
+
+	[c,t] = coeffs(ineq_constr(2,1),Lambda);
+
+	assert(all(c==[5,6,-12]))
+
+
+end

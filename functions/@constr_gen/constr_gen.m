@@ -1,6 +1,12 @@
 classdef constr_gen
 	%Description:
-	%	This class abstracts away how we make constraints for the equalized recovery problems.
+	%	A constraint generator. This class abstracts away how we make constraints for the equalized recovery problems.
+	%
+	%Methods:
+	%	- get_zonot_inclusion_constr
+	%	- create_mccormick_envelope
+	%	- get_nonempty_indicator_from_mccormick_envelopes
+
 	properties
 
 	end
@@ -489,6 +495,105 @@ classdef constr_gen
 										zeros(size(P_M1.A,1),(vd+wd)*T_i) P_M1.A ];
 
 			constraints = constraints + [ Pi3 * bounded_disturb_matrix == P_uT.A*G_tilde];
+
+		end
+
+		function [ constraints_out ] = get_belief_prefix_gain_constraints( obj , lcsas_in , K_cell_arr , k_cell_arr , LK_sequences_in , ignore_text )
+			%Description:
+			%	
+			%Usage:
+			%	constrs = cg.get_belief_prefix_gain_constraints( lcsas0 , K_cell_arr , k_cell_arr , LK_sequences_in )
+			%	constrs = cg.get_belief_prefix_gain_constraints( lcsas0 , K_cell_arr , k_cell_arr , LK_sequences_in , 'Ignore K')
+			%	constrs = cg.get_belief_prefix_gain_constraints( lcsas0 , K_cell_arr , k_cell_arr , LK_sequences_in , 'Ignore k')
+
+			%% Input Processing
+
+			if isempty(ignore_text)
+				ignore_text = 'Ignore Nothing';
+			end
+
+
+			%% Constants
+
+			if length(K_cell_arr) ~= size(LK_sequences_in,2)
+				error('There should be the same number of columns in LK_sequences_in as in K_cell_arr.')
+			end
+
+			num_sequences = size(LK_sequences_in,2);
+
+			[ n_x , n_u , n_y , n_w , n_v ] = lcsas_in.Dimensions();
+
+			%% Algorithm
+
+			% Determine Which Prefixes Match One Another
+			shared_prefix_length = NaN(num_sequences) ;
+
+			for knowl_seq_index = 1:num_sequences
+				temp_knowl_seq = LK_sequences_in(:,knowl_seq_index);
+				for knowl_seq_index2 = knowl_seq_index+1:num_sequences
+					temp_knowl_seq2 = LK_sequences_in(:,knowl_seq_index2);
+					
+					shared_prefix_length(knowl_seq_index,knowl_seq_index2) = 1; %All pairs share at least one with one another.
+					for prefix_length = 1:length(temp_knowl_seq2)
+						if obj.knowledge_sequence_contains_prefix( temp_knowl_seq , temp_knowl_seq2([1:prefix_length],1) )
+							shared_prefix_length(knowl_seq_index,knowl_seq_index2) = prefix_length;
+						end
+					end
+				end
+			end
+
+			% Apply Constraints to the big gain matrix K_cell_arr
+			constraints_out = [];
+
+			if ~strcmp(ignore_text,'Ignore K')
+
+				for knowl_seq_index = 1:num_sequences
+					for knowl_seq_index2 = knowl_seq_index+1:num_sequences
+						%Iterate through every row of the gain at K{knowl_seq_index}
+						for prefix_length = 1:shared_prefix_length(knowl_seq_index,knowl_seq_index2)
+							constraints_out = constraints_out + ...
+								[ K_cell_arr{knowl_seq_index}((prefix_length-1)*n_u+[1:n_u],:) == K_cell_arr{knowl_seq_index2}((prefix_length-1)*n_u+[1:n_u],:) ];
+						end
+					end
+				end
+
+			end
+
+			% Apply Constraints to the small gain matrix k_cell_arr
+
+			if ~strcmp(ignore_text,'Ignore k')
+
+				for knowl_seq_index = 1:num_sequences
+					for knowl_seq_index2 = knowl_seq_index+1:num_sequences
+						%Iterate through every row of the gain at K{knowl_seq_index}
+						for prefix_length = 1:shared_prefix_length(knowl_seq_index,knowl_seq_index2)
+							constraints_out = constraints_out + ...
+								[ k_cell_arr{knowl_seq_index}((prefix_length-1)*n_u+[1:n_u],1) == k_cell_arr{knowl_seq_index2}((prefix_length-1)*n_u+[1:n_u],1) ];
+						end
+					end
+				end
+				
+			end
+
+		end
+
+		function [tf] = knowledge_sequence_contains_prefix( obj , knowl_seq , prefix_seq )
+			%Description:
+			%	This function attempts to verify whether or not the prefix prefix_seq is a prefix
+			% 	of the target knowledge sequence knowl_seq.
+
+			% Constants
+
+			% Algorithm
+
+			for prefix_seq_index = 1:length(prefix_seq)
+				if ~(knowl_seq(prefix_seq_index) == prefix_seq(prefix_seq_index))
+					tf = false;
+					return;
+				end
+			end
+
+			tf = true;
 
 		end
 

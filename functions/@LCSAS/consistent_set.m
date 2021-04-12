@@ -44,77 +44,13 @@ function [ Consist_set, full_set ] = consistent_set(varargin)
 	%% Input Processing %%
 	%%%%%%%%%%%%%%%%%%%%%%
 
-	if nargin < 3
-		error('Not enough input arguments.')
-	end
-
-	lcsas = varargin{1};
-	t = varargin{2};
-	L = varargin{3};
-	P_u = varargin{4};
-	P_x0 = varargin{5};
-	
-	if ~isa(lcsas,'LCSAS')
-		error('Expecting the first input to be a LCSAS object.')
-	end
-
-	if ~isa(L,'Language')
-		error('Expecting the language input to be a Language object.')
-	end
-
-	varargin_idx = 6;
-	while varargin_idx <= nargin
-		switch varargin{varargin_idx}
-			case 'fb_method'
-				fb_type = varargin{varargin_idx+1};
-				if ~(strcmp(fb_type,'state') || strcmp(fb_type,'output'))
-					error(['Invalid feedback type: ' fb_type ])
-				end
-				varargin_idx = varargin_idx + 2;
-			case 'use_proj'
-				use_proj = varargin{varargin_idx+1};
-				if ~islogical( use_proj )
-					error('The flag for ''use_proj'' should be a boolean.')
-				end
-				varargin_idx = varargin_idx + 2;
-			case 'reduce_representation'
-				reduce_flag = varargin{varargin_idx+1};
-				if ~islogical( reduce_flag )
-					error('The flag for ''reduce_flag'' should be a boolean.')
-				end
-				varargin_idx = varargin_idx + 2;
-			otherwise
-				error('Unexpected additional input.')
-		end
-	end
-
-	if (t < 0)
-		error(['t must have a value greater than 0.'])
-	end
-
-	for word_ind = 1:length(L.words)
-		if t > length(L.words{word_ind})
-			error('t should not be larger than any of the words in L.')
-		end
-	end
+	[ lcsas , t , L , P_u , P_x0 , cs_settings ] = consistent_set_input_processing(varargin{:});
 
 	%%%%%%%%%%%%%%%
 	%% Constants %%
 	%%%%%%%%%%%%%%%
 
 	[ n_x , n_u , n_y , n_w , n_v ] = lcsas.Dimensions();
-
-	if ~exist('fb_type')
-		fb_type = 'state';
-	end
-
-	if ~exist('use_proj')
-		use_proj = true;
-	end
-
-	if ~exist('reduce_flag')
-		reduce_flag = true;
-	end
 
 	%%%%%%%%%%%%%%%
 	%% Algorithm %%
@@ -163,7 +99,7 @@ function [ Consist_set, full_set ] = consistent_set(varargin)
 	% end
 
 	%% Constructing the Sets
-	if strcmp(fb_type,'state')
+	if strcmp(cs_settings.fb_type,'state')
 	    
 		P_eta = P_uT * P_wT * P_x0_L;
 
@@ -197,7 +133,7 @@ function [ Consist_set, full_set ] = consistent_set(varargin)
 
 	end
 
-	if (~full_set.isEmptySet) && reduce_flag
+	if (~full_set.isEmptySet) && cs_settings.reduce_flag
 		full_set.minHRep; %Make sure to do this to simplify some of the future projections.
 	end
 
@@ -205,9 +141,9 @@ function [ Consist_set, full_set ] = consistent_set(varargin)
 	%% Constructing the Consistency Sets %%
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-	if use_proj
+	if cs_settings.use_proj
 
-		if strcmp(fb_type,'state')
+		if strcmp(cs_settings.fb_type,'state')
 
 			%Project the above set to create the set of feasible observed trajectories (x,u)
 			Consist_set = [ eye(n_x*(t+1) + n_u*t), zeros(n_x*(t+1) + n_u*t, length(L.words)*(n_w*t + n_x) ) ] * full_set;
@@ -235,6 +171,89 @@ function [ Consist_set, full_set ] = consistent_set(varargin)
 	else
 		Consist_set = Polyhedron('A',[[1;-1],zeros(2,n_y*(t+1) + n_u*t-1)], ...
 								 'b',[1;-2]);
+	end
+
+end
+
+function [ lcsas , t , L , P_u , P_x0 , cs_settings ] = consistent_set_input_processing(varargin)
+	%Description:
+
+	% Check for Minimum Number of Arguments.
+
+	if nargin < 3
+		error('Not enough input arguments.')
+	end
+
+	% Parse first 5 Arguments
+
+	lcsas = varargin{1};
+	t = varargin{2};
+	L = varargin{3};
+	P_u = varargin{4};
+	P_x0 = varargin{5};
+	
+	% Check if Some Arguments are of Appropriate Type
+
+	if ~isa(lcsas,'LCSAS')
+		error('Expecting the first input to be a LCSAS object.')
+	end
+
+	if ~isa(L,'Language')
+		error('Expecting the language input to be a Language object.')
+	end
+
+	% Create Dummy Settings Struct
+
+	cs_settings = [];
+
+	varargin_idx = 6;
+	while varargin_idx <= nargin
+		switch varargin{varargin_idx}
+			case 'fb_method'
+				cs_settings.fb_type = varargin{varargin_idx+1};
+				if ~(strcmp(cs_settings.fb_type,'state') || strcmp(cs_settings.fb_type,'output'))
+					error(['Invalid feedback type: ' fb_type ])
+				end
+				varargin_idx = varargin_idx + 2;
+			case 'use_proj'
+				cs_settings.use_proj = varargin{varargin_idx+1};
+				if ~islogical( cs_settings.use_proj )
+					error('The flag for ''use_proj'' should be a boolean.')
+				end
+				varargin_idx = varargin_idx + 2;
+			case 'reduce_representation'
+				cs_settings.reduce_flag = varargin{varargin_idx+1};
+				if ~islogical( cs_settings.reduce_flag )
+					error('The flag for ''reduce_flag'' should be a boolean.')
+				end
+				varargin_idx = varargin_idx + 2;
+			otherwise
+				error('Unexpected additional input.')
+		end
+	end
+
+	if (t < 0)
+		error(['t must have a value greater than 0.'])
+	end
+
+	for word_ind = 1:length(L.words)
+		if t > length(L.words{word_ind})
+			error('t should not be larger than any of the words in L.')
+		end
+	end
+
+	%% Default Values
+
+	if ~isfield(cs_settings,'fb_type')
+		cs_settings.fb_type = 'state';
+	end
+
+	if ~isfield(cs_settings,'use_proj')
+		cs_settings.use_proj = true;
+	end
+
+	if ~isfield(cs_settings,'reduce_flag')
+		cs_settings.reduce_flag = true;
 	end
 
 end

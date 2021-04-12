@@ -28,6 +28,7 @@ classdef LCSAS
 		L;
 		domain;
 		X0; %X0
+		U;	%Input Set
 	end
 
 	methods
@@ -71,6 +72,9 @@ classdef LCSAS
 				case 'X0'
 					X0_in = varargin{argin_idx+1};
 					argin_idx = argin_idx + 2;
+				case 'U'
+					U_in = varargin{argin_idx+1};
+					argin_idx = argin_idx + 2;
 				otherwise
 					error(['Unexpected input to LCSAS: See Argument ' num2str(argin_idx) '.' ])
 				end
@@ -106,6 +110,11 @@ classdef LCSAS
 			out_sys.X0 = [];
 			if exist('X0_in')
 				out_sys.X0 = X0_in;
+			end
+
+			out_sys.U = [];
+			if exist('U_in')
+				out_sys.U = U_in;
 			end
 
 		end

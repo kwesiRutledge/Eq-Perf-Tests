@@ -60,7 +60,7 @@ function [lcsas_out,TimeHorizon,Pu,Pw,x0,Px0,X_Target] = get_cdc2021_similar_rot
 	ad1 = Aff_Dyn( A1 , B1 , K1 , eye(dim_x) , Pw , Pv );
 	ad2 = Aff_Dyn( A2 , B2 , K2 , eye(dim_x) , Pw , Pv );
 
-	lcsas_out = LCSAS( [ad1,ad2], Language(1*ones(1,TimeHorizon),2*ones(1,TimeHorizon)) , 'X0' , Px0 );
+	lcsas_out = LCSAS( [ad1,ad2], Language(1*ones(1,TimeHorizon),2*ones(1,TimeHorizon)) , 'X0' , Px0 , 'U' , Pu );
 
 end
 

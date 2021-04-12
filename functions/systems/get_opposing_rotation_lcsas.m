@@ -55,7 +55,7 @@ function [lcsas_out,TimeHorizon,Pu,Pw,x0,Px0,X_Target] = get_opposing_rotation_l
 	ad1 = Aff_Dyn( A1 , B1 , zeros(dim_x,1) , eye(dim_x) , Pw , Pv );
 	ad2 = Aff_Dyn( A2 , B2 , zeros(dim_x,1) , eye(dim_x) , Pw , Pv );
 
-	lcsas_out = LCSAS( [ad1,ad2], Language(1*ones(1,TimeHorizon),2*ones(1,TimeHorizon)) , 'X0' , Px0 );
+	lcsas_out = LCSAS( [ad1,ad2], Language(1*ones(1,TimeHorizon),2*ones(1,TimeHorizon)) , 'X0' , Px0 , 'U' , Pu );
 
 end
 
@@ -76,7 +76,7 @@ function [ TimeHorizon_out , x0 , eta_w , eta_u , X_Target ] = handle_similar_ro
 	eta_w = 0.25;
 	eta_u = 2*eta_w;
 
-	target_width = (eta_w*TimeHorizon_out+eta_w*sqrt(2));
+	target_width = (eta_w*TimeHorizon_out+eta_w*2*sqrt(2));
 
 	% Compute Center after TimeHorizon_out rotations.
 	target_center = [1/sqrt(2);1/sqrt(2)];

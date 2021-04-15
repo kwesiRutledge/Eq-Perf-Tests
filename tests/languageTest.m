@@ -166,8 +166,8 @@ function test_contains_prefix4(testCase)
 
 	assert( ~l1.contains_prefix([3,1]) )
 
-function test_create_unchecked_belief_sequences_of_length1(testCase)
-	%test_create_unchecked_belief_sequences_of_length1
+function test_create_belief_sequences_of_length1(testCase)
+	%test_create_belief_sequences_of_length1
 	%Description:
 	%	Tests the create_unchecked_belief_sequences_of_length() function for a simple
 	%	Language which contains a single word.
@@ -176,7 +176,7 @@ function test_create_unchecked_belief_sequences_of_length1(testCase)
 	l1 = Language([3,4,4]);
 
 	% Algorithm
-	b1 = l1.create_unchecked_belief_sequences_of_length(4);
+	b1 = l1.create_belief_sequences_of_length(4);
 	num_sequences = size(b1,2);
 
 	assert( (num_sequences == 1) && all( b1 == [l1 ; l1 ; l1 ; l1] ) )
@@ -191,12 +191,95 @@ function test_create_unchecked_belief_sequences_of_length2(testCase)
 	l1 = Language([3,4,4],[1,2,1]);
 
 	% Algorithm
-	b1 = l1.create_unchecked_belief_sequences_of_length(2);
+	b1 = l1.create_belief_sequences_of_length(2);
 
-	b1(2,2)
+	%b1(2,2)
 	num_sequences = size(b1,2);
 
 	assert( (num_sequences == 3) && ...
 			( all( b1(:,1) == [ l1 ; Language([3,4,4]) ] ) ) && ...
 			( all( b1(:,2) == [ l1 ; Language([1,2,1]) ] ) ) && ...
 			( all( b1(:,3) == [ l1 ; l1 ] ) ) )
+
+function test_get_feasible_combinations_of_beliefs1(testCase)
+	%test_get_feasible_combinations_of_beliefs1
+	%Description:
+	%	Tests the get_feasible_combinations_of_beliefs() function error handling
+
+	% Constants
+	l1 = Language([3,4,4],[1,2,1]);
+	oneD_sys = get_1d_lcsas();
+
+	% Algorithm
+	b1 = l1.create_belief_sequences_of_length(2);
+	oneD_sys.X0 = [];
+
+	try
+		[ a , b , c ] = oneD_sys.get_feasible_combinations_of_beliefs( b1 );
+	catch e 
+		disp(e.message)
+		assert(strcmp(e.message,['get_feasible_combinations_of_beliefs() requires nonempty choice of X0 in lcsas object.']))
+	end
+
+function test_get_feasible_combinations_of_beliefs2(testCase)
+	%test_get_feasible_combinations_of_beliefs2
+	%Description:
+	%	Tests the get_feasible_combinations_of_beliefs() function error handling
+	%	Input X0 is not a polyhedron.
+
+	% Constants
+	l1 = Language([3,4,4],[1,2,1]);
+	oneD_sys = get_1d_lcsas();
+
+	% Algorithm
+	b1 = l1.create_belief_sequences_of_length(2);
+
+	oneD_sys.X0 = 2;
+
+	try
+		[ a , b , c ] = oneD_sys.get_feasible_combinations_of_beliefs( b1 );
+	catch e 
+		disp(e.message)
+		assert(strcmp(e.message,'get_feasible_combinations_of_beliefs() requires X0 to be a Polyhedron.'))
+	end
+
+function test_get_feasible_combinations_of_beliefs3(testCase)
+	%test_get_feasible_combinations_of_beliefs3
+	%Description:
+	%	Tests the get_feasible_combinations_of_beliefs() function error handling
+	%	Input U is empty
+
+	% Constants
+	l1 = Language([3,4,4],[1,2,1]);
+	oneD_sys = get_1d_lcsas();
+
+	% Algorithm
+	b1 = l1.create_belief_sequences_of_length(2);
+
+	try
+		[ a , b , c ] = oneD_sys.get_feasible_combinations_of_beliefs( b1 );
+	catch e 
+		disp(e.message)
+		assert(strcmp(e.message,'get_feasible_combinations_of_beliefs() requires nonempty choice of U in lcsas object.'))
+	end
+
+function test_get_feasible_combinations_of_beliefs4(testCase)
+	%test_get_feasible_combinations_of_beliefs3
+	%Description:
+	%	Tests the get_feasible_combinations_of_beliefs() function on the test LCSAS
+	%	from get_simple
+
+	% Constants
+	[ oppRotLCSAS , TimeHorizon , Pu , Pw , x0 , Px0 , X_Target ] = get_opposing_rotation_lcsas();
+	l1 = oppRotLCSAS.L;
+
+	% Algorithm
+	b1 = l1.create_belief_sequences_of_length(2);
+
+	[ possible_LK_realizations , possible_choices , choices_as_binary_flags ] = oppRotLCSAS.get_feasible_combinations_of_beliefs( b1 );
+
+	disp(possible_LK_realizations{1})
+	disp(possible_LK_realizations{1}(end).words{1})
+	disp(length(possible_LK_realizations))
+
+	assert(length(possible_LK_realizations) == 1)

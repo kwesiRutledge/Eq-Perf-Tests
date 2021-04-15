@@ -32,7 +32,7 @@ function [ H_Phi, h_Phi ] = get_consistent_internal_behavior_matrices(varargin)
 	%				  computation of Consist_set (true) which requires projection operations to be called and may be very slow.
 	%
 	%Example Usage:
-	%	[ H_Phi , h_Phi ] = lcsas.get_consistent_internal_behavior_matrices( t , L , P_u , P_x0 )
+	%	[ H_Phi , h_Phi ] = lcsas.get_consistent_internal_behavior_matrices( t , L , x0 , P_u , P_x0 )
 	%
 	%Assumptions:
 	%	This formulation assumes that the system does not include a disturbed measurements. i.e. We can perfectly observe the state

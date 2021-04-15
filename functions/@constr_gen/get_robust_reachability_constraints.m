@@ -37,6 +37,88 @@ function varargout = get_robust_reachability_constraints(varargin)
 	%% Input Processing %%
 	%%%%%%%%%%%%%%%%%%%%%%
 
+	[ cg , lcsas , word , P_x0 , P_u , P_des , u_des , L , xhat0 , selection_variable , LinGain , OffsetGain , settings_struct ] = grrc_input_processing(varargin{:})
+
+	%%%%%%%%%%%%%%%
+	%% Constants %%
+	%%%%%%%%%%%%%%%
+
+	[ n , m , p , wd , vd ] = lcsas.Dimensions();
+
+	T = length(word);
+
+	q_x0 = size(P_x0.A,1);
+
+	select_m = @(t,T_r) [zeros(n,t*n), eye(n), zeros(n,(T_r-t)*n) ];
+
+	switch settings_struct.GainFormat
+		case 'Q'
+			Q = LinGain;
+			r = OffsetGain;
+		case 'F1'
+			F = LinGain;
+			f = OffsetGain;
+		otherwise
+			error(['Unexpected GainFormat value: ' settings_struct.GainFormat ])
+	end
+
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	%% Use Helper Function If Possible %%
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+	% If the target set, P_target, is a Polyhedron, then use the simple helper function get_robust_reachability_constraints_polytope.m
+	switch settings_struct.PDesiredClass
+		case 'Polyhedron'
+			if length(P_des) == 1
+				[ Pi1 , Piu , constraints ] = cg.get_robust_reachability_constraints_polytope(varargin{2:end});
+				varargout = { Pi1 , Piu , constraints };
+				return
+			else
+				error(['There were multiple polyhedra given as P_des!'])
+			end
+		case 'double'
+			[ Pi1 , Piu , constraints ] = cg.get_robust_reachability_constraints_infnormbound(varargin{2:end});
+			varargout = { Pi1 , Piu , constraints };
+			return
+		otherwise
+			body
+	end
+
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	%% Define the Dual Variables for Robust Reachability %%
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+	
+
+	%%%%%%%%%%%%%%%%%%%%%%%
+	%% Computing Outputs %%
+	%%%%%%%%%%%%%%%%%%%%%%%
+
+	varargout{1} = Pi1;
+
+	argout_idx = 2;
+
+	if ~exist('Piu')
+		varargout{argout_idx} = Piu;
+		argout_idx = argout_idx + 1;
+	end
+
+	varargout{argout_idx} = constraints;
+
+end
+
+function [ cg , lcsas , word , P_x0 , P_u , P_des_info , u_des , L , xhat0 , selection_variable , LinGain , OffsetGain , settings_struct ] = grrc_input_processing(varargin)
+	%Description:
+	%	Processes the inputs received by get_robust_reachability_constraints()
+
+	% Initialize Settings Struct 
+
+	settings_struct = [];
+	settings_struct.IncorporateBinaryVariable = false;
+	settings_struct.EtaDesGiven = false;
+
+	% Check the number of arguments
+
 	if nargin < 6
 		error('Not enough input arguments!')
 	end
@@ -53,7 +135,9 @@ function varargout = get_robust_reachability_constraints(varargin)
 
 	word = varargin{3};
 	P_x0 = varargin{4};
+	lcsas.X0 = P_x0;
 
+	% Check if the polyhedron P_x0 is of the right type.
 	if ~isa(P_x0,'Polyhedron')
 		error('P_x0 and P_des must be given as a Polyhedron.')
 	end
@@ -66,9 +150,13 @@ function varargout = get_robust_reachability_constraints(varargin)
 				varargin_idx = varargin_idx + 2;
 			case 'P_des'
 				P_des = varargin{varargin_idx+1};
+				settings_struct.PDesiredClass = class(P_des);
+				P_des_info = P_des;
 				varargin_idx = varargin_idx + 2;
 			case 'eta_des'
 				eta_des = varargin{varargin_idx+1};
+				settings_struct.PDesiredClass = class(eta_des);
+				P_des_info = eta_des;
 				varargin_idx = varargin_idx + 2;
 			case 'u_des'
 				u_d = varargin{varargin_idx+1};
@@ -77,8 +165,8 @@ function varargout = get_robust_reachability_constraints(varargin)
 				end
 				varargin_idx = varargin_idx + 2;
 			case 'param_type'
-				param_flag = varargin{varargin_idx+1};
-				switch param_flag
+				settings_struct.GainFormat = varargin{varargin_idx+1};
+				switch settings_struct.GainFormat
 					case 'Q'
 						varargin_idx = varargin_idx + 2;
 					case 'F1'
@@ -90,6 +178,7 @@ function varargout = get_robust_reachability_constraints(varargin)
 				end
 			case 'selection_variable'
 				selection_variable = varargin{varargin_idx + 1};
+				settings_struct.IncorporateBinaryVariable = true;
 				varargin_idx = varargin_idx + 2;
 			otherwise
 				error('Unexpected extra input.')
@@ -97,60 +186,229 @@ function varargout = get_robust_reachability_constraints(varargin)
 	end
 
 	if ~exist('u_d')
-		u_d = zeros(length(word)*size(lcsas.Dyn(1).B,2),1);
+		u_d = zeros(length(word)*lcsas.Dim_u(),2),1);
 	end
 
-	if ~exist('param_flag')
-		param_flag = 'Q';
+	if ~isfield(settings_struct,'GainFormat')
+		settings_struct.GainFormat = 'Q';
+	end
+
+	if ~(exist('P_des') || exist('eta_des'))
+		P_des = P_x0;
+		settings_struct.PDesiredClass = class(P_des);
+		P_des_info = P_des;
 	end
 
 	% Create Gain Variables
-	switch param_flag
+
+	switch settings_struct.GainFormat
 	case 'Q'
-		Q = varargin{5};
-		r = varargin{6};
+		LinGain = varargin{5};		%Q
+		OffsetGain = varargin{6};	%r
 	case 'F1'
-		F = varargin{5};
-		f = varargin{6};
+		LinGain = varargin{5}; 		%F
+		OffsetGain = varargin{6}; 	%f
 	end
+
+end
+
+function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints_polytope( lcsas , word , LinGain , OffsetGain , settings_struct )
+	%Description:
+	%	Gets the variables necessary to define a finite horizon reachability problem.
+	%	- Q-Parameterized versions of the feedback gains (F,f) [Notation used is the NAHS submission variety.]
+	%	- Dual variable that satisfy polytope inclusion of the state
+	%	- Dual variable that is used to define satisfaction of the input constraint.
+	%
+	%Usage:
+	%	[ Pi1 , constraints ] = cg.get_robust_reachability_constraints(lcsas,word,P_x0,Q,r)
+	%
+	%Inputs:
+	%	lcsas - A language constrained switched affine system (LCSAS) defined in an LCSAS object.
+	%	word - A word that is feasible/allowed given the definition of the lcsas.
+	%	param_flag 	- This flag describes the type of feedback parameterization that is being used.
+	%				  (1) 'Q' indicates that output feedback is being used and that the system is using the nonlinear mapping between Q and F.
+	%				  (2) 'F1' indicates that disturbance feedback is being used with a very simple estimator in addition.
+
+	%%%%%%%%%%%%%%%%%%%%%%
+	%% Input Processing %%
+	%%%%%%%%%%%%%%%%%%%%%%
+
+	if isempty(lcsas.X0)
+		error(['Must include complete LCSAS object with well-defined X0 in call to get_robust_reachability_constraints_polytope.'])
+	end
+
+	P_x0 = lcsas.X0;
 
 	%%%%%%%%%%%%%%%
 	%% Constants %%
 	%%%%%%%%%%%%%%%
 
-	n = size(lcsas.Dyn(1).A,1);
-	m = size(lcsas.Dyn(1).B,2);
-	p = size(lcsas.Dyn(1).C,1);
-	wd = size(lcsas.Dyn(1).B_w,2);
-	vd = size(lcsas.Dyn(1).C_v,2);
+	[ n , m , p , wd , vd ] = lcsas.Dimensions();
 
 	T = length(word);
 
 	q_x0 = size(P_x0.A,1);
-	%q_des = size(P_des.A,1);
 
 	select_m = @(t,T_r) [zeros(n,t*n), eye(n), zeros(n,(T_r-t)*n) ];
+
+	switch settings_struct.GainFormat
+		case 'Q'
+			Q = LinGain;
+			r = OffsetGain;
+		case 'F1'
+			F = LinGain;
+			f = OffsetGain;
+		otherwise
+			error(['Unexpected GainFormat value: ' settings_struct.GainFormat ])
+	end
 
 	if ~(exist('P_des') || exist('eta_des'))
 		P_des = P_x0;
 	end
 
-	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-	%% Use Helper Function If Possible %%
-	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-	% If the target set, P_target, is a Polyhedron, then use the simple helper function get_robust_reachability_constraints_polytope.m
-	if ~exist('eta_des') && exist('P_des')
-		if length(P_des) == 1
-			[ Pi1 , Piu , constraints ] = cg.get_robust_reachability_constraints_polytope(varargin{2:end});
-			varargout = { Pi1 , Piu , constraints };
-			return
-		end
+	if ~exist('M')
+		M = 10^3;
 	end
 
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	%% Define the Dual Variables for Robust Reachability %%
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+	constraints = [];
+
+	P_wT = 1; P_vT = 1;
+	for symb_idx = 1:length(word)
+		P_wT = P_wT * lcsas.Dyn( word(symb_idx) ).P_w;
+		P_vT = P_vT * lcsas.Dyn( word(symb_idx) ).P_v;
+	end
+
+	P_eta = P_wT * P_vT * P_x0;
+
+	%Get Special Matrices
+	[H0,S0,Cm0,J0,k_bar,B_w_big,C_v_big] = lcsas.get_mpc_matrices('word',word);
+
+	switch param_flag
+		case 'Q'
+			
+			G = [ 	(eye(n*(T+1))+S0*Q*Cm0)*H0*B_w_big ...
+					S0*Q*C_v_big ...
+					(eye(n*(T+1))+S0*Q*Cm0)*J0 ];
+
+			[Pi1,temp_constrs] = cg.get_H_polyt_inclusion_constr( ...	
+										P_eta.A, P_eta.b , ...
+										P_des.A*select_m(T,T)*G, ...
+										P_des.b + selection_variable*M*ones(size(P_des.b)) - P_des.A*select_m(T,T)*(S0*r+(eye(n*(T+1))+S0*Q*Cm0)*H0*k_bar) );
+
+			constraints = constraints + temp_constrs;
+			
+			
+			%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+			%% Define the Dual Variables for Input Constraint %%
+			%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+			if exist('P_u')
+
+				P_uT = 1;
+				for symb_idx = 1:length(word)
+					P_uT = P_uT * P_u;
+				end
+
+				%Create the G matrix for the input, H_u
+				G_u = [ Q*Cm0*H0*B_w_big, Q*C_v_big, Q*Cm0*J0 ];
+
+				[Piu, temp_constrs] = cg.get_H_polyt_inclusion_constr( P_eta.A, P_eta.b , P_uT.A*G_u, P_uT.b- P_uT.A*(r+Q*Cm0*H0*k_bar+u_d) );
+
+				constraints = constraints + temp_constrs;
+
+			end
+
+		case 'F1'
+
+			if settings_struct.IncorporateBinaryVariable ~= 0
+				error('F1 flag was not tested for use in this function.')
+			end
+
+			L_big = kron(eye(T),L);
+			temp_IpLC = (eye(size(H0,1))+ L_big*Cm0)^(-1);
+
+			G = [ 	(S0*F*temp_IpLC+eye(m*T))*H0*B_w_big, ...
+					(S0*F*temp_IpLC*(-L_big)+S0*F)*C_v_big, ...
+					(S0*F*temp_IpLC+eye(m*T))*J0 ];
+
+			[Pi1,temp_constrs] = cg.get_H_polyt_inclusion_constr( 	P_eta.A, ...
+																	P_eta.b , ...
+																	P_des.A*select_m(T,T)*G, ...
+																	P_des.b-P_des.A*select_m(T,T)*(-S0*F*Cm0*temp_IpLC*J0*xhat0 + S0*f + H0*k_bar ) );
+
+			constraints = constraints + temp_constrs;
+
+			%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+			%% Define the Dual Variables for Input Constraint %%
+			%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+			if exist('P_u')
+
+				P_uT = 1;
+				for symb_idx = 1:length(word)
+					P_uT = P_uT * P_u;
+				end
+
+				%Create the G matrix for the input, H_u
+				%temp_IpLC = (eye(size(H0,1))+ L_big*Cm0)^(-1);
+				G_u = [ F*Cm0*temp_IpLC*B_w_big, F*Cm0*temp_IpLC*(-L_big)*C_v_big, F*Cm0*temp_IpLC*J0 ];
+
+				[Piu, temp_constrs] = cg.get_H_polyt_inclusion_constr( 	P_eta.A, P_eta.b , ...
+																		P_uT.A*G_u, P_uT.b- P_uT.A*(f-F*Cm0*temp_IpLC*J0*xhat0) );
+
+				constraints = constraints + temp_constrs;
+
+			end
+
+
+	end
+
+end
+
+function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints_infnormbound( lcsas , word , LinGain , OffsetGain , settings_struct )
+	%Description:
+	%	Handles the case when P_des is not given as 
+
+	if isempty(lcsas.X0)
+		error(['Must include complete LCSAS object with well-defined X0 in call to get_robust_reachability_constraints_polytope.'])
+	end
+
+	P_x0 = lcsas.X0;
+
+	%%%%%%%%%%%%%%%
+	%% Constants %%
+	%%%%%%%%%%%%%%%
+
+	[ n , m , p , wd , vd ] = lcsas.Dimensions();
+
+	T = length(word);
+
+	q_x0 = size(P_x0.A,1);
+
+	select_m = @(t,T_r) [zeros(n,t*n), eye(n), zeros(n,(T_r-t)*n) ];
+
+	switch settings_struct.GainFormat
+		case 'Q'
+			Q = LinGain;
+			r = OffsetGain;
+		case 'F1'
+			F = LinGain;
+			f = OffsetGain;
+		otherwise
+			error(['Unexpected GainFormat value: ' settings_struct.GainFormat ])
+	end
+
+	if ~(exist('P_des') || exist('eta_des'))
+		P_des = P_x0;
+	end
+
+	if ~exist('M')
+		M = 10^3;
+	end
 
 	constraints = [];
 
@@ -272,20 +530,5 @@ function varargout = get_robust_reachability_constraints(varargin)
 
 
 	end
-
-	%%%%%%%%%%%%%%%%%%%%%%%
-	%% Computing Outputs %%
-	%%%%%%%%%%%%%%%%%%%%%%%
-
-	varargout{1} = Pi1;
-
-	argout_idx = 2;
-
-	if ~exist('Piu')
-		varargout{argout_idx} = Piu;
-		argout_idx = argout_idx + 1;
-	end
-
-	varargout{argout_idx} = constraints;
 
 end

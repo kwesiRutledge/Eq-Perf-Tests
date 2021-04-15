@@ -422,15 +422,15 @@ classdef Language
 
 		end
 
-		function [seq_matrix,LK] = create_unchecked_belief_sequences_of_length(obj,TimeHorizon)
-			%create_unchecked_belief_sequences_of_length
+		function [ seq_matrix , LK ] = create_belief_sequences_of_length(obj,TimeHorizon)
+			%create_belief_sequences_of_length
 			%Description:
 			%	Defines all possible belief sequences that are based on the language obj
 			%	To be a valid belief sequence, the sequence must satisfy
 			%	- the Language at time t, must be a subset or equal to the belief at time t-1
 			%
 			%Usage:
-			%	seq_matrix = L.enumerate_valid_belief_sequences_of_length(obj,T)
+			%	seq_matrix = L.create_belief_sequences_of_length(T)
 			%
 			%Outputs:
 			%	seq_matrix - A matrix of "belief sequences".

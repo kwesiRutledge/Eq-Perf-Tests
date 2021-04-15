@@ -6,6 +6,7 @@ function [lcsas_out,TimeHorizon,Pu,Pw,x0,Px0,X_Target] = get_opposing_rotation_l
 	%
 	%Usage:
 	%	lcsas0 = get_opposing_rotation_lcsas()
+	%	[lcsas_out,TimeHorizon,Pu,Pw,x0,Px0,X_Target] = get_opposing_rotation_lcsas()
 
 	%%%%%%%%%%%%%%%%%%%%%%
 	%% Input Processing %%
@@ -40,7 +41,7 @@ function [lcsas_out,TimeHorizon,Pu,Pw,x0,Px0,X_Target] = get_opposing_rotation_l
 	% eta_u = 2*eta_w;
 	Pu = Polyhedron(...
 		'lb',-eta_u*ones(1,dim_x), ...
-		'ub', eta_u*ones(1,dim_x))
+		'ub', eta_u*ones(1,dim_x));
 
 	Px0 = Polyhedron('lb',x0','ub',x0');
 
@@ -66,25 +67,6 @@ function [ TimeHorizon_out , x0 , eta_w , eta_u , X_Target ] = handle_similar_ro
 	%%%%%%%%%%%%%%%
 
 	dim_x = 2;
-
-	%%%%%%%%%%%%%%%%%%
-	%% Set Defaults %%
-	%%%%%%%%%%%%%%%%%%
-
-	TimeHorizon_out = 4;
-	x0 = [-1;0];
-	eta_w = 0.25;
-	eta_u = 2*eta_w;
-
-	target_width = (eta_w*TimeHorizon_out+eta_w*2*sqrt(2));
-
-	% Compute Center after TimeHorizon_out rotations.
-	target_center = [1/sqrt(2);1/sqrt(2)];
-	target_center = [ 0 ; norm(target_center)] + [0;eta_u];
-	target_center = norm(target_center)*[1/sqrt(2);1/sqrt(2)] + eta_u*ones(dim_x,1);
-	target_center = [norm(target_center);0] + [eta_u;0];
-
-	X_Target = Polyhedron('lb',-(target_width)*ones(1,dim_x), 'ub', (target_width)*ones(1,dim_x) ) + target_center;
 
 	%%%%%%%%%%%%%%%%%%%%
 	%% Process Inputs %%
@@ -114,5 +96,38 @@ function [ TimeHorizon_out , x0 , eta_w , eta_u , X_Target ] = handle_similar_ro
 			end
 		end
 	end
+
+	%%%%%%%%%%%%%%%%%%
+	%% Set Defaults %%
+	%%%%%%%%%%%%%%%%%%
+
+	if ~exist('TimeHorizon_out')
+		TimeHorizon_out = 4;
+	end
+
+	if ~exist('x0')
+		x0 = [-1;0];
+	end
+
+	if ~exist('eta_w')
+		eta_w = 0.25;
+	end
+
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	%% Defining Dependent Variables %%
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+	eta_u = 2*eta_w;
+
+	target_width = (eta_w*TimeHorizon_out+eta_w*2*sqrt(2));
+
+	% Compute Center after TimeHorizon_out rotations.
+	target_center = [1/sqrt(2);1/sqrt(2)];
+	target_center = [ 0 ; norm(target_center)] + [0;eta_u];
+	target_center = norm(target_center)*[1/sqrt(2);1/sqrt(2)] + eta_u*ones(dim_x,1);
+	target_center = [norm(target_center);0] + [eta_u;0];
+
+	X_Target = Polyhedron('lb',-(target_width)*ones(1,dim_x), 'ub', (target_width)*ones(1,dim_x) ) + target_center;
+
 
 end

@@ -29,8 +29,6 @@ function [ possibleSubsetsOfPaths , possible_choices , choices_as_binary_flags ]
 		error(['get_feasible_combinations_of_beliefs() requires U to be a Polyhedron.'])
 	end
 
-
-
 	%%%%%%%%%%%%%%%
 	%% Constants %%
 	%%%%%%%%%%%%%%%
@@ -45,13 +43,9 @@ function [ possibleSubsetsOfPaths , possible_choices , choices_as_binary_flags ]
 	%%%%%%%%%%%%%%%
 
 	%% Construct Disturbance Sets Associated with Each Element of LK
-	LK_w = {};
+	LK_w = lcsas_in.find_hypothesis_generating_disturbances( KnowledgePaths );
 	for LK_sequence_index = 1:numPaths
-		temp_path = KnowledgePaths(:,LK_sequence_index);
-
-		[ LK_w{LK_sequence_index} ] = lcsas_in.find_hypothesis_generating_disturbances( TimeHorizon , temp_path(end) , Px0 , Pu );
 		LK_w{LK_sequence_index}.outerApprox;
-
 	end
 
 	%% Identify If Any Of The Disturbance Sets are Empty (=>Consistency Sets are also empty)
@@ -68,6 +62,7 @@ function [ possibleSubsetsOfPaths , possible_choices , choices_as_binary_flags ]
 	% - Do Not Have a Covering Set of Disturbances
 
 	possible_choices = RemoveCombinationsThatDoNotConsiderAllModes( possible_choices , lcsas_in , KnowledgePaths );
+	possible_choices = lcsas_in.RemoveCombinationsThatDoNotHaveCoveringLKw( possible_choices , KnowledgePaths , LK_w );
 
 	% Transform possible_choices to a list of binary vectors
 	choices_as_binary_flags = {};
@@ -128,61 +123,6 @@ function [ possible_choices_out ] = RemoveCombinationsThatDoNotConsiderAllModes(
 
 	%% Algorithm
 
-	possible_choices_out = {};
-	for cardinality = 1:length(possible_choices)
-
-		unfiltered_choices_with_cardinality = possible_choices{cardinality};
-		
-		possible_choices_out{cardinality} = [];
-		for choice_idx = 1:size(possible_choices{cardinality},1)
-			temp_choice_indices = unfiltered_choices_with_cardinality(choice_idx,:);
-			temp_choice = KnowledgePaths(:,temp_choice_indices);
-
-			% Only Add Combinations to the final list (possible_choices_out) if the combinations contain all words
-			% from L.
-
-			last_langs = temp_choice(end,:);
-			if length(last_langs) == 1
-				if L == last_langs
-					possible_choices_out{cardinality} = [ possible_choices_out{cardinality} ; temp_choice_indices ];
-				end
-			else
-				ll_union = last_langs(1);
-				ll_union = ll_union.union([last_langs(2:end)]);
-				if L == ll_union
-					possible_choices_out{cardinality} = [ possible_choices_out{cardinality} ; temp_choice_indices ];
-				end
-			end
-
-		end
-
-	end
-
-
-end
-
-function [ possible_choices_out ] = RemoveCombinationsThatDoNotHaveCoveringLKw( possible_choices , lcsas_in , KnowledgePaths , LK_w )
-	%Description:
-	%	
-
-	%% Variables
-
-	L = lcsas_in.L;
-
-	%% Algorithm
-
-	% Create the Disturbance Sequences Expected of Each Word
-	WT = {};
-	for word_index = 1:L.cardinality()
-		temp_word = L.words{word_index};
-		WT{word_index} = 1;
-		for time_index = 0:length(L.words{word_index})-1
-			temp_symbol = temp_word(time_index+1);
-			WT{word_index} = WT{word_index} * lcsas_in.Dyn(temp_symbol).W;
-		end
-	end
-
-	% Verify that Each Choice "Covers" Each WT
 	possible_choices_out = {};
 	for cardinality = 1:length(possible_choices)
 

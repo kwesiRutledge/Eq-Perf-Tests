@@ -189,6 +189,51 @@ classdef LCSAS
 
 		end
 
+		function check(varargin)
+			%check.m
+			%Description:
+			%	Checks certain aspects of the LCSAS object to make sure that they are defined properly.
+
+			lcsas = varargin{1};
+
+			for argin_idx = 2:nargin
+				switch varargin{argin_idx}
+					case 'U'
+						if isempty(lcsas.U)
+							error(['The field U is empty. Please define it as a Polyhedron.'])
+						end
+
+						if ~isa(lcsas.U,'Polyhedron')
+							error(['The field U must be a Polyhedron.'])
+						end
+
+						argin_idx = argin_idx + 1;
+
+					case 'X0'
+
+						if isempty(lcsas.X0)
+							error(['The field X0 is empty. Please define it as a Polyhedron.'])
+						end
+
+						if ~isa(lcsas.X0,'Polyhedron')
+							error(['The field X0 must be a Polyhedron.'])
+						end
+
+						argin_idx = argin_idx + 1;
+						
+					otherwise
+						error(['Unexpected input to check: ''' varargin{argin_idx} '''!'])
+				end
+			end
+
+			if nargin == 1
+				disp('Nothing was given to check.')
+			end
+
+
+
+		end
+
 	end
 
 end

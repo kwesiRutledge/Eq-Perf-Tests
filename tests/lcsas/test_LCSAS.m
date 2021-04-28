@@ -223,3 +223,66 @@ function test3_Dim_v(testCase)
 	assert(	sys3.Dim_v() == sys3.Dim_x() )
 
 end
+
+function test1_check(testCase)
+	%Description:
+	%	Verifies that the check function correctly does nothing when it is given no inputs.
+
+	%% Including Libraries
+	include_relevant_libraries();
+
+	%% Constants
+	sys1 = get_1d_lcsas();
+
+	%% Algorithm
+
+	sys1.check();
+
+end
+
+function test2_check(testCase)
+	%Description:
+	%	Verifies that the check function correctly submits an error when checking for a value for U
+	%	and not receiving it.
+
+	%% Including Libraries
+	include_relevant_libraries();
+
+	%% Constants
+	sys1 = get_1d_lcsas();
+
+	%% Algorithm
+
+	try
+		sys1.check('U');
+		assert(false);
+	catch e
+		disp(e.message)
+		assert(strcmp(e.message,'The field U is empty. Please define it as a Polyhedron.'))
+	end
+
+end
+
+function test3_check(testCase)
+	%Description:
+	%	Verifies that the check function correctly submits an error when checking for a value for U
+	%	and receiving the wrong type.
+
+	%% Including Libraries
+	include_relevant_libraries();
+
+	%% Constants
+	sys1 = get_1d_lcsas();
+
+	%% Algorithm
+	sys1.U = 2;
+
+	try
+		sys1.check('U');
+		assert(false);
+	catch e
+		disp(e.message)
+		assert(strcmp(e.message,'The field U must be a Polyhedron.'))
+	end
+
+end

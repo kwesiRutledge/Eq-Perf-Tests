@@ -264,7 +264,7 @@ function test_get_feasible_combinations_of_beliefs3(testCase)
 	end
 
 function test_get_feasible_combinations_of_beliefs4(testCase)
-	%test_get_feasible_combinations_of_beliefs3
+	%test_get_feasible_combinations_of_beliefs4
 	%Description:
 	%	Tests the get_feasible_combinations_of_beliefs() function on the test LCSAS
 	%	from get_simple
@@ -283,3 +283,22 @@ function test_get_feasible_combinations_of_beliefs4(testCase)
 	disp(length(possible_LK_realizations))
 
 	assert(length(possible_LK_realizations) == 1)
+
+function test_contains_array_input1(testCase)
+	%test_contains_array_input1
+	%Description:
+	%	Tests whether or not the contains_array_input function recognizes how to properly check when its input is an array of Languages.
+
+	% Constants
+	L1 = Language([1,2,3],[2,3,4]);
+	L2 = Language([2,3,4]);
+
+	L_arr = [L1,L2];
+
+	target_word = [2,3,4];
+
+	%% Algorithm
+
+	[ word_in_L , location_in_L ] = L_arr.contains(target_word);
+
+	assert( all(word_in_L) && all( location_in_L == [2,1] ))

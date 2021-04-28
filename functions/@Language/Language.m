@@ -79,9 +79,20 @@ classdef Language
 			%Description:
 			%	Returns true if the word 'word_in' is in the language's words/
 			%	Otherwise returns false.
+			%	The output pos_in_lang is the first position where word_in
+			%	occurs in the Language L.
 			%
 			%Usage:
 			%	in_lang_flag = L.contains([1,2,1,1,1])
+
+			%% Input Checking
+
+			if isvector(obj) && ~isscalar(obj)
+				%If there is not a single Language given as an input, but multiple
+				%Call the function for each language in obj.
+				[in_lang_flag,pos_in_lang] = obj.contains_array_input(word_in);
+				return;
+			end
 
 			%% Variables
 
@@ -95,8 +106,31 @@ classdef Language
 					if all(obj.words{lang_idx} == word_in)
 						in_lang_flag = true;
 						pos_in_lang = lang_idx;
+						return;
 					end
 				end
+			end
+
+		end
+
+		function [in_lang_flag,pos_in_lang] = contains_array_input(obj,word_in)
+			%Description:
+			%	Returns an array describing whether or not the word 'word_in' is 
+			%	each of the languages in obj (obj is an array).
+			%
+			%Usage:
+			%	in_lang_flag = L_arr.contains([1,2,1,1,1])
+
+			%% Variables
+			
+			in_lang_flag = false(size(obj));
+			pos_in_lang = -1*ones(size(obj));
+
+			%% Algorithm
+
+			for obj_index = 1:length(obj)
+				obj_i = obj(obj_index);
+				[ in_lang_flag(obj_index) , pos_in_lang(obj_index) ] = obj_i.contains(word_in)
 			end
 
 		end

@@ -14,6 +14,8 @@ function [tf] = p_subseteq_pu( varargin )
 
 	dim = p_in.Dim;
 	union_count = pu_in.Num;
+    
+    bloatFactor0 = 10^(-2);
 
 	%% Algorithm
 
@@ -32,11 +34,11 @@ function [tf] = p_subseteq_pu( varargin )
 	x_in_pu_constraint = [];
 	for set_index = 1:union_count
 
-		temp_set = pu_in.Set(set_index);
+		temp_set = pu_in.Set(set_index) * (1+bloatFactor0);
 
-		x_in_pu_constraint = x_in_pu_constraint + [ iff( temp_set.A * x <= temp_set.b , b(set_index) == 1 ) ];
+		x_in_pu_constraint = x_in_pu_constraint + [ implies( temp_set.A * x <= temp_set.b , b(set_index) == 1 ) ];
 		if ~isempty(temp_set.Ae)
-			x_in_pu_constraint = x_in_pu_constraint + [ iff( temp_set.Ae * x == temp_set.be , b(set_index) == 1 ) ];
+			x_in_pu_constraint = x_in_pu_constraint + [ implies( temp_set.Ae * x == temp_set.be , b(set_index) == 1 ) ];
 		end
 	end
 
@@ -45,7 +47,7 @@ function [tf] = p_subseteq_pu( varargin )
 
 	% Solve Optimization Flag
 	ops = sdpsettings('verbose',1,'debug',1);
-	ops = sdpsettings(ops,'solver','gurobi');
+	%ops = sdpsettings(ops,'solver','gurobi');
 
 	optim0 = optimize(x_in_p_constraint+x_in_pu_constraint,objective,ops);
 
@@ -68,6 +70,10 @@ function [ p_in , pu_in , verbosity ] = input_processing_p_subseteq_pu( varargin
 
 	if ~isa(p_in,'Polyhedron')
 		error(['Expected p_in to be a Polyhedron object. Received ' class(p_in) '.' ])
+	end
+
+	if length(p_in) ~= 1
+		error(['Expected p_in to be a single Polyhedron object. Received ' num2str(length(p_in)) '.' ])
 	end
 
 	if ~isa(pu_in,'PolyUnion')

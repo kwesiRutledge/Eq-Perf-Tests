@@ -9,6 +9,7 @@ classdef LCSAS
 	%Member functions:
 	%	- consistency_set
 	%	- get_mpc_matrices
+	%	- check
 	%
 	%Member Variables:
 	%	- Dyn

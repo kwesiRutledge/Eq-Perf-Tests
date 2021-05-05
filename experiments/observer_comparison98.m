@@ -55,6 +55,8 @@ function [results] = observer_comparison98( varargin )
 
 	RelaxationOrder = 1;
 
+	%pool = parpool(4);
+
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	%% Convert LIPM Models to Aff_Dyn Objects %%
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -75,14 +77,14 @@ function [results] = observer_comparison98( varargin )
 	%% Create All Possible Belief Sequences %%
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+	pathConstructionStartTime = tic();
+
 	% This is really just the BeliefGraph algorithm but 
 	% without computing the safe set.
 
 	LK_t0 = [ lcsas0.L ];
 
-	LK_t0 = [ lcsas0.L ];
-
-	[LK_sequences , LK_history] = LK_t0.create_unchecked_belief_sequences_of_length(TimeHorizon);
+	[ LK_sequences , LK_history ] = LK_t0.create_belief_sequences_of_length(TimeHorizon);
 	num_knowl_sequences = size(LK_sequences,2);
 
 	results.LK = LK_sequences;
@@ -92,7 +94,7 @@ function [results] = observer_comparison98( varargin )
 	for LK_sequence_index = 1:num_knowl_sequences
 		temp_LK_sequence = LK_sequences(:,LK_sequence_index);
 
-		[ LK_w{LK_sequence_index} ] = lcsas0.find_hypothesis_generating_disturbances( TimeHorizon , temp_LK_sequence(end) , Px0 , Pu );
+		[ LK_w{LK_sequence_index} ] = lcsas0.find_hypothesis_generating_disturbances( temp_LK_sequence );
 		LK_w{LK_sequence_index}.outerApprox;
 
 	end
@@ -100,16 +102,12 @@ function [results] = observer_comparison98( varargin )
 	results.LK_Sequences = LK_sequences;
 	results.LK_w = LK_w;
 
-	[ feasible_behavior_combinations ] = get_all_possible_matching_behaviors( lcsas0 , LK_history )
+	[ possibleSubsetsOfPaths , possible_choices , choices_as_binary_flags ] = lcsas0.get_feasible_combinations_of_beliefs( LK_sequences );
 
-	matching_behavior_instance = {};
-	for comb_length = 1:length(feasible_behavior_combinations)
-		for comb_idx = 1:length(feasible_behavior_combinations{comb_length})
-			matching_behavior_instance{end+1} = convert_closed_loop_LK_to_binary_flags( LK_history , feasible_behavior_combinations{comb_length}{comb_idx} );
-		end
-	end
+	results.MatchingBehaviorInstances = choices_as_binary_flags;
+	results.possibleSubsetsOfPaths = possibleSubsetsOfPaths;
 
-	results.MatchingBehaviorInstances = matching_behavior_instance;
+	results.PathConstructionTime = toc(pathConstructionStartTime);
 
 	%%%%%%%%%%%%%%%%%%%%%%%%%
 	%% Set Up Optimization %%
@@ -124,21 +122,23 @@ function [results] = observer_comparison98( varargin )
 	% 	matching_behavior{t} = binvar(size(LK{t},2),1,'full');
 	% end
 
-	for behavior_index = 1:1 %length(matching_behavior_instance)
+	OverallRuntimeStart = tic();
+
+	for choice_index = 1:length(choices_as_binary_flags)
 
 		%Start timer
-		behavior_index_start_time = tic;
+		choice_index_start_time = tic;
 
 		% Variables
 
-		% Create Variables
+		% Create Optimization Variables
 		K = {}; k = {};
 		for knowl_seq_index = 1:num_knowl_sequences
-			K{knowl_seq_index} = sdpvar(TimeHorizon*n_u,(TimeHorizon)*n_w,'full');
+			K{knowl_seq_index} = zeros(TimeHorizon*n_u,TimeHorizon*n_w);%sdpvar(TimeHorizon*n_u,(TimeHorizon)*n_w,'full');
 			k{knowl_seq_index} = sdpvar(TimeHorizon*n_u,1,'full');
 		end
 
-		matching_behavior = matching_behavior_instance{behavior_index};
+		matching_behavior = choices_as_binary_flags{choice_index};
 
 		% contains_u = binvar(TimeHorizon,size(LK{TimeHorizon},2),'full');
 
@@ -158,41 +158,38 @@ function [results] = observer_comparison98( varargin )
 			end
 		end
 
-		[S_w1,S_u1,~,J1,f_bar1] = get_mpc_matrices(lcsas0,'word',lcsas0.L.words{1});
-		[S_w2,S_u2,~,J2,f_bar2] = get_mpc_matrices(lcsas0,'word',lcsas0.L.words{2});
-
-		S_w = { S_w1 , S_w2 };
-		S_u = { S_u1 , S_u2 };
-		J = { J1 , J2 };
-		f_bar = { f_bar1 , f_bar2 };
+		[ S_w , S_u , ~ , J , f_bar ] = lcsas0.get_mpc_matrices('All Words');
 
 		% Constraints
 
 		cg = constr_gen(0);
 
-		input_bounds_constraint = []; 
-		input_bound_dual_var_constraints = [];
-		input_bound_dual_vars = {};
+		input_bounds_constraint = cg.get_input_bound_constraint_on( lcsas0 , K , k , 'fb_type' , 'state-disturbance' ); 
+		% input_bound_dual_var_constraints = [];
+		% input_bound_dual_vars = {};
 		
-		for knowl_seq_index = 1:num_knowl_sequences
-			% Iterate through every knowledge sequences final language information.
-			temp_last_lang = LK_sequences(end,knowl_seq_index);
-			% Create input constraints based on each word in the last language
-			for word_index = 1:temp_last_lang.cardinality()
-				temp_word = temp_last_lang.words{word_index};
-				[ ~ , word_id ] = lcsas0.L.contains(temp_word);
+		% for knowl_seq_index = 1:num_knowl_sequences
+		% 	% Iterate through every knowledge sequences final language information.
+		% 	temp_last_lang = LK_sequences(end,knowl_seq_index);
+		% 	% Create input constraints based on each word in the last language
+		% 	for word_index = 1:temp_last_lang.cardinality()
+		% 		temp_word = temp_last_lang.words{word_index};
+		% 		[ ~ , word_id ] = lcsas0.L.contains(temp_word);
 
-				% [input_bound_dual_vars{end+1}, incl_constraints] = cg.get_H_polyt_inclusion_constr( ...
-				% 		LK_w{knowl_seq_index}(word_index).A , LK_w{knowl_seq_index}(word_index).b, ...
-				% 		PuT.A*[ K{knowl_seq_index} ] , ...
-				% 		PuT.b - PuT.A*k{knowl_seq_index} );
+		% 		% [input_bound_dual_vars{end+1}, incl_constraints] = cg.get_H_polyt_inclusion_constr( ...
+		% 		% 		LK_w{knowl_seq_index}(word_index).A , LK_w{knowl_seq_index}(word_index).b, ...
+		% 		% 		PuT.A*[ K{knowl_seq_index} ] , ...
+		% 		% 		PuT.b - PuT.A*k{knowl_seq_index} );
 
-				% Create Constraints
-				% input_bound_dual_var_constraints = input_bound_dual_var_constraints + [ input_bound_dual_vars{end} <= temp_K_bound ];
+		% 		% Create Constraints
+		% 		% input_bound_dual_var_constraints = input_bound_dual_var_constraints + [ input_bound_dual_vars{end} <= temp_K_bound ];
+		% 	end
 
-				input_bounds_constraint = input_bounds_constraint + [ PuT.A * k{knowl_seq_index} <= PuT.b ];
-			end
-		end
+		% 	%Create constraints
+		% 	if matching_behavior(knowl_seq_index)
+		% 		input_bounds_constraint = input_bounds_constraint + [ PuT.A * k{knowl_seq_index} <= PuT.b ];
+		% 	end
+		% end
 
 		%% Matching Behavior Constraints
 
@@ -206,117 +203,38 @@ function [results] = observer_comparison98( varargin )
 
 			% Constrain all controllers K{} with this prefix
 			%relevant_gain_indices = find_all_knowledge_sequences_with_prefix(LK{TimeHorizon},knowl_seq);
-
 			[ H_PhiI , h_PhiI ] = consistent_set_matrices( lcsas0 , TimeHorizon , knowl_seq(end) , Pu , Px0 );
 
-			nonK_prefactor = {}; K_prefactor = {}; h_independent_factor = {}; h_dependent_factor = {};
-			H = {}; h = {};
-			switch temp_last_lang.cardinality()
-			 	case 1
-			 	% 	intersection_H = [ H_PhiI ];
-					% intersection_H = [ 	intersection_H ;
-					% 					zeros( n_u*t ,n_x*(t+1)) , -eye(n_u*t) , K{gain_index}([1:n_u*t],[1:n_w*t]) , zeros(n_u*t,n_x) ;
-					% 					zeros( n_u*t ,n_x*(t+1)) , eye(n_u*t) , -K{gain_index}([1:n_u*t],[1:n_w*t]) , zeros(n_u*t,n_x) ];
-
-					[~,word_id] = lcsas0.L.contains(temp_last_lang.words{1});
-
-					nonK_prefactor{1} = [ 	S_w{word_id} ;
-						zeros(n_u*TimeHorizon,n_w*TimeHorizon) ;
-						eye(n_w*TimeHorizon) ;
-						zeros(n_x,n_w*TimeHorizon) ];
-
-					K_prefactor{1} = [ S_u{word_id} ;
-									eye(n_u*TimeHorizon);
-									zeros(n_w*TimeHorizon,n_u*TimeHorizon);
-									zeros(n_x,n_u*TimeHorizon) ];
-
-					H{1} = H_PhiI * ( nonK_prefactor{1} );
-
-					h_independent_factor{1} = h_PhiI - ...
-						H_PhiI * [ J{word_id}*x0 + S_w{word_id}*f_bar{word_id} ;
-								zeros(n_u*TimeHorizon,1) ;
-								zeros(n_w*TimeHorizon,1) ; 
-								x0 ];
-
-					h_dependent_factor{1} = - ...
-						H_PhiI * [ S_u{word_id} ;
-								eye(n_u*TimeHorizon) ;
-								zeros(n_w*TimeHorizon,n_u*TimeHorizon) ; 
-								zeros(n_x,n_u*TimeHorizon) ];
-
-					h{1} = h_independent_factor{1} + h_dependent_factor{1}*k{knowl_seq_index};
-
-					temp_dummy_w{end+1} = sdpvar(size(H{1},2),1,'full');
-					temp_dummy_y{end+1} = sdpvar(size(H{1},1),1,'full');
-
-					% matching_behavior_constraint = matching_behavior_constraint + [0 <= matching_behavior{t+1}(knowl_seq_index) <= 1] + ...
-					% 	iff(intersection_H * temp_dummy_eta{end} <= intersection_h, matching_behavior{t+1}(knowl_seq_index) == 1) + ...
-					% 	iff([intersection_H'*temp_dummy_y{end} == 0] + [ intersection_h'*temp_dummy_y{end} <= -eps0 ] + [temp_dummy_y{end} >= 0] , matching_behavior{t+1}(knowl_seq_index) == 0);
-			 	case 2
-			 		for tll_index = 1:temp_last_lang.cardinality()
-				 		[~,word_id] = lcsas0.L.contains(temp_last_lang.words{tll_index});
-
-				 		nonK_prefactor{tll_index} = ...
-				 			[ zeros(n_x*(TimeHorizon+1),(tll_index-1)*n_w*TimeHorizon), S_w{word_id}, zeros(n_x*(TimeHorizon+1),(tll_card-tll_index)*n_w*TimeHorizon) ;
-								zeros(n_u*TimeHorizon,tll_card*n_w*TimeHorizon) ;
-								eye(tll_card*n_w*TimeHorizon) ;
-								zeros(tll_card*n_x,tll_card*n_w*TimeHorizon) ];
-
-						K_prefactor{tll_index} = [	S_u{word_id} ;
-											eye(n_u*TimeHorizon);
-											zeros(tll_card*n_w*TimeHorizon,n_u*TimeHorizon);
-											zeros(tll_card*n_x,n_u*TimeHorizon) ] ;
-
-						H{tll_index} = H_PhiI * ( nonK_prefactor{tll_index} ) ;
-						
-						h_independent_factor{tll_index} = h_PhiI - ...
-							H_PhiI * [ J{word_id}*x0 + S_w{word_id}*f_bar{word_id} ;
-									zeros(n_u*TimeHorizon,1) ;
-									zeros(tll_card*n_w*TimeHorizon,1) ; 
-									repmat(x0,tll_card,1) ];
-
-						h_dependent_factor{tll_index} = - ...
-							H_PhiI * [ S_u{word_id} ;
-									eye(n_u*TimeHorizon) ;
-									zeros(tll_card*n_w*TimeHorizon,n_u*TimeHorizon) ; 
-									zeros(tll_card*n_x,n_u*TimeHorizon) ];
-
-						h{tll_index} = h_independent_factor{tll_index} + h_dependent_factor{tll_index}*k{knowl_seq_index};
-
-						temp_dummy_w{end+1} = sdpvar(size(H{tll_index},2),1,'full');
-						temp_dummy_y{end+1} = sdpvar(size(H{tll_index},1),1,'full');
-
-						% % Create Constraints
-						% dummy_var_bound_constraints = dummy_var_bound_constraints + [ -temp_K_bound <= temp_dummy_eta{end} <= temp_K_bound ] + [ temp_dummy_y{end} <= temp_K_bound ];
-
-					end
-
-					% matching_behavior_constraint = matching_behavior_constraint + [0 <= matching_behavior{t+1}(knowl_seq_index) <= 1] + ...
-					% 	iff(intersection_H * temp_dummy_eta{end} <= intersection_h, matching_behavior{t+1}(knowl_seq_index) == 1) + ...
-					% 	iff([intersection_H'*temp_dummy_y{end} == 0] + [ intersection_h'*temp_dummy_y{end} <= -eps0 ] + [temp_dummy_y{end} >= 0] , matching_behavior{t+1}(knowl_seq_index) == 0);
-			 	otherwise
-			 		error("Unexpected cardinality.")
-			 end 
+			%Get Closed Loop Consistent Internal Behavior Set Matrices (Function of K)
+			[ H_cl , h_cl ] = lcsas0.get_closed_loop_consistent_internal_behavior_set_matrices( ...
+				H_PhiI , h_PhiI , ...
+				x0 , ...
+				K{knowl_seq_index} , k{knowl_seq_index} , knowl_seq );
 
 			 % Create Constraints
-			 if matching_behavior{TimeHorizon}(knowl_seq_index)
+			 if matching_behavior(knowl_seq_index)
 			 	Pw_prime = 1;
 			 	for Pw_index = 1:size(LK_w{knowl_seq_index})
 			 		Pw_prime = Pw_prime * LK_w{knowl_seq_index}(Pw_index);
 			 	end
 
 				%Apply the existence of w condition.
-				matching_behavior_constraint = matching_behavior_constraint + [ H{1} * temp_dummy_w{end} <= h{1} ] + [ Pw_prime.A * temp_dummy_w{end} <= Pw_prime.b ];
-			else
-				%Apply the empty polyhedron constraint
-				matching_behavior_constraint = matching_behavior_constraint + ...
-					[H{1}'*temp_dummy_y{end} == 0] + [ h{1}'*temp_dummy_y{end} <= -eps0 ] + [temp_dummy_y{end} >= 0];
+				temp_dummy_w{end+1} = sdpvar(size(H_cl,2),1,'full');
+				matching_behavior_constraint = matching_behavior_constraint + [ H_cl * temp_dummy_w{end} <= h_cl ] + [ Pw_prime.A * temp_dummy_w{end} <= Pw_prime.b ];
+
+				%Guarantee that no other controllers paths are touched by this controller
+				[ constrain_other_beliefs_tobe_empty , y_arr ] = cg.no_other_belief_sequences_reached( ...
+					LK_sequences , matching_behavior , ...
+					lcsas0 , ...
+					K{knowl_seq_index} , k{knowl_seq_index} , ...
+					x0 );
+
 			end
 
 		end
 
 		%% Create Causal Detection Constraints %%
-		causal_detection_constraints = cg.get_belief_prefix_gain_constraints( lcsas0 , K , k , LK_sequences );
+		causal_detection_constraints = cg.get_belief_prefix_gain_constraints( lcsas0 , K , k , LK_sequences , 'Ignore K');
 
 		%% Create Robust Reachability Constraints
 
@@ -429,7 +347,7 @@ function [results] = observer_comparison98( varargin )
 			end
 
 			% Create Constraints
-			if matching_behavior{TimeHorizon}(knowl_seq_index)
+			if matching_behavior(knowl_seq_index)
 				guaranteed_reachability_constraint = guaranteed_reachability_constraint + incl_constraints{end};
 			end
 
@@ -439,7 +357,8 @@ function [results] = observer_comparison98( varargin )
 		%% Optimize ? %%
 		%%%%%%%%%%%%%%%%
 
-		optimization_constraints = 	input_bounds_constraint + matching_behavior_constraint + ...
+		optimization_constraints = 	input_bounds_constraint + ...
+									matching_behavior_constraint + ...
 									guaranteed_reachability_constraint + causal_detection_constraints %+ ...
 									%dummy_var_bound_constraints %+ reachability_dual_var_constraints
 
@@ -450,7 +369,21 @@ function [results] = observer_comparison98( varargin )
 				optim0 = optimize(optimization_constraints,[],ops);
 			case 'Bilinear (Gurobi)'
 				ops = sdpsettings(ops,'solver','gurobi');
+                % ops.gurobi.Presolve = 0;
+                % ops.gurobi.Nonconvex = 2;
 				optim0 = optimize(optimization_constraints,[],ops);
+			case 'Bilinear (Ipopt)'
+				ops = sdpsettings(ops,'solver','ipopt');
+				optim0 = optimize(optimization_constraints,[],ops);
+            case 'Bilinear (bmibnb)'
+                ops = sdpsettings(ops,'solver','bmibnb');
+                optim0 = optimize(optimization_constraints,[],ops);
+            case 'Bilinear (Baron)'
+                ops = sdpsettings(ops,'solver','baron');
+                optim0 = optimize(optimization_constraints,[],ops);
+            case 'Bilinear (SNOPT)'
+                ops = sdpsettings(ops,'solver','snopt');
+                optim0 = optimize(optimization_constraints,[],ops);
 			case 'Moment Relaxation'
 				[ConRelaxed, ~] = momentmodel(optimization_constraints,[],RelaxationOrder)
 				optim0 = optimize(ConRelaxed,[],ops);
@@ -458,18 +391,18 @@ function [results] = observer_comparison98( varargin )
 				error(['Unrecognized solution approach: ' solution_approach ])
 		end
 
-		results.Experiment{behavior_index}.OverallRuntime = toc(behavior_index_start_time);
+		results.Experiment{choice_index}.Runtime = toc(choice_index_start_time);
 
-		results.Experiment{behavior_index}.OptimizationOutput = optim0;
+		results.Experiment{choice_index}.OptimizationOutput = optim0;
 		
-		selected_final_sequence_indices = matching_behavior_instance{behavior_index}{TimeHorizon};
-		results.Experiment{behavior_index}.K = {};
-		results.Experiment{behavior_index}.k = {};
+		selected_final_sequence_indices = matching_behavior;
+		results.Experiment{choice_index}.K = {};
+		results.Experiment{choice_index}.k = {};
 		abbrev_K = {}; abbrev_k = {};
 		tempK2 = {};
 		for K_index = 1:length(K)
-			results.Experiment{behavior_index}.K{K_index} = value(K{K_index});
-			results.Experiment{behavior_index}.k{K_index} = value(k{K_index});
+			results.Experiment{choice_index}.K{K_index} = value(K{K_index});
+			results.Experiment{choice_index}.k{K_index} = value(k{K_index});
 			tempK2{K_index} = value(K{K_index});
 
 			if selected_final_sequence_indices(K_index)
@@ -484,31 +417,39 @@ function [results] = observer_comparison98( varargin )
 		%% Visualize Results %%
 		%%%%%%%%%%%%%%%%%%%%%%%
 
-		temp_valid_L_Sequences = LK_sequences(:,selected_final_sequence_indices);
-		lcsas0.X0 = Polyhedron('lb',x0','ub',x0');
-		temp_pob_controller = POB_Feedback(lcsas0,abbrev_K,abbrev_k,'PossibleLSequences',temp_valid_L_Sequences);
+		%Only visualize if the problem was feasible.
 
-		results.Experiment{behavior_index}.Controller = temp_pob_controller;
+		if optim0.problem == 0 %The problem was feasible.
 
-		figure;
-		hold on;
-		plot(P_target,'color','ghostwhite')
-		scatter(x0(1),x0(2))
-		for t = 1:TimeHorizon
-			temp_reach = temp_pob_controller.GetReachableSetAt( t , 1 , 'PwT' , LK_w{1} );
-			plot(temp_reach,'color','cyan')
-		end
+			temp_valid_L_Sequences = LK_sequences(:,selected_final_sequence_indices);
+			lcsas0.X0 = Polyhedron('lb',x0','ub',x0');
+			temp_pob_controller = POB_Feedback(lcsas0,abbrev_K,abbrev_k,'PossibleLSequences',temp_valid_L_Sequences);
 
-		figure;
-		hold on;
-		plot(P_target,'color','white')
-		scatter(x0(1),x0(2))
-		for t = 1:TimeHorizon
-			temp_reach = temp_pob_controller.GetReachableSetAt( t , 2 , 'PwT' , LK_w{2} );
-			plot(temp_reach,'color','magenta')
+			results.Experiment{choice_index}.Controller = temp_pob_controller;
+
+			figure;
+			hold on;
+			plot(P_target,'color','ghostwhite')
+			scatter(x0(1),x0(2)) %Plot Initial Condition
+			for t = 1:TimeHorizon
+				temp_reach = temp_pob_controller.GetReachableSetAt( t , 1 , 'PwT' , LK_w{1} );
+				plot(temp_reach,'color','cyan')
+			end
+
+			figure;
+			hold on;
+			plot(P_target,'color','ghostwhite')
+			scatter(x0(1),x0(2)) %Plot Initial Condition
+			for t = 1:TimeHorizon
+				temp_reach = temp_pob_controller.GetReachableSetAt( t , 2 , 'PwT' , LK_w{2} );
+				plot(temp_reach,'color','magenta')
+			end
+
 		end
 
 	end
+
+	results.OverallRuntime = toc(OverallRuntimeStart);
 
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	%% Determine if Controller Worked %%

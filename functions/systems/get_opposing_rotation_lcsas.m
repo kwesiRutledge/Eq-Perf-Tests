@@ -119,7 +119,7 @@ function [ TimeHorizon_out , x0 , eta_w , eta_u , X_Target ] = handle_similar_ro
 
 	eta_u = 2*eta_w;
 
-	target_width = (eta_w*TimeHorizon_out+eta_w*2*sqrt(2));
+	target_width = (eta_w*TimeHorizon_out+eta_w*sqrt(2));
 
 	% Compute Center after TimeHorizon_out rotations.
 	target_center = [1/sqrt(2);1/sqrt(2)];

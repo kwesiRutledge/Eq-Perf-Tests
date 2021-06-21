@@ -46,7 +46,7 @@ function [tf] = p_subseteq_pu( varargin )
 	objective = sum(b);
 
 	% Solve Optimization Flag
-	ops = sdpsettings('verbose',1,'debug',1);
+	ops = sdpsettings('verbose',verbosity,'debug',0);
 	%ops = sdpsettings(ops,'solver','gurobi');
 
 	optim0 = optimize(x_in_p_constraint+x_in_pu_constraint,objective,ops);

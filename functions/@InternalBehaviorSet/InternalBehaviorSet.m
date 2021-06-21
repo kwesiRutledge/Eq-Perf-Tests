@@ -1,7 +1,9 @@
 classdef InternalBehaviorSet
 	%Description:
 	%	The internal behavior set associated with a given LCSAS.
-
+	%
+	%To-do:
+	%	- Add second constructor which does what get_closed_loop_consistent_internal_behavior_set_matrices.m is doing now.
 
 	properties
 		System;

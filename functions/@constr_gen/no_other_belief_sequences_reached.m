@@ -54,7 +54,7 @@ function [ constraints_out , yalmip_vars_out ] = no_other_belief_sequences_reach
 		%Get the closed_loop_consistent_internal_behavior_set with respect to
 		%this path when there is controller defined by (K_test,k_test) applied.
 
-		[ H_PhiI , h_PhiI ] = lcsas_in.get_consistent_internal_behavior_matrices( TimeHorizon , current_path(end) , Pu , Px0 );
+		[ H_PhiI , h_PhiI ] = lcsas_in.get_consistent_internal_behavior_matrices( TimeHorizon-1 , current_path(end) , Pu , Px0 );
 
 		%Get Closed Loop Consistent Internal Behavior Set Matrices (Function of K)
 		[ H_cl , h_cl ] = lcsas_in.get_closed_loop_consistent_internal_behavior_set_matrices( ...

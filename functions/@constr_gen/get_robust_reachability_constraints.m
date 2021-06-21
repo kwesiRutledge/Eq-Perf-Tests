@@ -371,7 +371,7 @@ end
 
 function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints_infnormbound( lcsas , word , LinGain , OffsetGain , settings_struct )
 	%Description:
-	%	Handles the case when P_des is not given as 
+	%	Handles the case when P_des is not given as a 
 
 	if isempty(lcsas.X0)
 		error(['Must include complete LCSAS object with well-defined X0 in call to get_robust_reachability_constraints_polytope.'])
@@ -409,6 +409,8 @@ function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints_infno
 	if ~exist('M')
 		M = 10^3;
 	end
+
+	% Construct COnstraints
 
 	constraints = [];
 

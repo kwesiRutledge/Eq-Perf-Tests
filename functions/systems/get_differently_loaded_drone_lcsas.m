@@ -1,13 +1,18 @@
-function [ lcsas , x0 , X_target ] = get_differently_loaded_drone_lcsas(varargin)
+function [ lcsas , x0 , TimeHorizon , X_target ] = get_differently_loaded_drone_lcsas(varargin)
 	%get_differently_loaded_drone_lcsas.m
 	%Description:
 	%	Creates the LCSAS representation of a one-dimensional drone with an unknown mass.
+	%
+	%Usage:
+	%	[ lcsas , x0 , X_target ] = get_differetly_loaded_drone_lcsas()
+	%	[ lcsas , x0 , X_target ] = get_differetly_loaded_drone_lcsas('dt',1)
+	%	[ lcsas , x0 , X_target ] = get_differetly_loaded_drone_lcsas('TimeHorizon',10)
 
 	%%%%%%%%%%%%%%%%%%%%%%
 	%% Input Processing %%
 	%%%%%%%%%%%%%%%%%%%%%%
 
-	[ dt , m1 , m2 , TimeHorizon , x0 , X_target ] = ip_get_differently_loaded_drone_lcsas(varargin{:});
+	[ dt , m1 , m2 , TimeHorizon , x0 , X_target , U ] = ip_get_differently_loaded_drone_lcsas(varargin{:});
 
 	g = 10; %m/s^2 % 9.8
 
@@ -50,12 +55,13 @@ function [ lcsas , x0 , X_target ] = get_differently_loaded_drone_lcsas(varargin
 
 	lcsas = LCSAS( ...
 		[ad1,ad2] , ...
-		Language([ones(1,TimeHorizon)],[2*ones(1,TimeHorizon)]) ...
-		'X0', Polyhedron('lb',x0,'ub',x0) );
+		Language([ones(1,TimeHorizon)],[2*ones(1,TimeHorizon)]), ...
+		'X0', Polyhedron('lb',x0,'ub',x0) , ...
+		'U' , U );
 
 end
 
-function [ dt , m1 , m2 , TimeHorizon , x0 , X_target ] = ip_get_differently_loaded_drone_lcsas(varargin)
+function [ dt , m1 , m2 , TimeHorizon , x0 , X_target , U ] = ip_get_differently_loaded_drone_lcsas(varargin)
 	%Description:
 	%	Process the inputs
 
@@ -69,7 +75,8 @@ function [ dt , m1 , m2 , TimeHorizon , x0 , X_target ] = ip_get_differently_loa
 		'm2' , 15 , ... %kilograms
 		'TimeHorizon' , 8 , ...
 		'x0' , [ 1 ; 0 ] , ...
-		'X_target' , Polyhedron('lb',2,'ub',3) * Polyhedron('lb',-0.4,'ub',0.4) );
+		'X_target' , Polyhedron('lb',2,'ub',3) * Polyhedron('lb',-0.4,'ub',0.4) , ...
+		'U' , Polyhedron('lb',-2,'ub',2) );
 
 	%%%%%%%%%%%%%%%%
 	%% Processing %%
@@ -108,5 +115,7 @@ function [ dt , m1 , m2 , TimeHorizon , x0 , X_target ] = ip_get_differently_loa
 	m2 = drone_settings.m2;
 	TimeHorizon = drone_settings.TimeHorizon;
 	x0 = drone_settings.x0;
+	X_target = drone_settings.X_target;
+	U = drone_settings.U;
 
 end

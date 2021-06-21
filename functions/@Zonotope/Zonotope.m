@@ -29,7 +29,7 @@ classdef Zonotope
 			end
 
 			%Define variables on the periphery.
-			[Z.dim,Z.num_g] = size(G_in);
+			[ Z.dim , Z.num_g ] = size(G_in);
 		end
 
 		function [poly_out] = to_poly(obj,method_num)

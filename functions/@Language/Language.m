@@ -502,6 +502,48 @@ classdef Language
 
 		end
 
+		function [ L_Trim ] = trim_by( obj , amount_to_remove )
+			%Description:
+			%	Trims each word of the language by the amount amount_to_remove
+			%	and returns the trimmed language.
+			%	Returns an error if amount_to_remove is too large.
+
+			%% Input Checking
+
+			L_in = obj;
+
+			if amount_to_remove == 0
+				L_Trim = L_in;
+				return;
+			end
+
+			if amount_to_remove < 0
+				error(['The amount_to_remove input to trim_by() is negative (' num2str(amount_to_remove) '). Please make sure that it is always positive!' ])
+			end
+
+			if L_in.cardinality() == 0
+				L_Trim = L_in;
+				warning('The input language to trim_by() contains no words.')
+				return;
+			end
+
+			%% Algorithm
+
+			L_Trim = Language();
+			for word_index = 1:L_in.cardinality()
+
+				temp_word = L_in.words{word_index};
+
+				if length(temp_word) <= amount_to_remove
+					error(['The amount to remove (' num2str(amount_to_remove) ') is too large for L_in.words{' num2str(word_index) '} which is of length ' num2str(length(L_in.words{word_index})) '.' ])
+				end
+
+				L_Trim = L_Trim.union( Language( L_in.words{word_index}([1:end-amount_to_remove]) ) );
+
+			end
+
+		end
+
 	end
 
 end

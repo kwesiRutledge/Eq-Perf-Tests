@@ -1,4 +1,4 @@
-function [ Consist_set, full_set ] = consistent_set(varargin)
+function [ Consist_set, InternalBehaviorSet ] = consistent_set(varargin)
 	%consistent_set.m
 	%Description:
 	%	Finds a polyhedron that describes what pairs of states and input sequences are compatible/feasible from ALL
@@ -32,9 +32,9 @@ function [ Consist_set, full_set ] = consistent_set(varargin)
 	%
 	%Example Usage:
 	%	[Phi_t_L] = consistent_set(lcsas,t,L)
-	%	[Consist_set, full_set] = consistent_set(lcsas,t,L,P_u,P_x0)
-	%	[Consist_set, full_set] = consistent_set(lcsas,t,L,P_u,P_x0,'fb_method','state')
-	%	[Consist_set, full_set] = consistent_set(lcsas,t,L,P_u,P_x0,'fb_method','state','use_proj',false)
+	%	[Consist_set, InternalBehaviorSet] = consistent_set(lcsas,t,L,P_u,P_x0)
+	%	[Consist_set, InternalBehaviorSet] = consistent_set(lcsas,t,L,P_u,P_x0,'fb_method','state')
+	%	[Consist_set, InternalBehaviorSet] = consistent_set(lcsas,t,L,P_u,P_x0,'fb_method','state','use_proj',false)
 	%
 	%Assumptions:
 	%	This formulation assumes that the system does not include a disturbed measurements. i.e. We can perfectly observe the state
@@ -104,7 +104,7 @@ function [ Consist_set, full_set ] = consistent_set(varargin)
 		P_eta = P_uT * P_wT * P_x0_L;
 
 		%Create the set of feasible (x,u,w,x0) tuples
-		full_set = Polyhedron(	'A',[zeros(size(P_eta.A,1),n_x*(t+1)),P_eta.A],'b',P_eta.b, ...
+		InternalBehaviorSet = Polyhedron(	'A',[zeros(size(P_eta.A,1),n_x*(t+1)),P_eta.A],'b',P_eta.b, ...
 								'Ae',[-I_blockx, S_block, H_block, J_block],'be',-f_block );
 
 	else
@@ -126,15 +126,15 @@ function [ Consist_set, full_set ] = consistent_set(varargin)
     	P_eta = P_uT * P_wT * P_vT * P_x0_L;
 
     	%Create the set of feasible (x,u,w,x0) tuples
-    	full_set = Polyhedron(	'A',[zeros(size(P_eta.A,1),n_y*(t+1)),P_eta.A,zeros(size(P_eta.A,1),length(L.words)*n_x*(t+1))],'b',P_eta.b, ...
+    	InternalBehaviorSet = Polyhedron(	'A',[zeros(size(P_eta.A,1),n_y*(t+1)),P_eta.A,zeros(size(P_eta.A,1),length(L.words)*n_x*(t+1))],'b',P_eta.b, ...
     							'Ae',[zeros(size(S_block,1),size(I_blocky,2)),S_block, H_block, zeros(size(S_block,1),size(Cv_block,2)), J_block, -I_blockx2; ...
     								  I_blocky, zeros(size(I_blocky,1),size(S_block,2)+size(H_block,2)), -Cv_block , zeros(size(I_blocky,1),size(J_block,2)) , -C_block ], ...
     							'be', [-f_block;zeros(size(I_blocky,1),1)] );
 
 	end
 
-	if (~full_set.isEmptySet) && cs_settings.reduce_flag
-		full_set.minHRep; %Make sure to do this to simplify some of the future projections.
+	if (~InternalBehaviorSet.isEmptySet) && cs_settings.reduce_flag
+		InternalBehaviorSet.minHRep; %Make sure to do this to simplify some of the future projections.
 	end
 
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -146,20 +146,20 @@ function [ Consist_set, full_set ] = consistent_set(varargin)
 		if strcmp(cs_settings.fb_type,'state')
 
 			%Project the above set to create the set of feasible observed trajectories (x,u)
-			Consist_set = [ eye(n_x*(t+1) + n_u*t), zeros(n_x*(t+1) + n_u*t, length(L.words)*(n_w*t + n_x) ) ] * full_set;
+			Consist_set = [ eye(n_x*(t+1) + n_u*t), zeros(n_x*(t+1) + n_u*t, length(L.words)*(n_w*t + n_x) ) ] * InternalBehaviorSet;
 		
 		else
 
-	    	% if ~full_set.isEmptySet
+	    	% if ~InternalBehaviorSet.isEmptySet
 				%Project the above set to create the set of feasible observed trajectories (x,u)
-				%Consist_set = [ eye(n_y*(t+1) + n_u*t), zeros(n_x*(t+1) + n_u*t, length(L.words)*(n_w*t + n_v*(t+1) + n_x + n_x*(t+1)) ) ] * full_set;
-				%Consist_set = full_set.affineMap([ eye(n_y*(t+1) + n_u*t), zeros(n_x*(t+1) + n_u*t, length(L.words)*(n_w*t + n_v*(t+1) + n_x + n_x*(t+1)) ) ],'vrep')
-				Consist_set = full_set.projection([1:n_y*(t+1) + n_u*t]);
+				%Consist_set = [ eye(n_y*(t+1) + n_u*t), zeros(n_x*(t+1) + n_u*t, length(L.words)*(n_w*t + n_v*(t+1) + n_x + n_x*(t+1)) ) ] * InternalBehaviorSet;
+				%Consist_set = InternalBehaviorSet.affineMap([ eye(n_y*(t+1) + n_u*t), zeros(n_x*(t+1) + n_u*t, length(L.words)*(n_w*t + n_v*(t+1) + n_x + n_x*(t+1)) ) ],'vrep')
+				Consist_set = InternalBehaviorSet.projection([1:n_y*(t+1) + n_u*t]);
 
 				%If the projection is erroneously empty, then compute the V-Representation before projecting.
 				if Consist_set.isEmptySet
-					full_set.computeVRep();
-					Consist_set = full_set.projection([1:n_y*(t+1) + n_u*t]);
+					InternalBehaviorSet.computeVRep();
+					Consist_set = InternalBehaviorSet.projection([1:n_y*(t+1) + n_u*t]);
 				end
 
 			% else

@@ -1,5 +1,5 @@
 function [Consist_set, full_set ] = consistency_set2(varargin)
-	%consistent_set.m
+	%consistency_set2.m
 	%Description:
 	%	Finds a polyhedron that describes what pairs of states and input sequences are compatible/feasible from ALL
 	%	switching sequences defined by L.

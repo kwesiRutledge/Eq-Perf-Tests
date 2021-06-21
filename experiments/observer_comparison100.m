@@ -190,8 +190,11 @@ function [results] = observer_comparison100( varargin )
 		end
 
 		%% Matching Behavior Constraints
+		matching_behavior_constraint = [];
 
-		[ reachability_dual_vars , symbolic_incl_constraints ] = create_symbolic_reachability_constraints( lcsas0 , Pu , x0 , LK_sequences , matching_behavior{TimeHorizon} )
+		[ reachability_dual_vars , symbolic_incl_constraints_eq , symbolic_incl_constraints_ineq , K_symbolic , k_symbolic ] = create_symbolic_reachability_constraints( cg , lcsas0 , Pu , x0 , LK_sequences , matching_behavior{TimeHorizon} , P_target );
+
+		disp(length(symbolic_incl_constraints_eq))
 
 		%% Create Causal Detection Constraints %%
 		causal_detection_constraints = cg.get_belief_prefix_gain_constraints( lcsas0 , K , k , LK_sequences , 'Ignore K' );
@@ -200,9 +203,11 @@ function [results] = observer_comparison100( varargin )
 
 		guaranteed_reachability_constraint = [];
 		incl_constraints = {};
-		reachability_dual_vars = {}; temp_dummy_y = {}; temp_dummy_w = {};
+		% reachability_dual_vars = {}; temp_dummy_y = {}; temp_dummy_w = {};
 		reachability_dual_var_constraints = [];
         
+        Lambda_reach = {};
+
 		for knowl_seq_index = 1:num_knowl_sequences
             
             H = {}; h = {};
@@ -246,7 +251,7 @@ function [results] = observer_comparison100( varargin )
 
 					h{1} = h_independent_factor{1} + h_dependent_factor{1}*k{knowl_seq_index};
 
-					[ reachability_dual_vars{end+1} , incl_constraints{end+1} ] = cg.get_H_polyt_inclusion_constr( ...
+					[ Lambda_reach{end+1} , incl_constraints{end+1} ] = cg.get_H_polyt_inclusion_constr( ...
 						H{1} , h{1} , ...
 						P_target.A*[ zeros(n_x,n_x*TimeHorizon), eye(n_x) ]*( S_w{word_id} ) , ...
 						P_target.b - P_target.A*[ zeros(n_x,n_x*TimeHorizon), eye(n_x) ]*( J{word_id}*x0 + S_u{word_id}*k{knowl_seq_index} + S_w{word_id}*f_bar{word_id} ) );
@@ -285,21 +290,17 @@ function [results] = observer_comparison100( varargin )
 
 						h{tll_index} = h_independent_factor{tll_index} + h_dependent_factor{tll_index}*k{knowl_seq_index};
 
-						temp_dummy_w{end+1} = sdpvar(size(H{tll_index},2),1,'full');
-						temp_dummy_y{end+1} = sdpvar(size(H{tll_index},1),1,'full');
-
-						% % Create Constraints
-						% dummy_var_bound_constraints = dummy_var_bound_constraints + [ -temp_K_bound <= temp_dummy_eta{end} <= temp_K_bound ] + [ temp_dummy_y{end} <= temp_K_bound ];
-
 					end
 
-					% [ reachability_dual_vars{end+1} , incl_constraints ] = cg.get_H_polyt_inclusion_constr( ...
-					% 	H{1} , h{1} , ...
-					% 	P_target.A*[ zeros(n_x,n_x*TimeHorizon), eye(n_x), zeros(n_x,(n_u+2*n_w)*TimeHorizon+2*n_x) ] , ...
-					% 	P_target.b );
+					[~,word_id] = lcsas0.L.contains(temp_last_lang.words{1});
+
+					[ Lambda_reach{end+1} , incl_constraints{end+1} ] = cg.get_H_polyt_inclusion_constr( ...
+					 	H{1} , h{1} , ...
+					 	P_target.A*[ zeros(n_x,n_x*TimeHorizon), eye(n_x)] * [ S_w{word_id} , zeros(size(S_w{word_id})) ], ...
+					 	P_target.b - P_target.A*[ zeros(n_x,n_x*TimeHorizon), eye(n_x)]*( J{word_id}*x0 + S_u{word_id}*k{knowl_seq_index} + S_u{word_id}*f_bar{word_id} ) );
 
 					% Create Constraints
-					reachability_dual_var_constraints = reachability_dual_var_constraints + [ reachability_dual_vars{end} <= temp_K_bound ];
+					reachability_dual_var_constraints = reachability_dual_var_constraints + [ Lambda_reach{end} <= temp_K_bound ];
 
 					% guaranteed_reachability_constraint = guaranteed_reachability_constraint + ...
 					% 	iff( matching_behavior{TimeHorizon-1}(knowl_seq_index) == 1 , incl_constraints);
@@ -319,18 +320,19 @@ function [results] = observer_comparison100( varargin )
 		%%%%%%%%%%%%%%%%
 
 		optimization_constraints = 	input_bounds_constraint + matching_behavior_constraint + ...
-									guaranteed_reachability_constraint + causal_detection_constraints %+ ...
+		 							guaranteed_reachability_constraint + causal_detection_constraints %+ ...
 									%dummy_var_bound_constraints %+ reachability_dual_var_constraints
 
 		ops = sdpsettings('verbose',1,'debug',1);
 		ops = sdpsettings(ops,'solver','gurobi');
 
-		disp(class(optimization_constraints))
-		disp(flatten(optimization_constraints))
+		% disp(class(optimization_constraints))
+		% disp(flatten(optimization_constraints))
 
 		%% Create model1 from the linear constraints
 
-		F1 = flatten(input_bounds_constraint+causal_detection_constraints);
+		%F1 = flatten(input_bounds_constraint+causal_detection_constraints);
+		F1 = flatten(optimization_constraints);
 		logdetStruct = []; %We have no logdet constraints.
 		h = []; %The true objective?
 		options = ops;
@@ -348,40 +350,22 @@ function [results] = observer_comparison100( varargin )
 
 		%% Create gurobi version of all reachability constraints %%
 
-		active_behavior_sequence_indices = find(matching_behavior{TimeHorizon});
-		num_active_behavior_sequences = length(active_behavior_sequence_indices);
+		for eq_constr_index = 1:length(symbolic_incl_constraints_eq)
 
-		m = length(interfacedata1.lb);
-		transpose_matrix = [];
-
-		for absi_index = 1:num_active_behavior_sequences
-			knowl_seq_index = active_behavior_sequence_indices(absi_index);
-
-			knowl_seq_i = LK_sequences(:, knowl_seq_index );
-
-			Lambda_i = reachability_dual_vars{ knowl_seq_index };
-			Lambda_i_indices = getvariables(Lambda_i)
-
-			K_i = K{knowl_seq_index}; k_i = k{knowl_seq_index};
-			K_i_indices = getvariables(K_i);
-			k_i_indices = getvariables(k_i);
-
-			Q_c_i1 = sparse(m,m);
-
-			if ~isempty(K_indices)
-				Q_c_i1(Lambda_i_indices,K_indices) = []; 
-				error('Stop!1')
+			%If the constraint is not active, then skip it.
+			if ~matching_behavior{TimeHorizon}(eq_constr_index)
+				continue;
 			end
 
+			[ tf0 ] = create_gurobi_quadratic_constr_from( ...
+				symbolic_incl_constraints_eq{eq_constr_index} , ...
+				'== 0' , ...
+				{ K_symbolic{eq_constr_index} , k_symbolic{eq_constr_index} , reachability_dual_vars{eq_constr_index} } , ...
+				{ [] , k{eq_constr_index} , Lambda_reach{eq_constr_index} }, ...
+				model1 )
 		end
 
-		%Extract Factors
-		factors(incl_constraints{1})
-
-
-		results.K_i_indices = K_i_indices;
-		results.k_i_indices = k_indices;
-
+		
 		disp('What happened?')
 
 		return
@@ -390,7 +374,7 @@ function [results] = observer_comparison100( varargin )
 
 		% solvertime = tic;
 		% result = gurobi(model,model.params);
-		% solvertime = toc(solvertime);
+		% solvertime = toc( solvertime );
 
 		results.Experiment{behavior_index}.OverallRuntime = toc(behavior_index_start_time);
 
@@ -459,7 +443,108 @@ function [results] = observer_comparison100( varargin )
 
 end
 
-function [ reachability_dual_vars , symbolic_incl_constraints ] = create_symbolic_reachability_constraints( lcsas_in , Pu , x0 , PossibleLSequences , active_sequence_flags )
+function [ sym_val_out ] = convert_symb_list_index_to_symb_value( idx_in , symbolic_var_list )
+
+	%% Input Processing
+
+	K_s = symbolic_var_list{1};
+	k_s = symbolic_var_list{2};
+	Lambda_s = symbolic_var_list{3};
+
+	num_symb_variables = prod(size(K_s))+length(k_s)+prod(size(Lambda_s));
+
+	%% Algorithm
+
+	if (1 <= idx_in) && (idx_in <= prod(size(K_s)))
+		sym_val_out = K_s(idx_in);
+	elseif ( prod(size(K_s)) < idx_in ) && ( idx_in <= prod(size(K_s)) + length(k_s) )
+		sym_val_out = k_s(idx_in - prod(size(K_s)));
+	elseif ( prod(size(K_s)) + length(k_s) < idx_in ) && ( idx_in <= num_symb_variables )
+		sym_val_out = Lambda_s( idx_in - prod(size(K_s)) - length(k_s) );
+	else
+		error(['Unacceptable value of idx_in (' num2str(idx_in) '). It is either less than 1 or greater than ' num2str(num_symb_variables) '.'  ])
+	end
+
+end
+
+function [ tf ] = create_gurobi_quadratic_constr_from( expression , constr_sense , symbolic_var_list , yalmip_var_list , partial_model_in )
+	%Description:
+	%	Converts the constraint from the form in expression with equality/inequality sign given by constr_sense
+	%	and returns its value in terms of the partial_model_in values.
+	%
+	%	Expected structure of symbolic_var_list: { K_sym , k_sym , Lambda_sym }
+	%	Expected structure of yalmip_var_list: { K_sdpvar , k_sdpvar , Lambda_sdpvar }
+	%
+
+	%% Input Processing
+
+	K_y = yalmip_var_list{1};
+	k_y = yalmip_var_list{2};
+	Lambda_y = yalmip_var_list{3};
+
+	K_s = symbolic_var_list{1};
+	k_s = symbolic_var_list{2};
+	Lambda_s = symbolic_var_list{3};
+
+	if isempty(K_y)
+		%disp('K_y is empty will skip when evaluating.')
+		skip_K = true;
+	end
+
+	num_symb_variables = prod(size(K_s))+length(k_s)+prod(size(Lambda_s));
+
+	num_gurobi_vars = size(partial_model_in.A,2);
+
+	%% Constants
+
+	%% Algorithm
+
+	% Create mapping from symbolic variable indices to gurobi/optimization variables.
+
+	for expression_index = 1:prod(size(expression))
+		expression_elt = expression(expression_index);
+
+		Qc = sparse( num_gurobi_vars , num_gurobi_vars );
+
+		%Check all bilinear combinations of symbolic variables in expression elt.
+		bilinear_combinations = nchoosek([1:num_symb_variables],2);
+		for comb_idx = 1:size(bilinear_combinations,1)
+			temp_comb = bilinear_combinations(comb_idx,:);
+			%Factor
+			symbolic_var_pair = [ ...
+				convert_symb_list_index_to_symb_value( temp_comb(1) , symbolic_var_list ) , ....
+				convert_symb_list_index_to_symb_value( temp_comb(2) , symbolic_var_list ) ...
+				];
+
+			[c,t] = coeffs(expression_elt, symbolic_var_pair );
+
+			% If the bilinear term prod(symbolic_var_pair) is present
+			if isequal( t(1) , prod(symbolic_var_pair) )
+				disp('Yay!')
+			end
+
+		end
+
+
+	end
+
+	if ~skip_K
+		disp(getvariables(K_y))
+	end
+
+	disp('k_y')
+	disp(getvariables(k_y))
+
+	disp('Lambda_y')
+	disp(getvariables(Lambda_y))
+
+	disp(['size(model.lb) = ' num2str(size(partial_model_in.lb)) ])
+
+	tf = true;
+
+end
+
+function [ reachability_dual_vars , incl_constraints_equalityPart , incl_constraints_inequalityPart , K_symbolic , k_symbolic ] = create_symbolic_reachability_constraints( cg , lcsas_in , Pu , x0 , PossibleLSequences , active_sequence_flags , P_target )
 	%Description:
 
 
@@ -481,7 +566,7 @@ function [ reachability_dual_vars , symbolic_incl_constraints ] = create_symboli
 	num_knowl_sequences = size(PossibleLSequences,2);
 	[ n_x , n_u , n_y , n_w , n_v ] = lcsas_in.Dimensions();
 
-	[ S_w , S_u , ~ , J , f_bar ] = lcsas_in.get_mpc_matrices('All Words')
+	[ S_w , S_u , ~ , J , f_bar ] = lcsas_in.get_mpc_matrices('All Words');
 
 	%%%%%%%%%%%%%
 	% Variables %
@@ -494,8 +579,8 @@ function [ reachability_dual_vars , symbolic_incl_constraints ] = create_symboli
 		k_symbolic{knowl_seq_index} = sym(['k' num2str(knowl_seq_index) '_' ],[n_u*T,1]);
 	end
 
-	reachability_dual_vars = {}; incl_constraints = {};
-	active_dual_variables = {}; active_incl_constraints = {};
+	reachability_dual_vars = {}; incl_constraints_equalityPart = {} ; incl_constraints_inequalityPart = {};
+	active_dual_variables = {}; active_incl_constraints_equalityPart = {}; active_incl_constraints_inequalityPart = {};
 
 	% Create Constraints
 
@@ -542,10 +627,10 @@ function [ reachability_dual_vars , symbolic_incl_constraints ] = create_symboli
 
 				h{1} = h_independent_factor{1} + h_dependent_factor{1}*k_symbolic{knowl_seq_index};
 
-				[ reachability_dual_vars{end+1} , incl_constraints{end+1} ] = cg.get_H_polyt_inclusion_constr( ...
+				[ reachability_dual_vars{end+1} , incl_constraints_equalityPart{end+1} , incl_constraints_inequalityPart{end+1} ] = cg.get_H_polyt_inclusion_constr( ...
 					H{1} , h{1} , ...
 					P_target.A*[ zeros(n_x,n_x*T), eye(n_x) ]*( S_w{word_id} ) , ...
-					P_target.b - P_target.A*[ zeros(n_x,n_x*T), eye(n_x) ]*( J{word_id}*x0 + S_u{word_id}*k{knowl_seq_index} + S_w{word_id}*f_bar{word_id} ) , ...
+					P_target.b - P_target.A*[ zeros(n_x,n_x*T), eye(n_x) ]*( J{word_id}*x0 + S_u{word_id}*k_symbolic{knowl_seq_index} + S_w{word_id}*f_bar{word_id} ) , ...
 					'ReturnValueType' , 'Symbolic' );
 
 				% guaranteed_reachability_constraint = guaranteed_reachability_constraint + ...
@@ -566,7 +651,7 @@ function [ reachability_dual_vars , symbolic_incl_constraints ] = create_symboli
 										zeros(tll_card*n_w*T,n_u*T);
 										zeros(tll_card*n_x,n_u*T) ] ;
 
-					H{tll_index} = H_PhiI * ( nonK_prefactor{tll_index} ) ;
+					H{tll_index} = H_PhiI * ( nonK_prefactor{tll_index} + K_prefactor{tll_index} * K_symbolic{knowl_seq_index} * [ zeros(n_w*T,n_w*T*(tll_index-1)) , eye(n_w*T) , zeros(n_w*T,n_w*T*(tll_card-tll_index)) ]) ;
 					
 					h_independent_factor{tll_index} = h_PhiI - ...
 						H_PhiI * [ J{word_id}*x0 + S_w{word_id}*f_bar{word_id} ;
@@ -580,20 +665,17 @@ function [ reachability_dual_vars , symbolic_incl_constraints ] = create_symboli
 								zeros(tll_card*n_w*T,n_u*T) ; 
 								zeros(tll_card*n_x,n_u*T) ];
 
-					h{tll_index} = h_independent_factor{tll_index} + h_dependent_factor{tll_index}*k{knowl_seq_index};
-
-					temp_dummy_w{end+1} = sdpvar(size(H{tll_index},2),1,'full');
-					temp_dummy_y{end+1} = sdpvar(size(H{tll_index},1),1,'full');
-
-					% % Create Constraints
-					% dummy_var_bound_constraints = dummy_var_bound_constraints + [ -temp_K_bound <= temp_dummy_eta{end} <= temp_K_bound ] + [ temp_dummy_y{end} <= temp_K_bound ];
+					h{tll_index} = h_independent_factor{tll_index} + h_dependent_factor{tll_index}*k_symbolic{knowl_seq_index};
 
 				end
 
-				[ reachability_dual_vars{end+1} , incl_constraints{end+1} ] = cg.get_H_polyt_inclusion_constr( ...
+				[~,word_id] = lcsas_in.L.contains(temp_last_lang.words{1});
+
+				[ reachability_dual_vars{end+1} , incl_constraints_equalityPart{end+1} , incl_constraints_inequalityPart{end+1} ] = cg.get_H_polyt_inclusion_constr( ...
 				 	H{1} , h{1} , ...
-				 	P_target.A*[ zeros(n_x,n_x*T), eye(n_x), zeros(n_x,(n_u+2*n_w)*T+2*n_x) ] , ...
-				 	P_target.b , 'ReturnValueType' , 'Symbolic' );
+				 	P_target.A*[ zeros(n_x,n_x*T), eye(n_x)] * [ S_w{word_id} , zeros(size(S_w{word_id})) ], ...
+				 	P_target.b - P_target.A*[ zeros(n_x,n_x*T), eye(n_x)]*( J{word_id}*x0 + S_u{word_id}*k_symbolic{knowl_seq_index} + S_u{word_id}*f_bar{word_id} ) , ...
+				 	'ReturnValueType' , 'Symbolic' );
 
 				% Create Constraints
 				%reachability_dual_var_constraints = reachability_dual_var_constraints + [ reachability_dual_vars{end} <= temp_K_bound ];
@@ -605,10 +687,11 @@ function [ reachability_dual_vars , symbolic_incl_constraints ] = create_symboli
 		end
 
 		% Create Constraints
-		if active_sequence_flags(knowl_seq_index)
-			active_dual_variables{end+1} = reachability_dual_vars{end};
-			active_incl_constraints{end+1} = incl_constraints{end};
-		end
+		% if active_sequence_flags(knowl_seq_index)
+		% 	active_dual_variables{end+1} = reachability_dual_vars{end};
+		% 	active_incl_constraints_equalityPart{end+1} = incl_constraints_equalityPart{end};
+		% 	active_incl_constraints_inequalityPart{end+1} = incl_constraints_inequalityPart{end};
+		% end
 
 	end
 

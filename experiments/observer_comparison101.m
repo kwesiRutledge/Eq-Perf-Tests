@@ -15,7 +15,7 @@ function [results] = observer_comparison101( varargin )
 	%%%%%%%%%%%%%%%
 	%% Constants %%
 	%%%%%%%%%%%%%%%
-
+    eps0 = 10^(-5);
 	TimeHorizon = 4;
 	
 	eta_u = 0.5;
@@ -38,10 +38,15 @@ function [results] = observer_comparison101( varargin )
 
 	x0 = -eta_x0;
 	
-	TargetPolytope = struct( ...
+	TargetPolytope1 = struct( ...
 		'A', [1;-1] , ...
 		'b', [ TimeHorizon*eta_u + eta_x0 + TimeHorizon*eta_w; -(TimeHorizon*eta_u -eta_x0 - TimeHorizon*eta_w) ] ...
 		);
+    TargetPolytope2 = struct( ...
+		'A', [1;-1] , ...
+		'b', [ (TimeHorizon-2)*eta_u + eta_x0 + TimeHorizon*eta_w; -(TimeHorizon*eta_u -eta_x0 - TimeHorizon*eta_w) ] ...
+		);
+
 
 	A = 1;
 	B = 1;
@@ -58,9 +63,10 @@ function [results] = observer_comparison101( varargin )
 	results.Parameters.UPolytope = UPolytope;
 	results.Parameters.WPolytope = WPolytope;
 	results.Parameters.X0Polytope = X0Polytope;
-	results.Parameters.TargetPolytope = TargetPolytope;
+	results.Parameters.TargetPolytope = TargetPolytope1;
 
 	select_state_at_T = [zeros(n_x,n_x*TimeHorizon),eye(n_x)];
+	select_states_from_0_to_T = [ eye(n_x*TimeHorizon) , zeros(n_x*TimeHorizon,n_x) ];
 
 	%%%%%%%%%%%%%%%%%%%%%%%%%
 	%% Create MPC Matrices %%
@@ -111,9 +117,20 @@ function [results] = observer_comparison101( varargin )
 	%% Overlapping W's Exist
 
 	MatchingSet_Ws = struct( ...
-		'A',
+		'A', [	-eye(n_x*(TimeHorizon+1)), ( S_w ) * [ eye(n_w*TimeHorizon) , zeros(n_w*TimeHorizon) ] ;
+				-eye(n_x*(TimeHorizon+1)), ( S_w ) * [ zeros(n_w*TimeHorizon) , eye(n_w*TimeHorizon)] ] , ...
+		'b', [ 	S_x0 * x0 + S_u * u_star1 ;
+				S_x0 * x0 + S_u * u_star2 ] ...
 		)
 
+	% show that there exists a disturbance which makes this set nonempty
+% 	eta = sdpvar(size(MatchingSet_Ws.A,2),1,'full');
+% 	nonempty_constraint = [ MatchingSet_Ws.A * eta <= MatchingSet_Ws.b ];
+
+    y = sdpvar(size(MatchingSet_Ws.A,1),1,'full');
+    empty_constraint = [MatchingSet_Ws.A'*y == 0] + [ MatchingSet_Ws.A'*y <= -eps0 ] + [y >= 0]
+    
+   	matching_input_constraint = [ u_star1([1:n_x*(TimeHorizon-3)]) == u_star2([1:n_x*(TimeHorizon-3)]) ];
 
 	%% Create Robust Reachability Constraints
 
@@ -122,17 +139,17 @@ function [results] = observer_comparison101( varargin )
 		'b' , repmat(WPolytope.b,[TimeHorizon,1]) );
 
 	ReachableSetWs_1 = struct( ...
-		'A', TargetPolytope.A * select_state_at_T* S_w, ...
-		'b', TargetPolytope.b - TargetPolytope.A * select_state_at_T * ( S_x0 * x0 + S_u * u_star1 ) ...
+		'A', TargetPolytope1.A * select_state_at_T* S_w, ...
+		'b', TargetPolytope1.b - TargetPolytope1.A * select_state_at_T * ( S_x0 * x0 + S_u * u_star1 ) ...
 		);
 
 	ReachableSetWs_2 = struct( ...
-		'A', TargetPolytope.A * select_state_at_T* S_w, ...
-		'b', TargetPolytope.b - TargetPolytope.A * select_state_at_T * ( S_x0 * x0 + S_u * u_star2 ) ...
+		'A', TargetPolytope2.A * select_state_at_T* S_w, ...
+		'b', TargetPolytope2.b - TargetPolytope2.A * select_state_at_T * ( S_x0 * x0 + S_u * u_star2 ) ...
 		);
 
 	Lambda_Reach1 = sdpvar(size(ReachableSetWs_1.A,1),size(PwT.A,1),'full');
-	Lambda_Reach2 = sdpvar(size(ReachableSetWs_1.A,1),size(PwT.A,1),'full');
+	Lambda_Reach2 = sdpvar(size(ReachableSetWs_2.A,1),size(PwT.A,1),'full');
 	reachability_constraint = ...
 		[Lambda_Reach1 >= 0] + [ Lambda_Reach1 * PwT.A == ReachableSetWs_1.A ] + [ Lambda_Reach1 * PwT.b <= ReachableSetWs_1.b ] + ...
 		[Lambda_Reach2 >= 0] + [ Lambda_Reach2 * PwT.A == ReachableSetWs_2.A ] + [ Lambda_Reach2 * PwT.b <= ReachableSetWs_2.b ];
@@ -141,7 +158,7 @@ function [results] = observer_comparison101( varargin )
 	%% Optimize With Gurobi %%
 	%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-	optimization_constraints = 	reachability_constraint + input_bounds_constraint;
+	optimization_constraints = 	reachability_constraint + input_bounds_constraint +  empty_constraint;
 
 	ops = sdpsettings('verbose',1,'debug',1);
 	ops = sdpsettings(ops,'solver','gurobi');
@@ -158,8 +175,8 @@ function [results] = observer_comparison101( varargin )
 	w_bad1 = -eta_w*ones(TimeHorizon*n_w,1);
 	w_bad2 = eta_w*ones(TimeHorizon*n_w,1);
 
-	disp(all(TargetPolytope.A* select_state_at_T * ( S_x0 * x0 + S_u * value(u_star1) + S_w * w_bad1 ) <= TargetPolytope.b))
-	disp(all(TargetPolytope.A* select_state_at_T * ( S_x0 * x0 + S_u * value(u_star1) + S_w * w_bad2 ) <= TargetPolytope.b))
+	disp(all(TargetPolytope1.A* select_state_at_T * ( S_x0 * x0 + S_u * value(u_star1) + S_w * w_bad1 ) <= TargetPolytope1.b))
+	disp(all(TargetPolytope1.A* select_state_at_T * ( S_x0 * x0 + S_u * value(u_star1) + S_w * w_bad2 ) <= TargetPolytope1.b))
 
 	disp('Plotting...')
 	PwT_mpt3 = Polyhedron('A',PwT.A,'b',PwT.b);
@@ -172,7 +189,7 @@ function [results] = observer_comparison101( varargin )
 	title('Reachable Set at T (Gurobi)')
 
 	subplot(2,1,2)
-	plot( Polyhedron('A',TargetPolytope.A,'b',TargetPolytope.b) )
+	plot( Polyhedron('A',TargetPolytope1.A,'b',TargetPolytope1.b) )
 	axis(same_axis)
 	title('Target Set')
 
@@ -197,8 +214,8 @@ function [results] = observer_comparison101( varargin )
 	disp('Is final state in the target region for an arbitrary bad disturbance trajectory w?')
 	w_bad = -eta_w*ones(TimeHorizon*n_w,1);
 
-	disp(all(TargetPolytope.A* select_state_at_T * ( S_x0 * x0 + S_u * value(u_star1) + S_w * w_bad ) <= TargetPolytope.b))
-	disp(all(TargetPolytope.A* select_state_at_T * ( S_x0 * x0 + S_u * value(u_star1) + S_w * w_bad2 ) <= TargetPolytope.b))
+	disp(all(TargetPolytope1.A* select_state_at_T * ( S_x0 * x0 + S_u * value(u_star1) + S_w * w_bad ) <= TargetPolytope1.b))
+	disp(all(TargetPolytope1.A* select_state_at_T * ( S_x0 * x0 + S_u * value(u_star1) + S_w * w_bad2 ) <= TargetPolytope1.b))
 
 	disp('Numerical issues cause the result to be a bit fishy.')
 
@@ -213,7 +230,7 @@ function [results] = observer_comparison101( varargin )
 	title('Reachable Set at T (fmincon)')
 
 	subplot(2,1,2)
-	plot( Polyhedron('A',TargetPolytope.A,'b',TargetPolytope.b) )
+	plot( Polyhedron('A',TargetPolytope1.A,'b',TargetPolytope1.b) )
 	axis(same_axis)
 	title('Target Set')
 

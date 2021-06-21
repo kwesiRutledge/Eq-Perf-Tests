@@ -31,47 +31,19 @@ function [ varargout ] = find_hypothesis_generating_disturbances( varargin )
 		return;
 	end
 
-	%$ Create A and b matrices
+	% If we moved past the last "if" statement, then there is only one KnowledgePath
+	KnowledgePath = KnowledgePaths;
 
-	PhiI_A  = []; PhiI_b  = [];
-	PhiI_Ae = []; PhiI_be = [];
+	%% Create A and b matrices
 
-	max_card = KnowledgePaths.find_maximum_cardinality_in_sequence();
-
+	max_card = KnowledgePath.find_maximum_cardinality_in_sequence();
 	PhiI_dim = n_x * (T+1) + n_u*T + n_w*T*max_card + n_x*max_card;
 
-	for t = 1:T
-
-		KnowledgeAt_t = KnowledgePaths(t,1);
-
-		Phi_t = lcsas_in.consistent_set( t , KnowledgeAt_t , Pu , Px0 );
-
-		WT_vector = zeros(max_card,1);
-		for word_index = 1:KnowledgeAt_t.cardinality()
-			temp_word = KnowledgeAt_t.words{word_index};
-			[ tf ] =  
-		end
-		WT_vector()
-
-		WT_factor = kron(  )
-
-		A_Prefactor = [ ...
-			eye( n_x * (t+1) ), zeros( n_x*(t+1) , PhiI_dim - n_x * (t+1) ) ;
-			zeros( n_u*(t) , n_x*(T+1) ), eye(n_u*t) , zeros( n_u*(t) , PhiI_dim - n_x*(T+1) - n_u*t ) ;
-			zeros( n_w*(t)*card_L_end , n_x*(T+1) + n_u*T ) , kron( eye(card_L_end) , [ eye(n_w*t) , zeros(n_w*t,n_w*(T-t)) ] ) , zeros(n_w*t*card_L_end, PhiI_dim - n_x*(T+1) - n_u*T - n_w*T*card_L_end) ;
-			zeros( n_x*card_L_end, PhiI_dim - n_x*card_L_end), eye(n_x*card_L_end) ...
-			];
-
-		PhiI_A = [ 	PhiI_A ;
-					Phi_t.A * A_Prefactor ];
-
-	end
-
-	[ ~ , PhiI ] = lcsas_in.consistent_set( T , L_end , Pu , Px0 );
+	[ ibs ] = lcsas_in.internal_behavior_set( KnowledgePath );
 
 	PwT = [];
 	for word_idx = 1:L_end.cardinality()
-		PwT = [ PwT ; PhiI.projection(n_x*(T+1) + n_u*(T) + n_w*T*(word_idx-1) + [1:n_w*(T)]) ];
+		PwT = [ PwT ; ibs.projection(n_x*(T+1) + n_u*(T) + n_w*(T)*(word_idx-1) + [1:n_w*(T)]) ];
 	end
 
 	varargout{1} = PwT;

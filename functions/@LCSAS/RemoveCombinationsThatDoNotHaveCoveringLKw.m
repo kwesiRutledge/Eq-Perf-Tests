@@ -14,7 +14,7 @@ function [ combinations_out ] = RemoveCombinationsThatDoNotHaveCoveringLKw( lcsa
 	for word_index = 1:L.cardinality()
 		temp_word = L.words{word_index};
 		WT{word_index} = 1;
-		for time_index = 0:length(L.words{word_index})-1
+		for time_index = 0:TimeHorizon-1
 			temp_symbol = temp_word(time_index+1);
 			WT{word_index} = WT{word_index} * lcsas_in.Dyn(temp_symbol).P_w;
 		end

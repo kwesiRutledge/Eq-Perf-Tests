@@ -1,8 +1,11 @@
 function varargout = internal_behavior_set( varargin )
 	%internal_behavior_set.m
 	%Description:
-	%	Finds a polyhedron that describes what pairs of states and input sequences are compatible/feasible from ALL
-	%	switching sequences defined by L.
+	%	Finds a polyhedron that describes what pairs of state, input, and disturbance sequences are compatible/feasible from ALL
+	%	switching sequences defined by the sequence KnowledgeSequence.
+	%
+	%	The KnowledgeSequence is a vector describing the following sequence of estimates about the true state of the system;
+	%		KnowledgeSequence = [ L_{0} , L_{1} , ... , L_{T-1} ]
 	%
 	%	To place the system into clearer focus. We have a Language-Constrained Switched Affine System (LCSAS):
 	%
@@ -28,10 +31,6 @@ function varargout = internal_behavior_set( varargin )
 	%Inputs:
 	%	lcsas 		- An array of Aff_Dyn() objects. Hopefully the dimensions are all appropriately checked so that
 	%				  the state is the proper size in all Aff_Dyn(). Inputs as well, etc.
-	%	t 			- The time of interest
-	%	L 			- The set of words under consideration.
-	%				  We would like to find the set of states for which it is possible to reach when under ALL switching
-	%				  sequences in this set with the same inputs (albeit with different disturbances).
 	%	use_proj 	- Boolean (true or false).
 	%				  Used to tell the function to either skip the creation of Consist_set (false) or complete the
 	%				  computation of Consist_set (true) which requires projection operations to be called and may be very slow.
@@ -49,43 +48,52 @@ function varargout = internal_behavior_set( varargin )
 
 	%% Constants
 
-	T = length(KnowledgeSequence);
-	P_u = lcsas0.U;
+	KS_len = length(KnowledgeSequence);
+	T = length(lcsas0.L.words{1});
+	% L_Tm1 = KnowledgeSequence(end);
+    
+    P_u = lcsas0.U;
 
 	%% Algorithm
-	ib_components_at_ = {};
-	ib_components_at_{1} = lcsas0.X0;
+        
+    % Create Internal Behavior Set Using Each of the ClairvoyantSequences
+    ibs = [];
+        
+    ib_components_at_ = {};
+    % ib_components_at_{1} = lcsas0.X0;
 
-	for t = 1:T
-		L_t = KnowledgeSequence(t);
+    for t = 1:KS_len %KnowledgeSequence estimates L_0, ... , L_{T-2}
+        L_t = KnowledgeSequence(t); 
 
-		%Collect the ib_at_t sets for each word in L_t
-		ib_components_at_{t+1} = {};
-		for word_idx = 1:L_t.cardinality()
-			L_t_projected = Language(L_t.words{word_idx});
-			temp_ib_sets(word_idx) = internal_behavior_set_at_t( lcsas0 , t , L_t_projected , ibs_settings );
-			
-			% Transform the set into the dimension described by max_card.
-			if word_idx == 1
-				ib_components_at_{t+1} = modify_ibs_with_respect_to_T( lcsas0 , KnowledgeSequence , temp_ib_sets(word_idx) , L_t_projected , t , T );
-			else
-				ib_components_at_{t+1} = ib_components_at_{t+1}.intersect( ...
-					modify_ibs_with_respect_to_T( lcsas0 , KnowledgeSequence , temp_ib_sets(word_idx) , L_t_projected , t , T ) ...
-				);	
-			end
-		end
-	end
+        %Collect the ib_at_t sets for each word in L_t
+        ib_components_at_{t} = {};
+        for word_idx = 1:L_t.cardinality()
+            L_t_projected = Language(L_t.words{word_idx});
+            temp_ib_sets(word_idx) = internal_behavior_set_at_t( lcsas0 , t , L_t_projected , ibs_settings );
 
-	ib_overall = ib_components_at_{1+1};
-	for t = 3:length(ib_components_at_)
-		ib_overall = ib_overall.intersect(ib_components_at_{t});
-	end
+            % Transform the set into the dimension described by max_card.
+            if word_idx == 1
+                ib_components_at_{t} = modify_ibs_with_respect_to_T( lcsas0 , KnowledgeSequence , temp_ib_sets(word_idx) , L_t_projected , t , T );
+            else
+                ib_components_at_{t} = ib_components_at_{t}.intersect( ...
+                    modify_ibs_with_respect_to_T( lcsas0 , KnowledgeSequence , temp_ib_sets(word_idx) , L_t_projected , t , T ) ...
+                );	
+            end
+        end
+    end
 
+    ib_at_T = ib_components_at_{1};
+    for t = 2:length(ib_components_at_)
+        ib_at_T = ib_at_T.intersect(ib_components_at_{t});
+    end
+    
+    ibs = ib_at_T ;
+    
 	%%%%%%%%%%%%%%%%%%%%
 	%% Create Outputs %%
 	%%%%%%%%%%%%%%%%%%%%
 
-	varargout{1} = ib_overall;
+	varargout{1} = ibs;
 
 
 end
@@ -147,6 +155,17 @@ function [ ib_at_t ] = internal_behavior_set_at_t( lcsas0 , t , L_t , ibs_settin
 	%	Creates the set of behaviors that are consistent with the hypothesis L_t at time t.
 	%	This set does not consider hypotheses at previous times and is thus a sometimes over approximation
 	%	of what can be expected.
+	%
+	%Notes:
+	%	It's possible that this can be simplified. We are enforcing a lot of constraints that don't need to be enforced.
+	%	i.e. the set is enforcing constraints also on times t-1,t-2, etc. but it does not need to.
+	%
+	%	Each trajectory contained in the internal behavior set starts from t=0. So, the internal behavior_set_at_t=1
+	%	will contain 
+	%
+	%			[ x0 ]
+	%		x = [ x1 ] , u = [ u0 ] , w = [ w0 ]
+	%
 
 	%%%%%%%%%%%%%%%
 	%% Constants %%
@@ -203,6 +222,16 @@ function [ ib_at_t ] = internal_behavior_set_at_t( lcsas0 , t , L_t , ibs_settin
 		ib_at_t = Polyhedron(	'A',[zeros(size(P_eta.A,1),n_x*(t+1)),P_eta.A],'b',P_eta.b, ...
 								'Ae',[-I_blockx, S_block, H_block, J_block],'be',-f_block );
 
+		% Add Equality Constraints Between Words in Internal Behavior Sets
+		for word_ind = 2:L_t.cardinality()
+			Ltc = L_t.cardinality();
+			matching_x_block = [ eye(n_x*(t+1)) , zeros( n_x*(t+1) , (-2+word_ind)*n_x*(t+1) ) , -eye(n_x*(t+1)) , zeros(n_x*(t+1) , (Ltc-word_ind)*n_x*(t+1) ) ];
+			ib_at_t.Ae = [ 	ib_at_t.Ae ;
+							matching_x_block , zeros(n_x*(t+1),size(S_block,2)) , zeros(n_x*(t+1),size(H_block,2)) , zeros(n_x*(t+1),size(J_block))  ];
+
+			ib_at_t.be = [ ib_at_t.be ; zeros(n_x*(t+1),1) ];
+		end
+
 	else strcmp(ibs_settings.fb_type,'output')
 
 		%Also introduce the measurement disturbance into the equation
@@ -252,6 +281,8 @@ function [ ibs_extended ] = modify_ibs_with_respect_to_T( lcsas0 , KnowledgeSequ
 
 	[ n_x , n_u , n_y , n_w , n_v ] = lcsas0.Dimensions();
 
+    % trimmedKnowledgeSequence = KnowledgeSequence([2:end]);
+    
 	[ max_card , max_card_index ] = KnowledgeSequence.find_maximum_cardinality_in_sequence();
 
 	ibs_e_dim = n_x * (T+1) + n_u*T + n_w*T*max_card + n_x*max_card;

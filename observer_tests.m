@@ -26,6 +26,7 @@ function [results] = observer_tests( varargin )
 		is_on_great_lakes = (strcmp(getenv('USER'),'krutledg') && isunix) ;
 
 		%include_fcns('tbxmanager','YALMIP')
+		tools_to_include = {};
 		if is_on_personal_mac
 			tools_to_include = {'mosek','gurobi','tbxmanager'};
 		elseif is_on_great_lakes

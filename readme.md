@@ -15,9 +15,9 @@ Most of the reproducible code should be found in the 'results' directory.
 By including the contents of the 'functions' directory, one should have access to _most_ of the functions necessary to reproduce the results.
 
 Note that this repository also makes use of the following external libraries:
-* [Multi-Parametric Toolbox 3](mpt3.org) (which utilizes [YALMIP](yalmip.github.io) and optimization solvers such as [gurobi](gurobi.com))
-* [Mosek](mosek.com) (An optimization library which should be optional.)
-* [Gurobi](gurobi.com) (This is a commercial optimization solver.)
+* [Multi-Parametric Toolbox 3](http://mpt3.org) (which utilizes [YALMIP](yalmip.github.io) and optimization solvers such as [gurobi](gurobi.com))
+* [Mosek](http://mosek.com) (An optimization library which should be optional.)
+* [Gurobi](http://gurobi.com) (This is a commercial optimization solver.)
 * [PENBMI](http://www.penopt.com/penbmi.html) (Optional. This is one of the few bilinear optimization solvers that exist.)
 
 One source of errors is that one of the above required libraries is not installed.

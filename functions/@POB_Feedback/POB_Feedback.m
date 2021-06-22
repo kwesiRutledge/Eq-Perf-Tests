@@ -97,7 +97,7 @@ classdef POB_Feedback < handle
 
 			if ~exist('PossibleLSequences')
 				L = lcsas0.L;
-				PossibleLSequences = L.create_unchecked_belief_sequences_of_length(length(L.words{1})); %Assume that all words are of the same length.
+				PossibleLSequences = L.create_belief_sequences_of_length(length(L.words{1})); %Assume that all words are of the same length.
 			end
 
 			%%%%%%%%%%%%%%%

@@ -120,7 +120,7 @@ function [ varargout ] = get_robust_invariance_constraints(varargin)
 
 	% If the target set, P_target, is a Polyhedron, then use the simple helper function get_robust_reachability_constraints_polytope.m
 	if length(P_des) == 1
-		[ Pi1 , Piu , constraints ] = cg.get_robust_reachability_constraints_polytope(varargin{2:end});
+		[ Pi1 , Piu , constraints ] = cg.get_robust_invariance_constraints_polytope(varargin{2:end});
 		varargout = {Pi1,Piu,constraints};
 		return
 	end

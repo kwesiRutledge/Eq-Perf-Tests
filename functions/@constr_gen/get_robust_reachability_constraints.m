@@ -70,14 +70,18 @@ function varargout = get_robust_reachability_constraints(varargin)
 	switch settings_struct.PDesiredClass
 		case 'Polyhedron'
 			if length(P_des) == 1
-				[ Pi1 , Piu , constraints ] = cg.get_robust_reachability_constraints_polytope(varargin{2:end});
+				[ Pi1 , Piu , constraints ] = get_robust_reachability_constraints_polytope( ...
+					cg , lcsas , word , LinGain , OffsetGain , selection_variable , settings_struct ...
+					); %See below
 				varargout = { Pi1 , Piu , constraints };
 				return
 			else
 				error(['There were multiple polyhedra given as P_des!'])
 			end
 		case 'double'
-			[ Pi1 , Piu , constraints ] = cg.get_robust_reachability_constraints_infnormbound(varargin{2:end});
+			[ Pi1 , Piu , constraints ] = get_robust_reachability_constraints_infnormbound( ...
+				cg , lcsas , word , LinGain , OffsetGain , selection_variable , settings_struct ...
+				);
 			varargout = { Pi1 , Piu , constraints };
 			return
 		otherwise
@@ -159,7 +163,7 @@ function [ cg , lcsas , word , P_x0 , P_u , P_des_info , u_des , L , xhat0 , sel
 				P_des_info = eta_des;
 				varargin_idx = varargin_idx + 2;
 			case 'u_des'
-				u_d = varargin{varargin_idx+1};
+				u_des = varargin{varargin_idx+1};
 				if size(u_d,1) ~= length(word)*size(lcsas(1).B,2)
 					error('u_d appears to be improperly sized. Please give the full trajectory of desired inputs.')
 				end
@@ -185,8 +189,8 @@ function [ cg , lcsas , word , P_x0 , P_u , P_des_info , u_des , L , xhat0 , sel
 		end
 	end
 
-	if ~exist('u_d')
-		u_d = zeros(length(word)*lcsas.Dim_u(),2),1);
+	if ~exist('u_des')
+		u_des = zeros(length(word)*lcsas.Dim_u(),1);
 	end
 
 	if ~isfield(settings_struct,'GainFormat')
@@ -197,7 +201,19 @@ function [ cg , lcsas , word , P_x0 , P_u , P_des_info , u_des , L , xhat0 , sel
 		P_des = P_x0;
 		settings_struct.PDesiredClass = class(P_des);
 		P_des_info = P_des;
-	end
+    end
+    
+    if ~exist('L')
+        L = Language();
+    end
+
+    if ~exist('xhat0')
+    	xhat0 = zeros(lcsas.Dim_x(),1);
+    end
+
+    if ~exist('selection_variable')
+    	selection_variable = 0;
+    end
 
 	% Create Gain Variables
 
@@ -212,7 +228,7 @@ function [ cg , lcsas , word , P_x0 , P_u , P_des_info , u_des , L , xhat0 , sel
 
 end
 
-function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints_polytope( lcsas , word , LinGain , OffsetGain , settings_struct )
+function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints_polytope( cg , lcsas , word , LinGain , OffsetGain , selection_variable , settings_struct )
 	%Description:
 	%	Gets the variables necessary to define a finite horizon reachability problem.
 	%	- Q-Parameterized versions of the feedback gains (F,f) [Notation used is the NAHS submission variety.]
@@ -275,6 +291,7 @@ function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints_polyt
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 	constraints = [];
+	Piu = [];
 
 	P_wT = 1; P_vT = 1;
 	for symb_idx = 1:length(word)
@@ -287,7 +304,7 @@ function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints_polyt
 	%Get Special Matrices
 	[H0,S0,Cm0,J0,k_bar,B_w_big,C_v_big] = lcsas.get_mpc_matrices('word',word);
 
-	switch param_flag
+	switch settings_struct.GainFormat
 		case 'Q'
 			
 			G = [ 	(eye(n*(T+1))+S0*Q*Cm0)*H0*B_w_big ...
@@ -324,7 +341,7 @@ function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints_polyt
 
 		case 'F1'
 
-			if settings_struct.IncorporateBinaryVariable ~= 0
+			if settings_struct.IncorporateBinaryVariable
 				error('F1 flag was not tested for use in this function.')
 			end
 
@@ -369,7 +386,7 @@ function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints_polyt
 
 end
 
-function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints_infnormbound( lcsas , word , LinGain , OffsetGain , settings_struct )
+function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints_infnormbound( cg , lcsas , word , LinGain , OffsetGain , selection_variable , settings_struct )
 	%Description:
 	%	Handles the case when P_des is not given as a 
 
@@ -413,6 +430,7 @@ function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints_infno
 	% Construct COnstraints
 
 	constraints = [];
+	Piu = [];
 
 	P_wT = 1; P_vT = 1;
 	for symb_idx = 1:length(word)
@@ -432,7 +450,7 @@ function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints_infno
 						S0*Q*C_v_big ...
 						(eye(n*(T+1))+S0*Q*Cm0)*J0 ];
 
-				if ~exist('selection_variable')
+				if settings_struct.IncorporateBinaryVariable
 					[Pi1,temp_constrs] = cg.get_H_polyt_inclusion_constr( P_eta.A, P_eta.b , P_des.A*select_m(T,T)*G, P_des.b-P_des.A*select_m(T,T)*(S0*r+(eye(n*(T+1))+S0*Q*Cm0)*H0*k_bar) );
 				else
 					[Pi1,temp_constrs] = cg.get_H_polyt_inclusion_constr( 	P_eta.A, P_eta.b + selection_variable*M*ones(size(P_eta.b)) , ...
@@ -448,7 +466,7 @@ function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints_infno
 
 				I_t = [eye(n);-eye(n)];
 
-				if ~exist('selection_variable')
+				if settings_struct.IncorporateBinaryVariable
 					[Pi1,temp_constrs] = cg.get_H_polyt_inclusion_constr( P_eta.A, P_eta.b , I_t*select_m(T,T)*G, eta_des*ones(2*n,1)-I_t*select_m(T,T)*(S0*r+(eye(n*(T+1))+S0*Q*Cm0)*H0*k_bar) );
 				else
 					[Pi1,temp_constrs] = cg.get_H_polyt_inclusion_constr( 	P_eta.A, P_eta.b, ...
@@ -475,7 +493,7 @@ function [ Pi1 , Piu , constraints ] = get_robust_reachability_constraints_infno
 				%Create the G matrix for the input, H_u
 				G_u = [ Q*Cm0*H0*B_w_big, Q*C_v_big, Q*Cm0*J0 ];
 
-				if ~exist('selection_variable')
+				if settings_struct.IncorporateBinaryVariable
 					[Piu, temp_constrs] = cg.get_H_polyt_inclusion_constr( P_eta.A, P_eta.b , P_uT.A*G_u, P_uT.b- P_uT.A*(r+Q*Cm0*H0*k_bar+u_d) );
 				else
 					[Piu, temp_constrs] = cg.get_H_polyt_inclusion_constr( 	P_eta.A, P_eta.b, ...

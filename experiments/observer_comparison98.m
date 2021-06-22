@@ -177,32 +177,9 @@ function [results] = observer_comparison98( varargin )
 
 		cg = constr_gen(0);
 
+		%% Input Bound Constraints
+
 		input_bounds_constraint = cg.get_input_bound_constraint_on( lcsas0 , K , k , 'fb_type' , 'state-disturbance' ); 
-		% input_bound_dual_var_constraints = [];
-		% input_bound_dual_vars = {};
-		
-		% for knowl_seq_index = 1:num_knowl_sequences
-		% 	% Iterate through every knowledge sequences final language information.
-		% 	temp_last_lang = LK_sequences(end,knowl_seq_index);
-		% 	% Create input constraints based on each word in the last language
-		% 	for word_index = 1:temp_last_lang.cardinality()
-		% 		temp_word = temp_last_lang.words{word_index};
-		% 		[ ~ , word_id ] = lcsas0.L.contains(temp_word);
-
-		% 		% [input_bound_dual_vars{end+1}, incl_constraints] = cg.get_H_polyt_inclusion_constr( ...
-		% 		% 		LK_w{knowl_seq_index}(word_index).A , LK_w{knowl_seq_index}(word_index).b, ...
-		% 		% 		PuT.A*[ K{knowl_seq_index} ] , ...
-		% 		% 		PuT.b - PuT.A*k{knowl_seq_index} );
-
-		% 		% Create Constraints
-		% 		% input_bound_dual_var_constraints = input_bound_dual_var_constraints + [ input_bound_dual_vars{end} <= temp_K_bound ];
-		% 	end
-
-		% 	%Create constraints
-		% 	if matching_behavior(knowl_seq_index)
-		% 		input_bounds_constraint = input_bounds_constraint + [ PuT.A * k{knowl_seq_index} <= PuT.b ];
-		% 	end
-		% end
 
 		%% Matching Behavior Constraints
 
@@ -226,14 +203,14 @@ function [results] = observer_comparison98( varargin )
 
 			 % Create Constraints
 			 if matching_behavior(knowl_seq_index)
-			 	Pw_prime = 1;
-			 	for Pw_index = 1:size(LK_w{knowl_seq_index})
-			 		Pw_prime = Pw_prime * LK_w{knowl_seq_index}(Pw_index);
-			 	end
+			 % 	Pw_prime = 1;
+			 % 	for Pw_index = 1:size(LK_w{knowl_seq_index})
+			 % 		Pw_prime = Pw_prime * LK_w{knowl_seq_index}(Pw_index);
+			 % 	end
 
-				%Apply the existence of w condition.
-				temp_dummy_w{end+1} = sdpvar(size(H_cl,2),1,'full');
-				matching_behavior_constraint = matching_behavior_constraint + [ H_cl * temp_dummy_w{end} <= h_cl ] + [ Pw_prime.A * temp_dummy_w{end} <= Pw_prime.b ];
+				% %Apply the existence of w condition.
+				% temp_dummy_w{end+1} = sdpvar(size(H_cl,2),1,'full');
+				% matching_behavior_constraint = matching_behavior_constraint + [ H_cl * temp_dummy_w{end} <= h_cl ] + [ Pw_prime.A * temp_dummy_w{end} <= Pw_prime.b ];
 
 				%Guarantee that no other controllers paths are touched by this controller
 				[ constrain_other_beliefs_tobe_empty , y_arr ] = cg.no_other_belief_sequences_reached( ...

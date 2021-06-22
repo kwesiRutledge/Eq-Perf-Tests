@@ -3,7 +3,7 @@ function [ combinations_out ] = RemoveCombinationsThatDoNotHaveCoveringBehaviorS
 	%	Identifies the combinations in combinations_in which do or do not properly cover the disturbance set as they should.
 
 	%% Input Processing
-	if ~isa('InternalBehaviorSet',InternalBehaviorSets)
+	if ~isa(InternalBehaviorSets,'InternalBehaviorSet')
 		error(['The input InternalBehaviorSets must be of class InternalBehaviorSet; instead it is of type ' class(InternalBehaviorSets)])
 	end
 

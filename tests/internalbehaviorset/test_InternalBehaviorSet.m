@@ -218,6 +218,8 @@ function test_InternalBehaviorSet_CoversInputW1(testCase)
 
 	ibs_array = [ibs1;ibs2];
 
+	error('This function cannot be solved efficiently!')
+
 	assert( ibs_array.CoversInputW(W_prime) )
 
 function test_InternalBehaviorSet_CoversInputW2(testCase)
@@ -242,5 +244,7 @@ function test_InternalBehaviorSet_CoversInputW2(testCase)
 	W_prime = Polyhedron('lb',-eta_w*ones(1,2),'ub',eta_w*[2,2]);
 
 	ibs_array = [ibs1;ibs2];
+
+	error('This function cannot be solved efficiently!')
 
 	assert( ~ibs_array.CoversInputW(W_prime) )

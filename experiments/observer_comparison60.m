@@ -64,7 +64,7 @@ function [results] = observer_comparison60( varargin )
 	end
 
 	if ~exist('UseProjection')
-		UseProjection = true;
+		UseProjection = false;
 	end
 
 	results.Parameters.dt = dt;

@@ -125,6 +125,7 @@ classdef POB_Feedback < handle
 			%Usage:
 			%	u = apply_control(obj , observed_w , y_mat)
 			%	u = apply_control(obj , y_mat)
+			%	u = obj.apply_control(y_mat)
 			
 
 			%%%%%%%%%%%%%%%%%%%%%%

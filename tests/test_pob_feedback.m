@@ -50,6 +50,38 @@ function [BG_out,controller_out,P_target,lcsas,P_x0,P_u] = get_reach_contr1()
 
 	[BG_out,controller_out] = lcsas.synth_robust_reach_contr( P_x0 , P_u , 'P_target', P_target , 'debug' , 0 );
 
+function [sys_out,L1,P_u,P_x0] = get_simpler_1dsys_v2()
+	%Description:
+
+	L1 = Language([1,1],[2,2]);
+	T = length(L1.words{1});
+
+	A1 = 1;
+	B1 = 1;
+	C1 = 1; %[1,0];
+	
+	n_x = size(A1,1);
+	n_u = size(B1,2);
+	n_y = size(C1,1);
+
+	eta_v = 0.1; eta_w = 0.2;
+	Pv1 = Polyhedron('lb',-eta_v*ones(1,n_y) ,'ub',eta_v*ones(1,n_y));
+	
+	Pw1 = Polyhedron('lb',-eta_w*ones(1,n_x) ,'ub',eta_w*ones(1,n_x));
+	Pw2 = 1.5*eta_w + Pw1;
+
+	eta_u = eta_w; eta_x0 = 0.3;
+	P_u = Polyhedron('lb',-eta_u*ones(1,n_u) ,'ub',eta_u*ones(1,n_u));
+	P_x0 = Polyhedron('lb',-eta_x0*ones(1,n_x),'ub',eta_x0*ones(1,n_x));
+
+	f1 = eta_w;
+	f2 = -eta_w;
+
+	aff_dyn_list = [	Aff_Dyn(A1,B1,f1,C1,Pw1,Pv1), ...
+						Aff_Dyn(A1,B1,f2,C1,Pw1,Pv1) ];
+
+	sys_out = LCSAS( aff_dyn_list , L1 , 'X0' , P_x0 );
+
 function [BG_out,controller_out,P_target] = get_reach_contr2( lcsas_in, language_in, P_u, P_x0 )
 	%get_reach_contr2
 	%Description:
@@ -131,7 +163,11 @@ function test2_simulation(testCase)
 
 	[sys_out,L1,P_u,P_x0] = get_simple_1dsys();
 
-	[BG2,contr2,P_target] = get_reach_contr2( sys_out,L1,P_u,P_x0 );
+	[BG2,contr2,P_target] = get_reach_contr2( sys_out , L1 , P_u , P_x0 );
+
+	if ~isa(contr2,'POB_Feedback')
+		error(['contr2 is not of class POB_Feedback. Instead it is of class ' class(contr2)] )
+	end
 
 	[x, u , y , ~ ] = contr2.simulate_1run(sys_out, P_x0 );
 

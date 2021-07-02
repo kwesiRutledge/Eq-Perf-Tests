@@ -163,7 +163,7 @@ function [results] = observer_comparison60( varargin )
 
 	in_x0 = [-eta_x;eta_x;eta_x;-eta_x];
 
-	[x, u , y , ~ ] = contr.simulate_1run(in_sys,Px0, 'in_sigma' , sig , 'in_w' , in_w , 'in_x0' , in_x0 );
+	[ x , u , y , ~ ] = contr.simulate_1run(in_sys,Px0, 'in_sigma' , sig , 'in_w' , in_w , 'in_x0' , in_x0 );
 	max_x = max(max(x([1:2:end],:)));
 	min_x = max(max(-x([1:2:end],:)));
 	min_x = -min_x;

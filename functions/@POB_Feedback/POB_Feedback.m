@@ -18,6 +18,7 @@ classdef POB_Feedback < handle
 
 		BG;
 		PossibleLSequences;
+		LSequenceConsistencySets;
 
 		System;
 		
@@ -100,9 +101,18 @@ classdef POB_Feedback < handle
 				PossibleLSequences = L.create_belief_sequences_of_length(length(L.words{1})); %Assume that all words are of the same length.
 			end
 
+			num_sequences = size(PossibleLSequences,2);
+
 			%%%%%%%%%%%%%%%
 			%% Algorithm %%
 			%%%%%%%%%%%%%%%
+
+			LSequenceConsistencySets = [];
+			for sequence_index = 1:num_sequences
+				temp_ebs = ExternalBehaviorSet( lcsas0 , PossibleLSequences(:,sequence_index) );
+				% temp_ebs.ToPolyhedron();
+				LSequenceConsistencySets = [ LSequenceConsistencySets ; temp_ebs ];
+			end
 
 			contr.BG = BG;
 			contr.PossibleLSequences = PossibleLSequences;

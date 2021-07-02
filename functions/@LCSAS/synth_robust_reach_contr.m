@@ -54,11 +54,7 @@ function [BG,contr,opt_out,BG_creation_time] = synth_robust_reach_contr( varargi
 	%% Constants %%
 	%%%%%%%%%%%%%%%
 
-	n_u = size(in_lcsas.Dyn(1).B,2);
-	n_x = size(in_lcsas.Dyn(1).A,1);
-	n_y = size(in_lcsas.Dyn(1).C,1);
-	n_w = size(in_lcsas.Dyn(1).B_w,2);
-	n_v = size(in_lcsas.Dyn(1).C_v,2);
+	[ n_x , n_u , n_y , n_w , n_v ] = in_lcsas.Dimensions();
 
 	if ~exist('debug_flag')
 		debug_flag = 1; %Verbosity of Functions. Gives debugging info

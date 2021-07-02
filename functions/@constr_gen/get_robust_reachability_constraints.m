@@ -37,7 +37,7 @@ function varargout = get_robust_reachability_constraints(varargin)
 	%% Input Processing %%
 	%%%%%%%%%%%%%%%%%%%%%%
 
-	[ cg , lcsas , word , P_x0 , P_u , P_des , u_des , L , xhat0 , selection_variable , LinGain , OffsetGain , settings_struct ] = grrc_input_processing(varargin{:})
+	[ cg , lcsas , word , P_x0 , P_u , P_des , u_des , L , xhat0 , selection_variable , LinGain , OffsetGain , settings_struct ] = grrc_input_processing(varargin{:});
 
 	%%%%%%%%%%%%%%%
 	%% Constants %%
@@ -87,11 +87,6 @@ function varargout = get_robust_reachability_constraints(varargin)
 		otherwise
 			body
 	end
-
-	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-	%% Define the Dual Variables for Robust Reachability %%
-	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 	
 
 	%%%%%%%%%%%%%%%%%%%%%%%

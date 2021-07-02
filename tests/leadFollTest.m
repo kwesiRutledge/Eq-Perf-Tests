@@ -1,5 +1,5 @@
 %lead_foll_tests.m
-clear all; close all; clc;
+
 
 %% Test 1: Verifying that offset calculation works
 
@@ -9,7 +9,7 @@ dt = 0.1;
 
 [cont_ad,disc_ad,offset_vals] = get_lead_follow_aff_dyn2(cube_dimx,cube_dimy,dt);
 
-assert(isequal(offset_vals(:,1),[-2;1]))
+assert(isequal(offset_vals(:,1),[-2;1]));
 
 %% Test 2: Verifying that the origin is really an equilibria for the dynamical system
 
@@ -25,7 +25,7 @@ foll_cube.n = cube_dimx*cube_dimy;
 u0 = zeros(2,1);
 ode = @(t,x) cont_ad.A*x+cont_ad.B*u0 + cont_ad.f;
 
-[t,y] = ode45(ode,[0,10],ones(1,2*(foll_cube.n+1)))
+[t,y] = ode45(ode,[0,10],ones(1,2*(foll_cube.n+1)));
 
 for drone_ind = 1:1+foll_cube.n
 	figure;

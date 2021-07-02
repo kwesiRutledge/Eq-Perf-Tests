@@ -213,6 +213,9 @@ classdef BeliefGraph < handle
 				disp('Worked through inputs.')
 			end
 
+			in_sys.X0 = P_x0;
+			in_sys.U = P_u;
+
 			BG.lcsas = in_sys;
 			BG.ModeLanguage = L;
 
@@ -239,7 +242,7 @@ classdef BeliefGraph < handle
 					c_node = c_level(node_idx);
 
 					%Calculate the ancestors of this Belief Node
-					temp_post = BG.post(c_node,P_u,P_x0,'debug',verbosity);
+					temp_post = BG.post(c_node,'debug',verbosity);
 										
 					%Add the ancestors to the BeliefGraph's set of nodes if they don't already exist in the set.
 					for node_idx = 1:length(temp_post)

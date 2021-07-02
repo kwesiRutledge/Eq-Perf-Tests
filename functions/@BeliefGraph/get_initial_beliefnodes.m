@@ -6,6 +6,9 @@ function [ initial_nodes ] = get_initial_beliefnodes( varargin )
 	%	[ initial_nodes ] = bg.get_initial_beliefnodes()
 	%	[ initial_nodes ] = bg.get_initial_beliefnodes('X0',X0)
 	%	[ initial_nodes ] = bg.get_initial_beliefnodes('X0',X0, 'verbosity' , 0)
+	%
+	%Todo:
+	%	- Speed up the exhaustive search for all Y0's.
 
 	%%%%%%%%%%%%%%%%%%%%%%
 	%% Input Processing %%
@@ -75,98 +78,89 @@ function [ initial_nodes ] = get_initial_beliefnodes( varargin )
 	%% Algorithm %%
 	%%%%%%%%%%%%%%%
 
-	%% Collect all Y Sets
-	[initial_eb_sets,initial_ib_sets] = lcsas_in.get_consistency_sets_for_language(0,L,Polyhedron(),X0, ...
-																					'use_proj', proj_flag, ...
-																					'ConsistencySetVersion', bg.ConsistencySetVersion, ...
-                                                                                    'fb_method',bg.FeedbackMethod);
-
-
-	if proj_flag
-		eb_sets = initial_eb_sets;
-
-		for powerset_idx = (L.cardinality()+1):length(word_idx_powerset)
-			powerset_elt = word_idx_powerset{powerset_idx};
-			powerset_elt_L = L_powerset(powerset_idx);
-
-			%For each word, create the output set of the system.
-			temp_sigma = powerset_elt_L.words{1};
-			[ ~ , L_idx_of_sigma ] = L.contains(temp_sigma);
-
-			%Compute Sets
-			eb_sets = [eb_sets, eb_sets(L_idx_of_sigma)];
-			for sigma_idx = 2:powerset_elt_L.cardinality()
-				%For each word, create the output set of the system.
-				temp_sigma = powerset_elt_L.words{sigma_idx};
-				[ ~ , L_idx_of_sigma ] = L.contains(temp_sigma);
-
-				eb_sets(end) = eb_sets(end).intersect( eb_sets(L_idx_of_sigma) );
-			end
-
-		end
-	end
-
-	ib_sets = bg.get_all_consistent_internal_behavior_sets( initial_ib_sets );
-
-	%% Find which Y_Sets contain others
-	if proj_flag
-		containment_matrix = false(length(word_idx_powerset));
-		for word_idx = 1:length(word_idx_powerset)
-			%word at word_idx always contains itself.
-			containment_matrix(word_idx,word_idx) = true;
-		end
-
-		for x_idx = 1:size(containment_matrix,1)
-			potential_y_idcs = [1:size(containment_matrix,2)];
-			potential_y_idcs = potential_y_idcs( potential_y_idcs ~= x_idx );
-			for y_idx = potential_y_idcs
-				%Consider the temporary combination
-				%disp(['x_idx = ' num2str(x_idx) ', y_idx = ' num2str(y_idx) ])
-
-				% Observe if Y_Set of X is contained by the Y_Set of Y
-				ObservationSetX = eb_sets(x_idx);
-				ObservationSetY = eb_sets(y_idx);
-				
-				containment_matrix(x_idx,y_idx) = (ObservationSetX <= ObservationSetY);
-			end
-		end
-	else
-		containment_matrix = bg.internal_behavior_sets2containment_mat( ib_sets , 'verbosity' , verbosity );
-	end
-
-	% containment_matrix
-
-	%% Create Nodes Based on containment_matrix and whether set is nonempty %%
-
-	if proj_flag
-		[ ~ , empty_set_flags ] = bg.find_empty_observation_polyhedra( eb_sets );
-	else
-		[ ~ , empty_set_flags ] = bg.find_empty_observation_polyhedra( ib_sets );
-	end
-
-	[ ~ , observation_set_is_observable ] = bg.containment_mat2observable_combos( containment_matrix );
-
-	valid_powerset_idcs = [1:length(L_powerset)];
-	valid_powerset_idcs = valid_powerset_idcs( (~empty_set_flags) & observation_set_is_observable );
-
-	%Create Belief Nodes
 	initial_nodes = [];
-	for bn_idx = 1:length(valid_powerset_idcs)
-		temp_powerset_idx = valid_powerset_idcs(bn_idx);
-		temp_comb = word_idx_powerset{temp_powerset_idx};
 
-		%Create Language for temp_comb
-		temp_lang = L_powerset(valid_powerset_idcs(bn_idx));
+	switch bg.FeedbackMethod
+	case 'state'
+		% If we are using state feedback and there is only one X0 set, then there should be a single output BeliefNode.
+		initial_nodes = BeliefNode( L , 0 );
+	case 'output'
+		Y0_list = [];
+		for word_index = 1:L.cardinality()
+			word_i = L.words{word_index};
+			temp_first_symbol = word_i(1);
 
-		%Create Consistency Set for temp_comb
-		if proj_flag
-			temp_cs = eb_sets(valid_powerset_idcs(bn_idx));
-			initial_nodes = [initial_nodes, BeliefNode( temp_lang , 0 , temp_cs )];
-		else
-			temp_ib_set = ib_sets(valid_powerset_idcs(bn_idx));
-			initial_nodes = [initial_nodes, BeliefNode( temp_lang , 0 , ...
-														'FullTrajectorySet', temp_ib_set )];
+			Y0_list = [ Y0_list ; lcsas_in.Dyn( temp_first_symbol ).C * X0 + lcsas_in.Dyn( temp_first_symbol ).P_v ];
 		end
+
+		% Determine Which Combinations of Words Intersect.
+		nonempty_combinations = [];
+		Y0_combinations = [];
+		for combination_index = 1:length(word_idx_powerset)
+			temp_combination = word_idx_powerset{combination_index};
+
+			%Intersect all Elements In The 
+			temp_Y0 = Y0_list(temp_combination(1));
+			for comb_vector_index = 1:length(temp_combination)
+				temp_Y0 = temp_Y0.intersect( Y0_list(temp_combination(comb_vector_index)) );
+			end
+
+			%Save Results
+			Y0_combinations = [ Y0_combinations ; temp_Y0 ];
+			nonempty_combinations = [ nonempty_combinations ; ~temp_Y0.isEmptySet ];
+		end
+
+		% Determine which combinations Contain Others
+		last_nonempty_comb_index = find(nonempty_combinations,1,'last');
+		nonempty_combinations_indices = find(nonempty_combinations);
+		
+		% Initialize Loop with an Index to Start with and the valid combinations.
+		subset_checker_index = last_nonempty_comb_index;
+		viable_combinations = nonempty_combinations;
+
+        %Ignore all combinations that have a lower combination index
+		%than the current one.
+		% By searching in this order, we can ignore combinations that have
+		% higher cardinality than the current one.
+        
+		while subset_checker_index > 1
+
+			% Check to see if any of the nonempty combinations are contained by the "larger"
+			% ones.
+
+			for combination_index = 1:subset_checker_index-1
+
+				if ~viable_combinations(combination_index)
+					%IF this combination was empty or if this combination was previously
+					%shown to be unnecessary, then continue.
+					continue;
+                end
+
+				if (Y0_combinations(subset_checker_index) <= Y0_combinations(combination_index)) && (Y0_combinations(subset_checker_index) >= Y0_combinations(combination_index))
+					%If the two combinations are equal, then
+					%ignore the one of smaller cardinality (combination_index)
+					viable_combinations(combination_index) = false;
+				end
+
+			end
+
+			%Get the last viable combination in the list that is "before" the current index
+			subset_checker_index = find(find( viable_combinations ) < subset_checker_index,1,'last');
+
+		end
+
+		%Finally create the nodes
+		for combination_index = 1:length(viable_combinations)
+			
+			if viable_combinations(combination_index)
+				temp_combination = word_idx_powerset{combination_index};
+				initial_nodes = [ initial_nodes , BeliefNode( Language(L.words{ temp_combination }) , 0 ) ];
+			end
+        end
+        1;
+
+	otherwise
+		error(['Unexpected FeedbackMethod for BeliefGraph: ' bg.FeedbackMethod ])
 	end
 
 end

@@ -4,10 +4,11 @@ classdef InternalBehaviorSet
 	%
 	%To-do:
 	%	- Add second constructor which does what get_closed_loop_consistent_internal_behavior_set_matrices.m is doing now.
+	%	- Add empty initializer for IBS and only create one when ToPolyhedron() is called.
 
 	properties
 		System;
-		Polyhedron;
+		AsPolyhedron;
 		t;
 		KnowledgeSequence;
 
@@ -136,7 +137,7 @@ classdef InternalBehaviorSet
 			%% Create Outputs %%
 			%%%%%%%%%%%%%%%%%%%%
 
-		    ibs.Polyhedron = ib_at_T ;
+		    ibs.AsPolyhedron = ib_at_T ;
 		    ibs.t = KS_len;
 		    ibs.Dim = n_x * (ibs.t+1) + n_u*ibs.t + n_w*ibs.t*FinalLang.cardinality() + n_x*FinalLang.cardinality();
 		    
@@ -158,6 +159,8 @@ classdef InternalBehaviorSet
 				'A', ibs.A , 'b' , ibs.b , ...
 				'Ae', ibs.Ae , 'be' , ibs.be ...
 				);
+
+			ibs.AsPolyhedron = polyhedronOut;
 		end
 
 		function [ polyhedronArrayOut ] = ToW(ibs)
@@ -182,6 +185,10 @@ classdef InternalBehaviorSet
 				polyhedronArrayOut = [ polyhedronArrayOut ; projPolyhedron ];
 			end
 
+		end
+
+		function [ ebs ] = ToExternalBehaviorSet(ibs)
+			ebs = ExternalBehaviorSet(ibs.System,ibs.KnowledgeSequence);
 		end
 
 		function [ tf ] = CoversInputPolyhedron( ibs_array , poly_in )
@@ -616,6 +623,7 @@ function [ lcsas0 , KnowledgeSequence , ibs_settings ] = ip_InternalBehaviorSet(
 							'Dim', -1 );
 
 	all_fb_types = {'state','output'};
+	all_fields = {'fb_type','reduce_flag','debug','ReturnEarly','A','b','Ae','be','Dim'};
 
 	%% Check the additional inputs
 	argument_index = expected_number_of_arguments+1;
@@ -645,6 +653,16 @@ function [ lcsas0 , KnowledgeSequence , ibs_settings ] = ip_InternalBehaviorSet(
 			case 'be'
 				ibs_settings.be = varargin{argument_index+1};
 				argument_index = argument_index + 2;
+			case 'ibs_settings_struct'
+				ibs_settings = varargin{argument_index+1};
+				argument_index = argument_index + 2;
+
+				fields_available = isfield(ibs_settings,all_fields);
+				if ~all( fields_available )
+					first_missing_field = all_fields{ find(fields_available,1) };
+					error(['The field ' first_missing_field ' is not available in ibs_settings. Please create it!' ])
+				end
+
 			otherwise
 				error(['Unexpected input to internal_behavior_set: ' varargin{argument_index} ])
 		end

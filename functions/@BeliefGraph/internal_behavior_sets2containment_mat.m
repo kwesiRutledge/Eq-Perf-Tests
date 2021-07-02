@@ -30,6 +30,8 @@ function [containment_matrix] = internal_behavior_sets2containment_mat( varargin
 	%% Constants %%
 	%%%%%%%%%%%%%%%
 
+	System = belief_graph_in.lcsas;
+
 	n_sets = length(internal_behavior_sets_in);
 
 	lcsas_in = belief_graph_in.lcsas;
@@ -39,15 +41,10 @@ function [containment_matrix] = internal_behavior_sets2containment_mat( varargin
 
 	%Find the value of time horizon t
 	lcsas_in = belief_graph_in.lcsas;
-	n_x = size(lcsas_in.Dyn(1).A,1);
-	n_u = size(lcsas_in.Dyn(1).B,2);
-	n_w = size(lcsas_in.Dyn(1).B_w,2);
-	n_y = size(lcsas_in.Dyn(1).C,1);
-	n_v = size(lcsas_in.Dyn(1).C_v,2);
+	[ n_x , n_u , n_y , n_w , n_v ] = lcsas_in.Dimensions();
 
-	t = lcsas_in.behavior_set2time( internal_behavior_sets_in(1) , 'InternalBehaviorSet_1word' , ...
-									'ConsistencySetVersion' , belief_graph_in.ConsistencySetVersion , ...
-									'FeedbackMethod' , belief_graph_in.FeedbackMethod );	
+	first_ibs = internal_behavior_sets_in(1);
+	t = first_ibs.t;
 
 	external_beh_dim = n_y*(t+1)+n_u*t;
 

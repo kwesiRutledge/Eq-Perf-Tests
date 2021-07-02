@@ -221,6 +221,12 @@ classdef LCSAS
 						end
 
 						argin_idx = argin_idx + 1;
+
+					case 'L'
+
+						if ~isa(lcsas.L,'Language')
+							error(['The field L is not a Language object in input LCSAS.'])
+						end
 						
 					otherwise
 						error(['Unexpected input to check: ''' varargin{argin_idx} '''!'])

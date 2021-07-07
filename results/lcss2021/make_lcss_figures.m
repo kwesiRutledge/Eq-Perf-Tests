@@ -6,5 +6,12 @@
 %% Choosing Figures to Create %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-disp('Which systems would you like to test?')
-figs_to_create = input('')
+figures_to_create = {'A'}
+
+%%%%%%%%%%%%%%
+%% Figure A %%
+%%%%%%%%%%%%%%
+
+if any(strcmp(figures_to_create,'A'))
+	draw_consistency_set_example1
+end

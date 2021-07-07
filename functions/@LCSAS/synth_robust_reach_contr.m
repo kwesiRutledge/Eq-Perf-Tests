@@ -45,6 +45,9 @@ function [BG,contr,opt_out,BG_creation_time] = synth_robust_reach_contr( varargi
 			case 'UseProjection'
 				UseProjection = varargin{varargin_idx+1};
 				varargin_idx = varargin_idx+2;
+			case 'UseAcceleratedAlgorithms'
+				UseAcceleratedAlgorithms = varargin{varargin_idx+1};
+				varargin_idx = varargin_idx+2;
 			otherwise
 				error(['Unexpected flag for this function: ' varargin{varargin_idx}])
 		end
@@ -69,7 +72,11 @@ function [BG,contr,opt_out,BG_creation_time] = synth_robust_reach_contr( varargi
 	end
 
 	if ~exist('UseProjection')
-		UseProjection = true;
+		UseProjection = false;
+	end
+
+	if ~exist('UseAcceleratedAlgorithms')
+		UseAcceleratedAlgorithms = false;
 	end
 
 	%%%%%%%%%%%%%%%
@@ -92,7 +99,8 @@ function [BG,contr,opt_out,BG_creation_time] = synth_robust_reach_contr( varargi
 	if ~exist('BG')
 		bg_timer_start = tic;
 		BG = BeliefGraph(in_lcsas,P_u,P_x0, ...
-						'verbosity',debug_flag,'accel_flag',true, ...
+						'verbosity',debug_flag, ...
+						'accel_flag',UseAcceleratedAlgorithms, ...
 						'use_proj_flag',UseProjection);
 		BG_creation_time = toc(bg_timer_start);
 	end

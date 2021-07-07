@@ -139,3 +139,65 @@ function test2_ConsistencySet(testCase)
 
 	assert( found_t_fromv1_cset & found_t_fromv1_ebset & found_t_fromv2_cset & found_t_fromv2_ebset )
 	
+
+
+function [lcsas_out] = get_simple_lcsas1()
+	%Description:
+	%
+
+	%% Constants
+
+	L1 = Language([1,2,1,2],[3,4,3,4],[5,1,1,1]);
+	T = length(L1.words{1});
+
+	A1 = [0,1;0.1,-0.05];
+	B1 = [0;1];
+	C1 = [1,0];
+	
+	n_x = size(A1,1);
+	n_u = size(B1,2);
+	n_y = size(C1,1);
+
+	eta_v = 0.1; eta_w = 0.2;
+	Pv1 = Polyhedron('lb',-eta_v*ones(1,n_y) ,'ub',eta_v*ones(1,n_y));
+	Pw1 = Polyhedron('lb',-eta_w*ones(1,n_x) ,'ub',eta_w*ones(1,n_x));
+	eta_v = 0.3;
+	Pv2 = Polyhedron('lb',-eta_v*ones(1,n_y) ,'ub',eta_v*ones(1,n_y));
+
+	eta_u = 0; eta_x0 = 0.3;
+	P_u = Polyhedron('lb',-eta_u*ones(1,n_u) ,'ub',eta_u*ones(1,n_u));
+	P_x0 = Polyhedron('lb',-eta_x0*ones(1,n_x),'ub',eta_x0*ones(1,n_x));
+
+	f1 = eta_w*[zeros(n_x-1,1);1];
+	f2 = eta_w*[1;zeros(n_x-1,1)];
+	f3 = -f1;
+	f4 = -f2;
+
+	aff_dyn_list = [	Aff_Dyn(A1,B1,f1,C1,Pw1,Pv1), ...
+						Aff_Dyn(A1,B1,f2,C1,Pw1,Pv1), ...
+						Aff_Dyn(A1,B1,f3,C1,Pw1,Pv1), ...
+						Aff_Dyn(A1,B1,f4,C1,Pw1,Pv1), ...
+						Aff_Dyn(A1,B1,f1,C1,Pw1,Pv2) ];
+
+	lcsas_out = LCSAS( aff_dyn_list , L1 , 'X0' , P_x0 , 'U' , P_u );
+
+function test1_find_coverage_relationship(testCase)
+	%Description:
+	%	Tests the member function find_coverage_relationship() for the ExternalBehaviorSet object.
+
+	% Constants
+	lcsas0 = get_simple_lcsas1();
+	
+	L1 = lcsas0.L;
+	[ConsistencySet1] = ExternalBehaviorSet( lcsas0 , [L1] , 'fb_method' , 'output' );
+	[ConsistencySet2] = ExternalBehaviorSet( lcsas0 , [L1] , 'fb_method' , 'output' );
+
+	% Algorithm
+
+	listOfConsistencySets = [ConsistencySet1;ConsistencySet2];
+
+	tf_matrix1 = listOfConsistencySets.find_coverage_relationship();
+
+	disp(tf_matrix1)
+
+	assert( all(all( tf_matrix1 == [ true , true; false, true ] ) ) )

@@ -133,6 +133,8 @@ function [ ancest_nodes ] = post_no_proj(BG,BN,post_settings)
     fb_method = 'output';
     % use_unobs_checks = true;
     
+    t_ancestor = BN.t+1; %The time of the "ancestor" of BN
+
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	%% Define Consistency Sets %%
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -145,7 +147,7 @@ function [ ancest_nodes ] = post_no_proj(BG,BN,post_settings)
 	for powerset_idx = 1:length(subL_powerset)
 		% Get An Element from the Powerset of subL
 		powerset_elt = subL_powerset(powerset_idx);
-		temp_sequence = repmat(powerset_elt,BN.t+1,1);
+		temp_sequence = repmat(powerset_elt,t_ancestor+1,1);
 
 		% Get InternalBehaviorSet for this Path
 		ibs_i = InternalBehaviorSet(lcsas,temp_sequence);
@@ -238,6 +240,8 @@ function ancest_nodes = post_proj(BG,BN,post_settings)
 	n = size(lcsas.Dyn(1).A,1);
 	m = size(lcsas.Dyn(1).B,2);
 
+	t_ancestor = BN.t+1; %The time of the "ancestor" of BN
+
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	%% Perform Accelerated Computations If That Is Desired %%
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -257,7 +261,7 @@ function ancest_nodes = post_proj(BG,BN,post_settings)
 	end
 
 	[ consistency_sets , initial_PhiSets ] = lcsas.get_consistency_sets_for_language( ...
-										BN.t+1,subL,U,X0, ...
+										t_ancestor,subL,U,X0, ...
 										'fb_method',post_settings.fb_method, ...
 										'debug_flag',post_settings.debug_flag);
 
@@ -337,7 +341,7 @@ function ancest_nodes = post_proj(BG,BN,post_settings)
 		temp_consist_set = consistency_sets(visible_transitions(trans_idx));
 		temp_full_set = PhiSets(visible_transitions(trans_idx));
 
-		c_node = BeliefNode(temp_L,BN.t+1,'ConsistencySet',temp_consist_set,'FullTrajectorySet',temp_full_set);
+		c_node = BeliefNode(temp_L,t_ancestor,'ConsistencySet',temp_consist_set,'FullTrajectorySet',temp_full_set);
 		ancest_nodes = [ancest_nodes,c_node];
 	end
 

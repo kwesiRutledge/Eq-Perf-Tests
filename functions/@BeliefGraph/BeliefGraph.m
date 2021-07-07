@@ -261,8 +261,8 @@ classdef BeliefGraph < handle
 
 				end
 
-				%Create next level of the tree
-				c_level = BG.get_all_nodes_at_time(tau);
+				%Prepare to create next level of the tree
+				c_level = BG.get_all_nodes_at_time(tau); % Use the nodes at the current time (tau) as c_level, in the next iteration.
 				if verbosity >= 1
 					disp(['There are ' num2str(length(c_level)) ' nodes at time tau = ' num2str(tau) '.' ])
 				end

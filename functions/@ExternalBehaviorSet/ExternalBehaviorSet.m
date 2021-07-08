@@ -210,6 +210,47 @@ classdef ExternalBehaviorSet < handle
 
 		end
 
+		function [ empty_flags ] = IsEmpty( ebs )
+			%Description:
+			%	This function identifies which of the ExternalBehaviorSets are empty.
+			%	If a given path's internal behavior set is empty, then we will mark that set appropriately.
+
+			%% Input Checking
+
+			% if isscalar(ebs)
+			% 	error('The matrices A,b, Ae, and be are expected to be numeric in order to check to see if this is an empty set.')
+			% end
+
+			%% Variables
+
+            empty_flags = logical.empty;
+            
+			%% Algorithm
+
+			if isscalar(ebs)
+
+				empty_flags = ebs.ParentInternalBehaviorSet.IsEmpty();
+
+			elseif isvector(ebs) && iscell(ebs)
+                
+				for ebs_index = 1:length(ebs)
+					temp_single_ebs = ebs{ebs_index};
+					empty_flags = [ empty_flags ; temp_single_ebs.IsEmpty() ];
+				end
+
+			elseif isvector(ebs) && ~iscell(ebs)
+
+				for ebs_index = 1:length(ebs)
+					temp_single_ebs = ebs(ebs_index);
+					empty_flags = [ empty_flags ; temp_single_ebs.IsEmpty() ];
+				end
+
+			else
+				error('Input to IsEmpty() must be a scalar or vector.')
+			end
+
+		end
+
 	end
 
 end

@@ -21,6 +21,9 @@ function [containment_matrix] = internal_behavior_sets2containment_mat( varargin
 			case 'verbosity'
 				verbosity = varargin{arg_idx+1};
 				arg_idx = arg_idx + 2;
+			case {'fb_type'}
+				fb_type = varargin{arg_idx+1};
+				arg_idx = arg_idx + 2;
 			otherwise
 				error('Unrecognized input to the function.')
 		end
@@ -46,7 +49,9 @@ function [containment_matrix] = internal_behavior_sets2containment_mat( varargin
 	first_ibs = internal_behavior_sets_in(1);
 	t = first_ibs.t;
 
-	external_beh_dim = n_y*(t+1)+n_u*t;
+	if ~exist('fb_type')
+		fb_type = 'output';
+	end
 
 	cg = constr_gen(0);
 
@@ -60,6 +65,15 @@ function [containment_matrix] = internal_behavior_sets2containment_mat( varargin
 	%%%%%%%%%%%%%%%
 	%% Algorithm %%
 	%%%%%%%%%%%%%%%
+
+	switch fb_type
+	case 'state'
+		external_beh_dim = n_x*(t+1)+n_u*t;
+	case 'output'
+		external_beh_dim = n_y*(t+1)+n_u*t;
+	otherwise
+		error(['Unexpected fb_type given to internal_behavior_sets2containment_mat: ' fb_type ])
+	end
 
 	containment_matrix = false(length(internal_behavior_sets_in));
 

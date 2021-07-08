@@ -173,12 +173,13 @@ function [ ancest_nodes ] = post_no_proj(BG,BN,post_settings)
 		disp('  + Detecting whether or not the Consistency Sets are independent enough to be found.')
 	end
 
-	empty_set_flags = all_ibs.IsEmpty();
+	empty_set_flags = all_ibs.IsEmpty(); %Find which ibs are empty.
 
-	containment_matrix_ib = BG.internal_behavior_sets2containment_mat( all_ibs , ...
-																		'verbosity' , post_settings.debug_flag > 1 );
+	% containment_matrix_ib = BG.internal_behavior_sets2containment_mat( all_ibs , 'verbosity' , post_settings.debug_flag > 1 , 'fb_type' , post_settings.fb_method);
 
-	[ ~ , observation_set_is_observable ] = BG.containment_mat2observable_combos( containment_matrix_ib );
+	% [ ~ , observation_set_is_observable ] = BG.containment_mat2observable_combos( containment_matrix_ib );
+
+	observation_set_is_observable = all_ibs.FindObservableIBS();
 
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	%% Create Ancestor Nodes %%
@@ -260,26 +261,24 @@ function ancest_nodes = post_proj(BG,BN,post_settings)
 		disp('- Creating Consistency Sets.')
 	end
 
-	[ consistency_sets , initial_PhiSets ] = lcsas.get_consistency_sets_for_language( ...
-										t_ancestor,subL,U,X0, ...
-										'fb_method',post_settings.fb_method, ...
-										'debug_flag',post_settings.debug_flag);
+	consistency_sets = [];
+	for powerset_idx = 1:length(subL_powerset)
+		% Get An Element from the Powerset of subL
+		powerset_elt = subL_powerset(powerset_idx);
+		temp_sequence = repmat(powerset_elt,t_ancestor+1,1);
+
+		% Get ExternalBehaviorSet for this Path
+		ebs_i = ExternalBehaviorSet(lcsas,temp_sequence);
+
+		% Prune / ignore certain sets based on if they are
+
+		consistency_sets = [consistency_sets;ebs_i];
+
+	end
 
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	%% Identify Which Consistency Sets Can Be Independently Detected %%
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-	%Extend the number of consistency sets by performing intersections.
-	for powerset_idx = (subL.cardinality()+1):length(subL_powerset)
-		powerset_idcs_elt = subL_index_powerset{powerset_idx};
-		consistency_sets(powerset_idx) = consistency_sets(powerset_idcs_elt(1));
-		
-		for elt_idx = 2:length(powerset_idcs_elt)
-			consistency_sets(powerset_idx) = consistency_sets(powerset_idx).intersect( consistency_sets(powerset_idcs_elt(elt_idx)) );
-		end
-	end
-
-	PhiSets = BG.get_all_consistent_internal_behavior_sets( initial_PhiSets );
 
 	%Check to see if the set is visible. i.e. Each set is
 	%	- somehow unique compared to its 'siblings', and
@@ -291,32 +290,34 @@ function ancest_nodes = post_proj(BG,BN,post_settings)
 
 
 	%Check for emptiness of the consistency set.
-	[ ~ , empty_set_flags ] = BG.find_empty_observation_polyhedra( consistency_sets );
+	empty_set_flags = consistency_sets.IsEmpty(); %Find which ibs are empty.
 
 	if post_settings.use_unobs_checks
 
-		containment_matrix = false(length(subL_powerset));
-		for x_idx = 1:size(containment_matrix,1)
-			containment_matrix(x_idx,x_idx) = true;
-		end
+		% containment_matrix = false(length(subL_powerset));
+		% for x_idx = 1:size(containment_matrix,1)
+		% 	containment_matrix(x_idx,x_idx) = true;
+		% end
 
 
-		for x_idx = 1:size(containment_matrix,1)
-			potential_y_idcs = [1:size(containment_matrix,2)];
-			potential_y_idcs = potential_y_idcs( potential_y_idcs ~= x_idx );
-			for y_idx = potential_y_idcs
-				%Consider the temporary combination
-				%disp(['x_idx = ' num2str(x_idx) ', y_idx = ' num2str(y_idx) ])
+		% for x_idx = 1:size(containment_matrix,1)
+		% 	potential_y_idcs = [1:size(containment_matrix,2)];
+		% 	potential_y_idcs = potential_y_idcs( potential_y_idcs ~= x_idx );
+		% 	for y_idx = potential_y_idcs
+		% 		%Consider the temporary combination
+		% 		%disp(['x_idx = ' num2str(x_idx) ', y_idx = ' num2str(y_idx) ])
 
-				% Observe if Y_Set of X is contained by the Y_Set of Y
-				ObservationSetX = consistency_sets(x_idx);
-				ObservationSetY = consistency_sets(y_idx);
+		% 		% Observe if Y_Set of X is contained by the Y_Set of Y
+		% 		ObservationSetX = consistency_sets(x_idx);
+		% 		ObservationSetY = consistency_sets(y_idx);
 				
-				containment_matrix(x_idx,y_idx) = (ObservationSetX <= ObservationSetY);
-			end
-		end
+		% 		containment_matrix(x_idx,y_idx) = (ObservationSetX <= ObservationSetY);
+		% 	end
+		% end
 
-		[ ~ , observation_set_is_observable ] = BG.containment_mat2observable_combos( containment_matrix );
+		observation_set_is_observable = consistency_sets.FindObservableEBS('empty_flags',empty_set_flags);
+
+		% [ ~ , observation_set_is_observable ] = BG.containment_mat2observable_combos( containment_matrix );
 
 	end
 
@@ -339,7 +340,7 @@ function ancest_nodes = post_proj(BG,BN,post_settings)
 	for trans_idx = 1:length(visible_transitions)
 		temp_L = subL_powerset(visible_transitions(trans_idx));
 		temp_consist_set = consistency_sets(visible_transitions(trans_idx));
-		temp_full_set = PhiSets(visible_transitions(trans_idx));
+		temp_full_set = temp_consist_set.ParentInternalBehaviorSet;
 
 		c_node = BeliefNode(temp_L,t_ancestor,'ConsistencySet',temp_consist_set,'FullTrajectorySet',temp_full_set);
 		ancest_nodes = [ancest_nodes,c_node];

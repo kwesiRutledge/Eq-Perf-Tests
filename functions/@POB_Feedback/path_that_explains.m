@@ -14,8 +14,6 @@ function path_index = path_that_explains( varargin )
 	pob_feedback = varargin{1};
 	external_behavior_in = varargin{2};
 
-	LSequenceConsistencySets = pob_feedback.LSequenceConsistencySets;
-
 	argidx = 3;
 
 	while argidx <= nargin
@@ -45,14 +43,20 @@ function path_index = path_that_explains( varargin )
 	%% Algorithm %%
 	%%%%%%%%%%%%%%%
 
-	
+	% Output Measurements
+	y_vec = reshape(y_mat,prod(size(y_mat)),1);
+	u_vec = reshape(contr.u_hist,prod(size(contr.u_hist)),1);
+
+	%Get the current time and find the nodes that correspond to this time.
+	t = size(y_mat,2) - 1;
 
 	sequence_cset_contains_eb = [];
 	for sequence_index = 1:length(LSequenceConsistencySets)
 		sequence_cset_contains_eb = [ sequence_cset_contains_eb ; LSequenceConsistencySets(sequence_index).contains( external_behavior_in ) ];
 	end
 
-	%Return answer
+	% Find the sequence that contained the external behavior and also had maximum cardinality.
+	
 	tf = all(  ); %If the problem is feasible, then the external behavior is explainable by the internal behavior set.
 
 end

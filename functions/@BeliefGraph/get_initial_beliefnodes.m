@@ -83,7 +83,7 @@ function [ initial_nodes ] = get_initial_beliefnodes( varargin )
 	switch bg.FeedbackMethod
 	case 'state'
 		% If we are using state feedback and there is only one X0 set, then there should be a single output BeliefNode.
-		initial_nodes = BeliefNode( L , 0 );
+		initial_nodes = BeliefNode( L , 0 , 'ConsistencySet' , X0 );
 	case 'output'
 		Y0_list = [];
 		for word_index = 1:L.cardinality()
@@ -154,7 +154,7 @@ function [ initial_nodes ] = get_initial_beliefnodes( varargin )
 			
 			if viable_combinations(combination_index)
 				temp_combination = word_idx_powerset{combination_index};
-				initial_nodes = [ initial_nodes , BeliefNode( Language(L.words{ temp_combination }) , 0 ) ];
+				initial_nodes = [ initial_nodes , BeliefNode( Language(L.words{ temp_combination }) , 0 , 'ConsistencySet' , Y0_combinations(combination_index) ) ];
 			end
         end
         1;

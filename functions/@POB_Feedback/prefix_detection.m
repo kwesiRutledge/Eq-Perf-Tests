@@ -73,7 +73,8 @@ function gain_idx = prefix_detection( varargin )
 		else
 			%Use Optimization to Verify Consistency Set Containment
 			external_behavior_set = temp_bn.FullTrajectorySet;
-			obsvd_traj_is_contained = contr.external_behavior_explained_by( obsvd_traj , external_behavior_set , 'verbosity' , verbosity );
+			obsvd_traj_is_contained = external_behavior_set.containsExternalBehavior( obsvd_traj );
+			%obsvd_traj_is_contained = contr.external_behavior_explained_by( obsvd_traj , external_behavior_set , 'verbosity' , verbosity );
 		end
 
 		if obsvd_traj_is_contained

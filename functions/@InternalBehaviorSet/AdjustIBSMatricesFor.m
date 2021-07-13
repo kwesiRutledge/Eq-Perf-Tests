@@ -25,13 +25,21 @@ function [ A , b , Ae , be ] = AdjustIBSMatricesFor( ibs , tau , L0 ,  A0 , b0 ,
 	%Find the location of the input Language L0 relative to the language at max_card_t
 	L_mct = KnowledgeSequence(max_card_index);
 
-	L0_indicies = -ones(L0.cardinality(),1);
-	L0_indicies_as_binary = zeros(L0.cardinality(),1);
+	L0_indicies = -ones(L_mct.cardinality(),1);
+	L0_indicies_as_binary = zeros(L_mct.cardinality(),1);
+
+	mat_L0 = [];
 	for word_index = 1:L0.cardinality()
 		[tf,L0_index] = L_mct.contains(L0.words{word_index});
 		if tf
+			temp_row = zeros(L_mct.cardinality(),1)';
+			temp_row(L0_index) = 1;
+
+			mat_L0 = [ mat_L0 ; temp_row ];
+
 			L0_indicies(L0_index) = 1;
-			L0_indicies_as_binary(L0_index) = 1;
+
+			% L0_indicies_as_binary(L0_index) = 1;
 		end
 	end
  
@@ -42,16 +50,16 @@ function [ A , b , Ae , be ] = AdjustIBSMatricesFor( ibs , tau , L0 ,  A0 , b0 ,
 	% L0_index_as_binary = zeros(1,L_mct.cardinality());
 	% L0_index_as_binary( L0_index ) = 1;
 
-	mat_L0 = diag(L0_indicies_as_binary);
+	%mat_L0 = diag(L0_indicies_as_binary);
 
 	switch ibs_settings.fb_type
 	case 'state'
 		ibs_e_dim = n_x * (t+1) + n_u*t + n_w*t*max_card + n_x; %Expected Dimension of Expected Behavior Set
 
 		A_Prefactor = [ ...
-			eye( n_x * (t+1) ), zeros( n_x*(t+1) , ibs_e_dim - n_x * (t+1) ) ;
-			zeros( n_u*(t) , n_x*(tau+1) ), eye(n_u*t) , zeros( n_u*(t) , ibs_e_dim - n_x*(t+1) - n_u*t ) ;
-			zeros( n_w*(t)*max_card , n_x*(tau+1) + n_u*tau ) , kron( mat_L0 , [ eye(n_w*t) , zeros(n_w*t,n_w*(t-tau)) ] ) , zeros(n_w*t*max_card, ibs_e_dim - n_x*(t+1) - n_u*t - n_w*t*max_card) ;
+			eye( n_x * (tau+1) ), zeros( n_x*(tau+1) , ibs_e_dim - n_x * (tau+1) ) ;
+			zeros( n_u*(tau) , n_x*(t+1) ), eye(n_u*tau) , zeros( n_u*(tau) , ibs_e_dim - n_x*(t+1) - n_u*tau ) ;
+			zeros( n_w*(tau)*L0.cardinality() , n_x*(t+1) + n_u*t ) , kron( mat_L0 , [ eye(n_w*tau) , zeros(n_w*tau,n_w*(t-tau)) ] ) , zeros(n_w*tau*L0.cardinality(), ibs_e_dim - n_x*(t+1) - n_u*t - n_w*t*max_card) ;
 			zeros( n_x , ibs_e_dim - n_x), eye(n_x) ...
 			];
 

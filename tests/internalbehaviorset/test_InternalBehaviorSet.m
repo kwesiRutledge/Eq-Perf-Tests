@@ -69,7 +69,7 @@ function test_InternalBehaviorSet_Constructor1(testCase)
 	%Create Example InternalBehaviorSet
 	ibs1 = InternalBehaviorSet(lcsas0,temp_belief_sequence);
 
-	assert( ibs1.t == 2 )
+	assert( ibs1.t == 1 )
 
 function test_InternalBehaviorSet_Constructor2(testCase)
 	%test_InternalBehaviorSet_Constructor2.m
@@ -82,7 +82,7 @@ function test_InternalBehaviorSet_Constructor2(testCase)
 	% Constants
 	[lcsas0,~,~,~] = get_simple_lcsas1(); %Get Simple Dynamics
 	L1 = Language(lcsas0.L.words{1});
-	temp_belief_sequence = [L1];
+	temp_belief_sequence = [L1;L1];
 
 	%Create Example InternalBehaviorSet
 	ibs1 = InternalBehaviorSet(lcsas0,temp_belief_sequence);
@@ -97,7 +97,7 @@ function test_InternalBehaviorSet_Constructor2(testCase)
 
 	assert( temp_poly.contains([x0;x1;u0;w0;x0]) )
 
-function [lcsas,eta_w,eta_v,eta_u] = get_simple_lcsas2()
+function [lcsas,eta_w,eta_v,eta_u,eta_x0] = get_simple_lcsas2()
 	%Description:
 	%	Retrieves a simple LCSAS in two dimensions for testing.
 	%	The two words should lead to an interesting projection set.
@@ -130,7 +130,7 @@ function [lcsas,eta_w,eta_v,eta_u] = get_simple_lcsas2()
 
 	lcsas = LCSAS( aff_dyn_list , L1 , 'X0' , P_x0 , 'U' , P_u );
 
-function test_InternalBehaviorSet_ToW1(testCase)
+function test_InternalBehaviorSet_ToW_p1(testCase)
 	%test_InternalBehaviorSet_ToW1
 	%Description:
 	%	This test script is meant to evaluate the method ToW() for InternalBehaviorSet().
@@ -147,10 +147,32 @@ function test_InternalBehaviorSet_ToW1(testCase)
 	%Create Example InternalBehaviorSet
 	ibs1 = InternalBehaviorSet(lcsas0,temp_belief_sequence);
 
-	temp_W = ibs1.ToW();
+	temp_W = ibs1.ToW_p();
 	W_expected = Polyhedron('lb',[0,-eta_w],'ub',[eta_w,eta_w]);
 
-	assert( (length(temp_W) == 2) && ( W_expected <= temp_W(1) ) && ( W_expected >= temp_W(1) ) )
+	assert( length(temp_W) == L_all.cardinality() )
+    
+function test_InternalBehaviorSet_ToW_p2(testCase)
+	%test_InternalBehaviorSet_ToW1
+	%Description:
+	%	This test script is meant to evaluate the method ToW() for InternalBehaviorSet().
+	%	In this case, we make sure that it contains the proper hyperrectangle for the simple
+	%	lcsas in get_simple_lcsas2().
+
+	include_relevant_libraries();
+
+	% Constants
+	[lcsas0,eta_w,~,~] = get_simple_lcsas2(); %Get Simple Dynamics
+	L_all = lcsas0.L;
+	temp_belief_sequence = [L_all;L_all];
+
+	%Create Example InternalBehaviorSet
+	ibs1 = InternalBehaviorSet(lcsas0,temp_belief_sequence);
+
+	temp_W = ibs1.ToW_p();
+	W_expected = Polyhedron('lb',[0,-eta_w],'ub',[eta_w,eta_w]);
+
+	assert( ( W_expected <= temp_W{1} ) && ( W_expected >= temp_W{1} ) )
 
 function test_InternalBehaviorSet_CoversInputPolyhedron1(testCase)
 	%Description:
@@ -248,3 +270,111 @@ function test_InternalBehaviorSet_CoversInputW2(testCase)
 	error('This function cannot be solved efficiently!')
 
 	assert( ~ibs_array.CoversInputW(W_prime) )
+
+function test_InternalBehaviorSet_containsExternalBehavior1(testCase)
+	%Description:
+	%	Testing the containment operator for a point that I know should belong to the set.
+
+	%% Constants
+
+	% Get Simple System
+	[lcsas0,eta_w,~,~,eta_x0] = get_simple_lcsas2(); %Get Simple Dynamics
+	L = lcsas0.L;
+	
+	%Create Example InternalBehaviorSet
+	ibs1 = InternalBehaviorSet(lcsas0,[L,L]);
+
+	%% Test
+	x0 = [eta_x0*ones(2,1)];
+	u0 = zeros(1,1);
+	x1 = lcsas0.Dyn(1).A * x0 + ...
+			lcsas0.Dyn(1).B * u0 + ...
+			eta_w*ones(2,1);
+
+	temp_ebs = [x0;x1;u0];
+
+	assert( ibs1.containsExternalBehavior(temp_ebs) )
+
+
+function test_InternalBehaviorSet_containsExternalBehavior2(testCase)
+	%Description:
+	%	Testing the containment operator for a point that I know should NOT belong to the set.
+
+	%% Constants
+
+	% Get Simple System
+	[lcsas0,eta_w,~,~,eta_x0] = get_simple_lcsas2(); %Get Simple Dynamics
+	L = lcsas0.L;
+	
+	%Create Example InternalBehaviorSet
+	ibs1 = InternalBehaviorSet(lcsas0,[L,L]);
+
+	%% Test
+	x0 = [1.5*eta_x0*ones(2,1)];
+	u0 = zeros(1,1);
+	x1 = lcsas0.Dyn(1).A * x0 + ...
+			lcsas0.Dyn(1).B * u0 + ...
+			eta_w*ones(2,1);
+
+	temp_ebs = [x0;x1;u0];
+
+	assert( ~ibs1.containsExternalBehavior(temp_ebs) )
+
+function test_InternalBehaviorSet_contains1(testCase)
+	%Description:
+	%	Testing the containment operator for a point that I know should belong to the set.
+
+	%% Constants
+
+	% Get Simple System
+	[lcsas0,eta_w,~,~,eta_x0] = get_simple_lcsas2(); %Get Simple Dynamics
+	L = lcsas0.L;
+	
+	%Create Example InternalBehaviorSet
+	ibs1 = InternalBehaviorSet(lcsas0,[L,L]);
+
+	%% Test
+	x0 = [0.3*eta_x0*ones(2,1)];
+	u0 = zeros(1,1);
+	w0 = eta_w*zeros(2,1);
+	x1 = lcsas0.Dyn(1).A * x0 + ...
+			lcsas0.Dyn(1).B * u0 + ...
+			w0;
+
+	ib_test = [x0;x1;u0;w0;w0;x0];
+
+	assert(ibs1.contains(ib_test))	
+
+function test_InternalBehaviorSet_contains2(testCase)
+	%Description:
+	%	Testing the containment operator for a point that I know should belong to the set.
+
+	%% Constants
+
+	% Get Simple System
+	[lcsas0,eta_w,~,~,eta_x0] = get_simple_lcsas2(); %Get Simple Dynamics
+	L = lcsas0.L;
+	
+	%Create Example InternalBehaviorSet
+	ibs1 = InternalBehaviorSet(lcsas0,[L,L]);
+
+	%% Test
+	x0 = [0.3*eta_x0*ones(2,1)];
+	u0 = zeros(1,1);
+	w0 = eta_w*ones(2,1);
+	x1 = lcsas0.Dyn(1).A * x0 + ...
+			lcsas0.Dyn(1).B * u0 + ...
+			w0;
+
+	ib_test = [x0;x1;u0;w0;w0;x0];
+
+	assert(ibs1.contains(ib_test))	
+
+	
+
+
+
+
+
+
+

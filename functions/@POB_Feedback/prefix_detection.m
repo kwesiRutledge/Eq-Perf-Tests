@@ -67,7 +67,7 @@ function gain_idx = prefix_detection( varargin )
 		%Perform set membership check.
 		obsvd_traj = [y_vec;u_vec];
 
-		if ConsistencySetAvailable
+		if ~isempty(temp_bn.c_set)
 			consistency_set = temp_bn.c_set;
 			obsvd_traj_is_contained = consistency_set.contains(obsvd_traj);
 		else

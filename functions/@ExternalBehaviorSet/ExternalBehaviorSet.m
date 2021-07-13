@@ -57,16 +57,30 @@ classdef ExternalBehaviorSet < handle
 
 			%% Input Processing
 			[ lcsas , KnowledgeSequence , ebs_settings ] = input_processing_ExternalBehaviorSet(varargin{:});
-
+            
+            %% Constants %%
+            [ n_x , n_u , n_y , n_w , n_v ] = lcsas.Dimensions();
+            
 			%% Create Internal Behavior Set
 			ebs.ParentInternalBehaviorSet = InternalBehaviorSet(lcsas, KnowledgeSequence,'ebs_settings_struct',ebs_settings);
-
+            t = ebs.ParentInternalBehaviorSet.t;
+            
 			%% Get The Matrice
 
 			%% Define Object
-			ebs.t = ebs.ParentInternalBehaviorSet.t;
+			ebs.t = t;
 			ebs.System = lcsas;
 			ebs.AsPolyhedron = [];
+            
+            switch ebs_settings.fb_type
+                case 'state'
+                    ebs.Dim = n_x * (t+1) + n_u * t;
+                case 'output'
+                    ebs.Dim = n_y * (t+1) + n_u * t;
+                otherwise
+                    error(['Unexpected feedback type given in ExternalBehaviorSet(): ' ebs_settings.fb_type ])
+            end
+                
 
 		end
 
@@ -168,8 +182,8 @@ classdef ExternalBehaviorSet < handle
 			% Construct Constraints
 			ib_match_constraint = [ [eye(eb_dim) , zeros(eb_dim,ib_dim-eb_dim)]*internal_behavior == external_behavior ];
 
-			valid_ib_constraint = 	[ internal_behavior_set_in.A * internal_behavior <= internal_behavior_set_in.b ] + ...
-									[ internal_behavior_set_in.Ae * internal_behavior == internal_behavior_set_in.be ];
+			valid_ib_constraint = 	[ ibs.A * internal_behavior <= ibs.b ] + ...
+									[ ibs.Ae * internal_behavior == ibs.be ];
 
 			%Run optimization
 			diagnostics = optimize(	ib_match_constraint+valid_ib_constraint, ...

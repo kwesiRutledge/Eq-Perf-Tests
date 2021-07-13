@@ -124,19 +124,15 @@ classdef InternalBehaviorSet < handle
 				L_tau = KnowledgeSequence(tau+1);
 
 				%Create a Part of the A Matrix for Each word in L_tau
-				for word_index = 1:L_tau.cardinality()
-					L_tau_projected = Language(L_tau.words{word_index});
-					[A_projected,b_projected,Ae_projected,be_projected] = ibs.CreatePolytopeMatricesAtTime(tau,L_tau_projected,ibs_settings);
+				[A_projected,b_projected,Ae_projected,be_projected] = ibs.CreatePolytopeMatricesAtTime(tau,L_tau,ibs_settings);
+				%Extend all projected matrices so that they can fit in A,b,Ae,be
+				[ tempA , tempb , tempAe , tempbe ] = ibs.AdjustIBSMatricesFor( tau , L_tau , ...
+																				A_projected , b_projected , Ae_projected , be_projected );
 
-					%Extend all projected matrices so that they can fit in A,b,Ae,be
-					[tempA, tempb , tempAe , tempbe ] = ibs.AdjustIBSMatricesFor( tau, L_tau_projected, A_projected,b_projected,Ae_projected,be_projected);
-
-					A = [ A ; tempA ];
-					b = [ b ; tempb ];
-					Ae = [ Ae ; tempAe ];
-					be = [ be ; tempbe ]; 
-
-				end
+				A = [ A ; tempA ];
+				b = [ b ; tempb ];
+				Ae = [ Ae ; tempAe ];
+				be = [ be ; tempbe ]; 
 
 		    end
 
@@ -173,7 +169,7 @@ classdef InternalBehaviorSet < handle
 			ibs.AsPolyhedron = polyhedronOut;
 		end
 
-		function [ polyhedronArrayOut ] = ToW(ibs)
+		function [ polyhedronArrayOut ] = ToW_p(ibs)
 			%Description:
 			%	Projects the polyhedron onto the elements that represent 'w'.
 			%
@@ -181,18 +177,25 @@ classdef InternalBehaviorSet < handle
 			%% Constants
 			t = ibs.t;
 			lcsas = ibs.System;
+			L = lcsas.L;
 			KnowledgeSequence = ibs.KnowledgeSequence;
 
 			[ n_x , n_u , n_y , n_w , n_v ] = lcsas.Dimensions();
 
 			%% Algorithm
 			polyRepresentation = ibs.ToPolyhedron();
+			polyRepresentation.computeVRep;
 
-			polyhedronArrayOut = [];
+			polyhedronArrayOut = cell(L.cardinality(),1);
+
 			LangAtEnd = KnowledgeSequence(end);
 			for word_idx = 1:LangAtEnd.cardinality()
 				projPolyhedron = polyRepresentation.projection(n_x*(t+1) + n_u*(t) + n_w*(t)*(word_idx-1) + [1:n_w*(t)]);
-				polyhedronArrayOut = [ polyhedronArrayOut ; projPolyhedron ];
+				projPolyhedron.computeHRep();
+				
+				[ ~ , wordIndexInL ] = L.contains(LangAtEnd.words{word_idx}); %Get index 
+				polyhedronArrayOut{ wordIndexInL } = projPolyhedron;
+				
 			end
 
 		end

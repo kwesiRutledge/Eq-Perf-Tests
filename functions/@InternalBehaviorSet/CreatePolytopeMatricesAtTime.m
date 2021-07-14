@@ -64,7 +64,7 @@ function [A,b,Ae,be] = CreatePolytopeMatricesAtTime(ibs,t,L_t,ibs_settings)
 	for word_ind = 1:length(L_t.words)
 		H_block(end+[1:size(Hc{word_ind},1)],end+[1:size(Bwc{word_ind},2)]) = Hc{word_ind}*Bwc{word_ind};
 		S_block(end+[1:size(Sc{word_ind},1)],[1:size(Sc{word_ind},2)]) = Sc{word_ind};
-		J_block(end+[1:size(Jc{word_ind},1)],[1:size(Jc{word_ind},2)]) = Jc{word_ind};
+		%J_block(end+[1:size(Jc{word_ind},1)],[1:size(Jc{word_ind},2)]) = Jc{word_ind};
 		f_block(end+[1:size(Hc{word_ind}*fc{word_ind},1)],1) = Hc{word_ind}*fc{word_ind};
 
 		I_blockx(end+[1:n_x*(t+1)],[1:n_x*(t+1)]) = eye(n_x*(t+1));
@@ -79,7 +79,13 @@ function [A,b,Ae,be] = CreatePolytopeMatricesAtTime(ibs,t,L_t,ibs_settings)
 	switch ibs_settings.fb_type
 	case 'state'
 	    
+	    %Create disturbance Polyhedron
 		P_eta = P_uT * P_wT * System.X0;
+
+		% Create the
+		for word_ind = 1:L_t.cardinality()
+			J_block(end+[1:size(Jc{word_ind},1)],[1:size(Jc{word_ind},2)]) = Jc{word_ind};
+		end
 
 		%Create the set of feasible (x,u,w,x0) tuples
 		A = [zeros(size(P_eta.A,1),n_x*(t+1)),P_eta.A];
@@ -116,6 +122,8 @@ function [A,b,Ae,be] = CreatePolytopeMatricesAtTime(ibs,t,L_t,ibs_settings)
 
     	% Introduce Sets
     	for word_ind = 1:L_t.cardinality()
+    		J_block(end+[1:size(Jc{word_ind},1)],end+[1:size(Jc{word_ind},2)]) = Jc{word_ind};
+
     		C_block(end+[1:n_y*(t+1)],end+[1:n_x*(t+1)]) = [Cc{word_ind} ; zeros(n_y,n_x*t), System.Dyn( L_t.words{word_ind}(t+1) ).C ];
 			Cv_block(end+[1:n_y*(t+1)],end+[1:n_v*(t+1)]) = [Cvc{word_ind},zeros(size(Cvc{word_ind},1),n_v);zeros(n_y,size(Cvc{word_ind},2)), System.Dyn( L_t.words{word_ind}(t+1) ).C_v ];
 			I_blockx2(end+[1:n_x*(t+1)],end+[1:n_x*(t+1)]) = eye(n_x*(t+1));

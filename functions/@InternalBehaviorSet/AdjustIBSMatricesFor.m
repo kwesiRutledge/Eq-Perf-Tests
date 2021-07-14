@@ -64,16 +64,16 @@ function [ A , b , Ae , be ] = AdjustIBSMatricesFor( ibs , tau , L0 ,  A0 , b0 ,
 			];
 
 	case 'output'
-		ibs_e_dim = n_y * (tau+1) + n_u*tau + n_w*tau*max_card + n_v*(tau+1)*max_card + n_x*max_card; %Expected Dimension of Expected Behavior Set
+		ibs_e_dim = n_y * (t+1) + n_u*t + n_w*t*max_card + (n_v+n_x)*(t+1)*max_card + n_x*max_card; %Expected Dimension of Expected Behavior Set
 
 		A_Prefactor = [ ...
-			eye( n_y * (t+1) ), zeros( n_y*(t+1) , ibs_e_dim - n_y * (t+1) ) ;
-			zeros( n_u*(t) , n_y*(tau+1) ), eye(n_u*t) , zeros( n_u*(t) , ibs_e_dim - n_y*(tau+1) - n_u*t ) ;
-			zeros( n_w*(t) , n_y*(tau+1) + n_u*tau ) , kron( L0_index_as_binary , [ eye(n_w*t) , zeros(n_w*t,n_w*(tau-t)) ] ) , zeros(n_w*t, ibs_e_dim - n_x*(tau+1) - n_u*tau - n_w*tau*max_card) ;
-			zeros( n_v*(t+1) , n_y*(tau+1) + n_u*tau + n_w*tau*max_card ) , kron( L0_index_as_binary , [ eye(n_v*(t+1)) , zeros(n_v*(t+1),n_v*(tau-t)) ] ) , zeros( n_v*(t+1) , ibs_e_dim - n_y*(tau+1) - n_u*tau - n_w*tau*max_card - n_v*tau*max_card ) ;
-			zeros( n_x , n_y*(tau+1) + n_u*tau + (n_w*tau+n_v*(tau+1))*max_card), kron( L0_index_as_binary , eye(n_x) ), zeros( n_x , ibs_e_dim - n_y*(tau+1) - n_u*T - n_w*tau*max_card - n_v*tau*max_card );
-            zeros( n_x , ibs_e_dim - n_x*max_card), kron( L0_index_as_binary , eye(n_x) )...
-			zeros()];
+			eye( n_y * (tau+1) ), zeros( n_y*(tau+1) , ibs_e_dim - n_y * (tau+1) ) ;
+			zeros( n_u*(tau) , n_y*(t+1) ), eye(n_u*tau) , zeros( n_u*(tau) , ibs_e_dim - n_y*(t+1) - n_u*tau ) ;
+			zeros( n_w*(tau)*L0.cardinality() , n_y*(t+1) + n_u*t ) , kron( mat_L0 , [ eye(n_w*tau) , zeros(n_w*tau,n_w*(t-tau)) ] ) , zeros(n_w*tau*L0.cardinality(), ibs_e_dim - n_y*(t+1) - n_u*t - n_w*t*max_card) ;
+			zeros( n_v*(tau+1)*L0.cardinality() , n_y*(t+1) + n_u*t + n_w*t*max_card ) , kron( mat_L0 , [ eye(n_v*(tau+1)) , zeros(n_v*(tau+1),n_v*(t-tau)) ] ) , zeros( n_v*(tau+1)*L0.cardinality() , ibs_e_dim - n_y*(t+1) - n_u*t - n_w*t*max_card - n_v*(t+1)*max_card ) ;
+			zeros( n_x*L0.cardinality() , n_y*(t+1) + n_u*t + (n_w*t+n_v*(t+1))*max_card), kron( mat_L0 , eye(n_x) ), zeros( n_x*L0.cardinality() , ibs_e_dim - n_y*(t+1) - n_u*t - n_w*t*max_card - n_v*(t+1)*max_card - n_x*max_card );
+			zeros( n_x*(tau+1)*L0.cardinality() , ibs_e_dim - n_x*(t+1)*L0.cardinality() ) , kron( mat_L0 , [ eye(n_x*(tau+1)) , zeros(n_x*(tau+1),n_x*(t-tau)) ] )
+			];
 
 	otherwise
 		error(['Unexpected fb_type value in AdjustIBSMatricesFor().'])

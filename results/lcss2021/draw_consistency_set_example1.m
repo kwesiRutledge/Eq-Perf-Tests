@@ -43,7 +43,7 @@ end
 eta_u = 0.5*eta_w;
 Pu = Polyhedron(...
 	'lb',-eta_u*ones(1,dim_x), ...
-	'ub', eta_u*ones(1,dim_x))
+	'ub', eta_u*ones(1,dim_x));
 PuT = {};
 for t = 1:TimeHorizon
 	PuT{t} = 1;
@@ -92,7 +92,7 @@ end
 figure;
 hold on;
 
-scatter(x0(1),x0(2)) %Plot x0
+scatter(x0(1),x0(2)); %Plot x0
 
 for t = 1:TimeHorizon-1
 
@@ -105,129 +105,62 @@ for t = 1:TimeHorizon-1
 
 end
 
-return;
+axis([-0.5 11 -0.5 6.5 ])
 
-%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Show Reachable Sets %%
-%%%%%%%%%%%%%%%%%%%%%%%%%
+saveas(gcf,'images/similarRotationSystemComparison1','epsc')
 
-figure;
-hold on;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Compare Closed Loop Consistency Sets %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-scatter(x0(1),x0(2))
+ConsistencySets2 = {};
 
-for t = 1:TimeHorizon
+ad1 = Aff_Dyn( A1-0.2*eye(2) , zeros(size(B1)) , K1 , eye(dim_x) , Pw , Pv );
+ad2 = Aff_Dyn( A2-0.2*eye(2) , zeros(size(B2)) , K2 , eye(dim_x) , Pw , Pv );
 
-	%Plot The Polyhedron.
-    word1_prefix = lcsas0.L.words{1}(1:t);
-	[Sw,Su,~,J,K_bar] = lcsas0.get_mpc_matrices('word',word1_prefix);
-	Pxt{1,t} = Sw * PwT{t} + Su * PuT{t} + J * x0 + Sw*K_bar;
-	plot( ...
-		Pxt{1,t}.projection([size(Sw,1)-dim_x+1:size(Sw,1)]), ...
-		'color','salmon' ...
-		)
-
-	% Plot The Polyhedron For Word 2
-	word2_prefix = lcsas0.L.words{2}(1:t);
-	[Sw,Su,~,J,K_bar] = lcsas0.get_mpc_matrices('word',word2_prefix);
-	Pxt{2,t} = Sw * PwT{t} + Su * PuT{t} + J * x0 + Sw*K_bar;
-	plot( ...
-		Pxt{2,t}.projection([size(Sw,1)-dim_x+1:size(Sw,1)]), ...
-		'color','cyan')
-
-end
-
-plot(X_Target,'FaceColor','none')
-
-title('Reachable Sets for Each Mode')
-legend('$x_0$','Mode 1','Mode 2', '', '' , 'Target', ...
-	'Interpreter','latex')
-
-% Save GIF for each mode
-if save_gifs
-    mode_colors = {'magenta','cyan'};
-    for mode_index = 1:lcsas0.n_modes
-    	saveToSimpleGIF( ...
-    		TimeHorizon , {Pxt{mode_index,:}}, x0 , X_Target , ...
-    		['images/similarRotationSystem_Mode' num2str(mode_index) '_ReachableSet.gif'] , ...
-    		[-2,14,-1,10] , ...
-    		mode_colors{mode_index} , ...
-    		['Mode ' num2str(mode_index) ' Reachable Set'] )
-    end
-end
-
-results.ReachableSetAtTime = Pxt;
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Show Zero Input Sets %%
-%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-figure;
-hold on;
-
-scatter(x0(1),x0(2))
-
-for t = 1:TimeHorizon
-
-	%Plot The Polyhedron.
-    word1_prefix = lcsas0.L.words{1}(1:t);
-	[Sw,~,~,J,K_bar] = lcsas0.get_mpc_matrices('word',word1_prefix);
-	Pxt2{1,t} = Sw * PwT{t} + J * x0 + Sw*K_bar;
-	plot( ...
-		Pxt2{1,t}.projection([size(Sw,1)-dim_x+1:size(Sw,1)]), ...
-		'color','salmon' ...
-		)
-
-	% Plot The Polyhedron For Word 2
-	word2_prefix = lcsas0.L.words{2}(1:t);
-	[Sw,~,~,J,K_bar] = lcsas0.get_mpc_matrices('word',word2_prefix);
-	Pxt2{2,t} = Sw * PwT{t} + J * x0 + Sw*K_bar;
-	plot( ...
-		Pxt2{2,t}.projection([size(Sw,1)-dim_x+1:size(Sw,1)]), ...
-		'color','cyan')
-
-end
-
-plot(X_Target,'FaceColor','none')
-
-title('Zero Input Reachable Sets for Each Mode')
-legend('$x_0$','Mode 1','Mode 2', '', '' , 'Target', ...
-	'Interpreter','latex')
-
-% Save to Gifs
-if save_gifs
-    for mode_index = 1:lcsas0.n_modes
-    	saveToSimpleGIF( ...
-    		TimeHorizon , {Pxt2{mode_index,:}}, x0 , X_Target , ...
-    		['images/similarRotationSystem_Mode' num2str(mode_index) '_ZeroInputSet.gif'] , ...
-    		[-2,14,-1,10] , ...
-    		mode_colors{mode_index} , ...
-    		['Mode ' num2str(mode_index) ' Zero-Input Reachable Set'] )
-    end
-end
-
-results.ZeroInputTrajectoryTubes = Pxt2;
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Compare Consistency Sets %%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-CSets = {};
+lcsas1 = LCSAS( [ad1,ad2], Language(1*ones(1,TimeHorizon),2*ones(1,TimeHorizon)) , ...
+				'X0' , Polyhedron('lb',x0','ub',x0') , ...
+				'U'  , Pu  );
 
 Px0 = Polyhedron('lb',x0','ub',x0');
 
-for mode_index = 1:lcsas0.n_modes
-	for t = 1:TimeHorizon-1
-		[ CSets{mode_index,t} , ~ ] = lcsas0.consistent_set(t,lcsas0.L,Pu,Px0,'fb_method','state');
-	end
+for word_index = 1:lcsas1.L.cardinality()
+	temp_word = lcsas1.L.words{word_index};
+	temp_single_word_lang = Language(temp_word);
+	temp_knowl_seq = [lcsas1.L; repmat(temp_single_word_lang,TimeHorizon-1,1)];
+
+	ConsistencySets2{word_index} = ExternalBehaviorSet(lcsas1,temp_knowl_seq,'fb_type','state');
+	CSAsPolyhedron2{word_index} = ConsistencySets2{word_index}.ToPolyhedron();
 end
 
-results.CSets = CSets;
+results.ConsistencySets2 = ConsistencySets2;
+
+figure;
+hold on;
+
+scatter(x0(1),x0(2)); %Plot x0
+
+for t = 1:TimeHorizon-1
+
+	plot( CSAsPolyhedron2{1}.projection(dim_x*t+[1:dim_x]), ...
+		'color','salmon' )
+
+	% Plot The Polyhedron For Word 2
+	plot( CSAsPolyhedron2{2}.projection(dim_x*t+[1:dim_x]), ...
+		'color','cyan')
+
+end
+
+axis([-0.5 11 -0.5 6.5 ])
+
+saveas(gcf,'images/similarRotationSystemComparison2','epsc')
+
+return;
 
 %Test Where intersections Lie
 intersectionIsNonempty = [];
 for t = 1:TimeHorizon-1
-	temp_intersection = CSets{1,t}.intersect(CSets{2,t});
+	temp_intersection = CSets2{1,t}.intersect(CSets2{2,t});
 	intersectionIsNonempty = [ intersectionIsNonempty , ~temp_intersection.isEmptySet ];
 end
 

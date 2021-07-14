@@ -150,7 +150,7 @@ function [ ancest_nodes ] = post_no_proj(BG,BN,post_settings)
 		temp_sequence = repmat(powerset_elt,t_ancestor+1,1);
 
 		% Get InternalBehaviorSet for this Path
-		ibs_i = InternalBehaviorSet(lcsas,temp_sequence);
+		ibs_i = InternalBehaviorSet(lcsas,temp_sequence,'fb_type',post_settings.fb_method);
 
 		% Prune / ignore certain sets based on if they are
 
@@ -268,7 +268,7 @@ function ancest_nodes = post_proj(BG,BN,post_settings)
 		temp_sequence = repmat(powerset_elt,t_ancestor+1,1);
 
 		% Get ExternalBehaviorSet for this Path
-		ebs_i = ExternalBehaviorSet(lcsas,temp_sequence);
+		ebs_i = ExternalBehaviorSet(lcsas,temp_sequence,'fb_type',post_settings.fb_method);
 
 		% Prune / ignore certain sets based on if they are
 
@@ -294,30 +294,7 @@ function ancest_nodes = post_proj(BG,BN,post_settings)
 
 	if post_settings.use_unobs_checks
 
-		% containment_matrix = false(length(subL_powerset));
-		% for x_idx = 1:size(containment_matrix,1)
-		% 	containment_matrix(x_idx,x_idx) = true;
-		% end
-
-
-		% for x_idx = 1:size(containment_matrix,1)
-		% 	potential_y_idcs = [1:size(containment_matrix,2)];
-		% 	potential_y_idcs = potential_y_idcs( potential_y_idcs ~= x_idx );
-		% 	for y_idx = potential_y_idcs
-		% 		%Consider the temporary combination
-		% 		%disp(['x_idx = ' num2str(x_idx) ', y_idx = ' num2str(y_idx) ])
-
-		% 		% Observe if Y_Set of X is contained by the Y_Set of Y
-		% 		ObservationSetX = consistency_sets(x_idx);
-		% 		ObservationSetY = consistency_sets(y_idx);
-				
-		% 		containment_matrix(x_idx,y_idx) = (ObservationSetX <= ObservationSetY);
-		% 	end
-		% end
-
 		observation_set_is_observable = consistency_sets.FindObservableEBS('empty_flags',empty_set_flags);
-
-		% [ ~ , observation_set_is_observable ] = BG.containment_mat2observable_combos( containment_matrix );
 
 	end
 

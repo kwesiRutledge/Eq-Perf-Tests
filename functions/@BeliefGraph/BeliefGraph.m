@@ -1,4 +1,4 @@
-classdef BeliefGraph < handle
+ classdef BeliefGraph < handle
 	%Description:
 	%
 	%Member Variables (Protected):

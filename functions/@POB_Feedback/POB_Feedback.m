@@ -247,16 +247,16 @@ classdef POB_Feedback < handle
 
 			%Generate Random Variables
 			if isempty(x0)
-				x0 = obj.gen_rand_vars( lcsas , sig , 'x0' , M1 )
+				x0 = obj.gen_rand_vars( lcsas , sig , 'x0' , M1 );
 			end
 
 			if ~isempty(in_w)
 				w = in_w;
 			else
-				w = obj.gen_rand_vars( lcsas , sig , 'w' )
+				w = obj.gen_rand_vars( lcsas , sig , 'w' );
 			end
 
-			v = obj.gen_rand_vars( lcsas , sig , 'v' )
+			v = obj.gen_rand_vars( lcsas , sig , 'v' );
 
 			%Simulate system forward.
 			x_t = x0;

@@ -1,4 +1,4 @@
-function [ lcsas0 , KnowledgeSequence , ibs_settings ] = ip_InternalBehaviorSet( varargin )
+function [ lcsas0 , KnowledgeSequence , K , k , ibs_settings ] = ip_InternalBehaviorSet( varargin )
 	%Description:
 	%	Input processing function for internal_behavior_set().
 	%	Verifies that there:
@@ -30,11 +30,14 @@ function [ lcsas0 , KnowledgeSequence , ibs_settings ] = ip_InternalBehaviorSet(
 	%% Define Defaults
 	ibs_settings = struct('fb_type','state','reduce_flag',false,'debug',0,'ReturnEarly',false, ...
 							'A', [] , 'b' , [] , 'Ae' , [] , 'be' , [] , ...
-							'Dim', -1 );
+							'Dim', -1 , ...
+							'OpenLoopOrClosedLoop','Open');
 
 	all_fb_types = {'state','output'};
 	all_fields = {'fb_type','reduce_flag','debug','ReturnEarly','A','b','Ae','be','Dim'};
 	expected_ebs_fields = {'fb_type','reduce_flag'};
+
+	K = []; k = [];
 
 	%% Check the additional inputs
 	argument_index = expected_number_of_arguments+1;
@@ -64,6 +67,20 @@ function [ lcsas0 , KnowledgeSequence , ibs_settings ] = ip_InternalBehaviorSet(
 			case 'be'
 				ibs_settings.be = varargin{argument_index+1};
 				argument_index = argument_index + 2;
+			case 'OpenLoopOrClosedLoop'
+				ibs_settings.OpenLoopOrClosedLoop = varargin{argument_index+1};
+
+				switch ibs_settings.OpenLoopOrClosedLoop
+				case 'Closed'
+					K = varargin{argument_index+2};
+					k = varargin{argument_index+3};
+					argument_index = argument_index + 4;
+				case 'Open'
+					argument_index = argument_index + 2;
+				otherwise
+					error(['Unexpected value of OpenLoopOrClosedLoop: ' ibs_settings.OpenLoopOrClosedLoop ])
+				end
+
 			case 'ibs_settings_struct'
 				ibs_settings = varargin{argument_index+1};
 				argument_index = argument_index + 2;
@@ -104,5 +121,20 @@ function [ lcsas0 , KnowledgeSequence , ibs_settings ] = ip_InternalBehaviorSet(
 
 		ibs_settings.Dim = max(tempDimArray);
 
+	end
+
+	% Check the dimensions of K and k?
+	[ n_x , n_u , n_y , n_w , n_v ] = lcsas0.Dimensions();
+	t = length(KnowledgeSequence)-1;
+	T = length(KnowledgeSequence(1).words{1});
+
+	if strcmp(ibs_settings.OpenLoopOrClosedLoop,'Closed')
+		if ~all( size(K) == [T*n_u,T*n_w] )
+			error(['Expected K to be of size ' num2str(t*n_u) ' x ' num2str(t*n_w) ', but received matrix of size ' num2str(size(K)) '.' ])
+		end
+
+		if ~all( size(k) == [T*n_u,1] )
+			error(['Expected k to be of size ' num2str(t*n_u) ' x 1, but received matrix of size ' num2str(size(k)) '.' ])
+		end
 	end
 end

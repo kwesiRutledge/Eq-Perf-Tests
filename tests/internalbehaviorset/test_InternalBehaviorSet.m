@@ -97,6 +97,63 @@ function test_InternalBehaviorSet_Constructor2(testCase)
 
 	assert( temp_poly.contains([x0;x1;u0;w0;x0]) )
 
+function test_InternalBehaviorSet_Constructor3(testCase)
+	%test_InternalBehaviorSet_Constructor3
+	%Description:
+	%	This test checks to see if the settings contain the new OpenLoopOrClosedLoop field
+	%	is properly defined to be 'Open' by default..
+
+	% Constants
+	[lcsas0,~,~,~] = get_simple_lcsas1(); %Get Simple Dynamics
+	L1 = Language(lcsas0.L.words{1});
+	temp_belief_sequence = [L1;L1];
+	
+	% Algorithm
+	ibs1 = InternalBehaviorSet(lcsas0,temp_belief_sequence);
+
+	assert( strcmp(ibs1.ibs_settings.OpenLoopOrClosedLoop,'Open')  )
+
+function test_InternalBehaviorSet_Constructor4(testCase)
+	%test_InternalBehaviorSet_Constructor4
+	%Description:
+	%	This test checks to see if the settings contain the new OpenLoopOrClosedLoop field
+	%	is properly defined when the flag is set to Closed.
+
+	% Constants
+	[lcsas0,~,~,~] = get_simple_lcsas1(); %Get Simple Dynamics
+	L1 = Language(lcsas0.L.words{1});
+	temp_belief_sequence = [L1;L1];
+	
+	[ n_x , n_u , n_y , n_w , n_v ] = lcsas0.Dimensions();
+
+	% Algorithm
+	ibs1 = InternalBehaviorSet(lcsas0,temp_belief_sequence, ...
+		'OpenLoopOrClosedLoop','Closed',zeros(1*n_u,1*n_w),zeros(1*n_u));
+
+	assert( strcmp(ibs1.ibs_settings.OpenLoopOrClosedLoop,'Closed')  )
+
+function test_InternalBehaviorSet_Constructor5(testCase)
+	%test_InternalBehaviorSet_Constructor5
+	%Description:
+	%	This test checks to see if the settings contain the new OpenLoopOrClosedLoop field
+	%	is catching errors properly when the flag is set to Closed.
+
+	% Constants
+	[lcsas0,~,~,~] = get_simple_lcsas1(); %Get Simple Dynamics
+	L1 = Language(lcsas0.L.words{1});
+	temp_belief_sequence = [L1;L1];
+	
+	[ n_x , n_u , n_y , n_w , n_v ] = lcsas0.Dimensions();
+
+	% Algorithm
+	try
+		ibs1 = InternalBehaviorSet(lcsas0,temp_belief_sequence, ...
+			'OpenLoopOrClosedLoop','Closed',zeros(2*n_u,1*n_w),zeros(1*n_u));
+	catch e
+		%disp(e.message)
+		assert( strcmp(e.message,['Expected K to be of size 1 x 2, but received matrix of size 2  2.' ]) )
+	end
+
 function [lcsas,eta_w,eta_v,eta_u,eta_x0] = get_simple_lcsas2()
 	%Description:
 	%	Retrieves a simple LCSAS in two dimensions for testing.
@@ -370,9 +427,28 @@ function test_InternalBehaviorSet_contains2(testCase)
 
 	assert(ibs1.contains(ib_test))	
 
-	
+function test_InternalBehaviorSet_SelectW1(testCase)
+	%Description:
+	%	Testing that the size of the matrix returned by SelectW() is correct.
 
+	% Get Simple System
+	[lcsas0,eta_w,~,~,eta_x0] = get_simple_lcsas2(); %Get Simple Dynamics
+	L = lcsas0.L;
 
+	[ n_x , n_u , n_y , n_w , n_v ] = lcsas0.Dimensions();
+
+	%Create Example InternalBehaviorSet
+	ibs1 = InternalBehaviorSet(lcsas0,[L,L]);
+
+	t = ibs1.t;
+
+	WSelectMatrices = ibs1.SelectW();
+
+	assert( ...
+		(length(WSelectMatrices) == 2) && ...
+		all( size(WSelectMatrices{1}) == [n_w*t,ibs1.Dim] ) && ...
+		all( size(WSelectMatrices{2}) == [n_w*t,ibs1.Dim] ) ...
+		)
 
 
 

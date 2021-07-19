@@ -18,6 +18,10 @@ classdef InternalBehaviorSet < handle
 		Ae;
 		be;
 
+		% Associated Gains
+		K;
+		k;
+
 		% Other Things
 		Dim;
 		ibs_settings;
@@ -74,10 +78,12 @@ classdef InternalBehaviorSet < handle
 			%	at each time.
 
 			%% Input Processing
-			[ lcsas , KnowledgeSequence , ibs_settings ] = ibs.ip_InternalBehaviorSet( varargin{:} );
+			[ lcsas , KnowledgeSequence , K , k , ibs_settings ] = ibs.ip_InternalBehaviorSet( varargin{:} );
 			
 			ibs.System = lcsas;
 			ibs.KnowledgeSequence = KnowledgeSequence;
+			ibs.K = K;
+			ibs.k = k;
 			ibs.ibs_settings = ibs_settings;
 
 			%% Optional Method to Exit The Constructor Early
@@ -140,7 +146,15 @@ classdef InternalBehaviorSet < handle
 		    ibs.b = b;
 		    ibs.Ae = Ae;
 		    ibs.be = be;
+		    ibs.Dim = size(A,2);
 		    
+		    % If this is a closed loop set, then use the gain to close the loop!
+		    if strcmp(ibs_settings.OpenLoopOrClosedLoop,'Closed')
+		    	[tempA,tempb,tempAe,tempbe] = ibs.GetClosedLoopMatrices()
+		    	%Save matrices
+		    	ibs.A = tempA; ibs.b = tempb; ibs.Ae = tempAe; ibs.be = tempbe;
+		    end
+
 		    % Final Lang
 		    FinalLang = KnowledgeSequence(end);
 
@@ -150,7 +164,6 @@ classdef InternalBehaviorSet < handle
 
 		    ibs.AsPolyhedron =[];
 		    ibs.t = t;
-		    ibs.Dim = size(A,2);
 		    
 		    ibs.System = lcsas;
 		    ibs.KnowledgeSequence = KnowledgeSequence;
@@ -619,6 +632,65 @@ classdef InternalBehaviorSet < handle
 			end
 
 			selectionMatrix = [ eye(external_beh_dim), zeros(external_beh_dim, ibs.Dim - external_beh_dim) ];
+
+		end
+
+		function [ selectionMatrices ] = SelectW( ibs )
+			%Description:
+			%	Finds a set of matrices which select each of the "w" matrix dimensions
+			%	available in this Internal Behavior Set.
+			%
+			%Usage:
+			%	selectionMatrices = ibs.SelectW();
+			%
+
+			%% Constants %%
+			Dim = ibs.Dim;
+			System = ibs.System;
+			t = ibs.t;
+			ibs_settings = ibs.ibs_settings;
+
+			LastLang = ibs.KnowledgeSequence(end);
+
+			[ n_x , n_u , n_y , n_w , n_v ] = System.Dimensions();
+
+			%% Algorithm %%
+
+			selectionMatrices = {};
+
+			switch ibs_settings.fb_type
+			case 'state'
+
+				for word_index = 1:LastLang.cardinality()
+					selectionMatrices{word_index} = [ ...
+						zeros(n_w*t,n_x*(t+1) + n_u*t + (word_index-1)*n_w*t ) , ...
+						eye(n_w*t) , ...
+						zeros( n_w*t , Dim-n_x*(t+1)-n_u*t-word_index*n_w*t) ...
+						];
+
+				end
+			case 'output'
+
+				error(['The output feedback version of SelectW() is not working yet!'])
+
+			otherwise
+				error(['Unexpected Feedback Type: ' ibs_settings.fb_type ])
+			end
+
+
+		end
+
+		function [ constraints_out , phi ] = CreateNonemptyConstraint( ibs )
+			%Description:
+			%	Creates YALMIP Nonempty Constraint
+
+			%% Constants
+			Dim = ibs.Dim;
+
+			%% Algorithm
+			phi = sdpvar(Dim,1);
+
+			constraints_out = [ ibs.A * phi <= ibs.b ] + [ibs.Ae * phi == ibs.be];
 
 		end
 

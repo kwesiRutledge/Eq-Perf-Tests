@@ -51,7 +51,8 @@ function [lcsas_out,TimeHorizon,Pu,Pw,x0,Px0,X_Target] = get_cdc2021_similar_rot
 	Px0 = Polyhedron('lb',x0','ub',x0');
 
 	% Create XT
-	X_Target = Polyhedron('lb',-eta_w*TimeHorizon*ones(1,dim_x), 'ub', eta_w*TimeHorizon*ones(1,dim_x) ) + [9.5;5];
+	TargetWidth = eta_w*TimeHorizon;
+	X_Target = Polyhedron('lb',-(TargetWidth/2)*ones(1,dim_x), 'ub', (TargetWidth/2)*ones(1,dim_x) ) + [9.5;5];
 
 	%%%%%%%%%%%%%%%%%%
 	%% Create LCSAS %%

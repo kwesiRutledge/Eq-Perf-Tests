@@ -9,22 +9,11 @@ function [ constraint , new_variable ] = CreateNonemptyConstraint( ibs )
 
 	%% Algorithm
 
-	switch ibs_settings.OpenLoopOrClosedLoop
-	case 'Open'
-		% Create Optimization Variable
-		new_variable = sdpvar(ibs.Dim,1,'full');
+	% Create Optimization Variable
+	new_variable = sdpvar(ibs.Dim,1,'full');
 
-		% Create Constraint
-		constraint = [ ibs.A * new_variable <= ibs.b ] + [ ibs.Ae * new_variable == ibs.be  ];
-
-	case 'Closed'
-		% Create Closed Loop Matrices
-		
-
-
-	otherwise
-		error(['Unexpected value of ibs_settings.OpenLoopOrClosedLoop: ' ibs_settings.OpenLoopOrClosedLoop ])
-	end
+	% Create Constraint
+	constraint = [ ibs.A * new_variable <= ibs.b ] + [ ibs.Ae * new_variable == ibs.be  ];
 
 
 end

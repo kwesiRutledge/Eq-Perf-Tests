@@ -51,11 +51,7 @@ function [ extended_internal_behavior_sets ] = get_all_consistent_internal_behav
 
 	%Find the value of time horizon t
 	lcsas_in = belief_graph_in.lcsas;
-	n_x = size(lcsas_in.Dyn(1).A,1);
-	n_u = size(lcsas_in.Dyn(1).B,2);
-	n_w = size(lcsas_in.Dyn(1).B_w,2);
-	n_y = size(lcsas_in.Dyn(1).C,1);
-	n_v = size(lcsas_in.Dyn(1).C_v,2);
+	[ n_x , n_u , n_y , n_w , n_v ] = lcsas_in.Dimensions();
 
 	t = lcsas_in.behavior_set2time( initial_internal_behavior_sets(1) , 'InternalBehaviorSet_1word' , ...
 									'ConsistencySetVersion' , belief_graph_in.ConsistencySetVersion , ...

@@ -150,7 +150,7 @@ classdef InternalBehaviorSet < handle
 		    
 		    % If this is a closed loop set, then use the gain to close the loop!
 		    if strcmp(ibs_settings.OpenLoopOrClosedLoop,'Closed')
-		    	[tempA,tempb,tempAe,tempbe] = ibs.GetClosedLoopMatrices()
+		    	[tempA,tempb,tempAe,tempbe] = ibs.GetClosedLoopMatrices();
 		    	%Save matrices
 		    	ibs.A = tempA; ibs.b = tempb; ibs.Ae = tempAe; ibs.be = tempbe;
 		    end
@@ -650,6 +650,7 @@ classdef InternalBehaviorSet < handle
 			t = ibs.t;
 			ibs_settings = ibs.ibs_settings;
 
+			L = System.L;
 			LastLang = ibs.KnowledgeSequence(end);
 
 			[ n_x , n_u , n_y , n_w , n_v ] = System.Dimensions();
@@ -661,11 +662,14 @@ classdef InternalBehaviorSet < handle
 			switch ibs_settings.fb_type
 			case 'state'
 
-				for word_index = 1:LastLang.cardinality()
-					selectionMatrices{word_index} = [ ...
-						zeros(n_w*t,n_x*(t+1) + n_u*t + (word_index-1)*n_w*t ) , ...
+				for ll_index = 1:LastLang.cardinality()
+					temp_word = LastLang.words{ll_index};
+					[ ~ , tw_index ] = L.contains(temp_word);
+
+					selectionMatrices{ll_index} = [ ...
+						zeros(n_w*t,n_x*(t+1) + n_u*t + (tw_index-1)*n_w*t ) , ...
 						eye(n_w*t) , ...
-						zeros( n_w*t , Dim-n_x*(t+1)-n_u*t-word_index*n_w*t) ...
+						zeros( n_w*t , Dim-n_x*(t+1)-n_u*t-tw_index*n_w*t) ...
 						];
 
 				end
@@ -680,18 +684,47 @@ classdef InternalBehaviorSet < handle
 
 		end
 
-		function [ constraints_out , phi ] = CreateNonemptyConstraint( ibs )
+		function [ selectionMatrices ] = SelectX0( ibs )
 			%Description:
-			%	Creates YALMIP Nonempty Constraint
+			%	Finds a set of matrices which select each of the "x0" components of an element
+			%	from the internal behavior set ibs.
+			%
+			%Usage:
+			%	selectionMatrices = ibs.SelectX0()
 
-			%% Constants
+			%% Constants %%
 			Dim = ibs.Dim;
+			System = ibs.System;
+			t = ibs.t;
+			ibs_settings = ibs.ibs_settings;
 
-			%% Algorithm
-			phi = sdpvar(Dim,1);
+			FirstLang = ibs.KnowledgeSequence(1);
+			LastLang = ibs.KnowledgeSequence(end);
 
-			constraints_out = [ ibs.A * phi <= ibs.b ] + [ibs.Ae * phi == ibs.be];
+			[ n_x , n_u , n_y , n_w , n_v ] = System.Dimensions();
 
+			%% Algorithm %%
+
+			selectionMatrices = {};
+
+			switch ibs_settings.fb_type
+			case 'state'
+				% Matrices will all be the same because of how the set was defined.
+
+				for word_index = 1:LastLang.cardinality()
+					selectionMatrices{word_index} = [ ...
+						zeros(n_x,n_x*(t+1) + n_u*t + FirstLang.cardinality()*n_w*t ) , ...
+						eye(n_x) ...
+						];
+
+				end
+			case 'output'
+
+				error(['The output feedback version of SelectW() is not working yet!'])
+
+			otherwise
+				error(['Unexpected Feedback Type: ' ibs_settings.fb_type ])
+			end
 		end
 
 	end

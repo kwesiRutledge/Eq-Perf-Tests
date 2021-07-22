@@ -84,6 +84,7 @@ classdef Language
 			%
 			%Usage:
 			%	in_lang_flag = L.contains([1,2,1,1,1])
+			%	[in_lang_flag,pos_in_lang] = L.contains([1,2,1,1,1])
 
 			%% Input Checking
 
@@ -130,7 +131,7 @@ classdef Language
 
 			for obj_index = 1:length(obj)
 				obj_i = obj(obj_index);
-				[ in_lang_flag(obj_index) , pos_in_lang(obj_index) ] = obj_i.contains(word_in)
+				[ in_lang_flag(obj_index) , pos_in_lang(obj_index) ] = obj_i.contains(word_in);
 			end
 
 		end

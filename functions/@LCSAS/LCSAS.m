@@ -166,6 +166,8 @@ classdef LCSAS
 		function varargout = Dimensions(lcsas)
 			%Description:
 			%	Collects all of the interesting dimensions of the system.
+			%Usage:
+			%	[ n_x , n_u , n_y , n_w , n_v ] = lcsas.Dimensions()	
 
 			switch nargout
 			case 1

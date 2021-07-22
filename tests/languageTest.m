@@ -217,7 +217,7 @@ function test_get_feasible_combinations_of_beliefs1(testCase)
 	try
 		[ a , b , c ] = oneD_sys.get_feasible_combinations_of_beliefs( b1 );
 	catch e 
-		disp(e.message)
+		%disp(e.message)
 		assert(strcmp(e.message,['get_feasible_combinations_of_beliefs() requires nonempty choice of X0 in lcsas object.']))
 	end
 
@@ -239,7 +239,7 @@ function test_get_feasible_combinations_of_beliefs2(testCase)
 	try
 		[ a , b , c ] = oneD_sys.get_feasible_combinations_of_beliefs( b1 );
 	catch e 
-		disp(e.message)
+		%disp(e.message)
 		assert(strcmp(e.message,'get_feasible_combinations_of_beliefs() requires X0 to be a Polyhedron.'))
 	end
 
@@ -259,7 +259,7 @@ function test_get_feasible_combinations_of_beliefs3(testCase)
 	try
 		[ a , b , c ] = oneD_sys.get_feasible_combinations_of_beliefs( b1 );
 	catch e 
-		disp(e.message)
+		%disp(e.message)
 		assert(strcmp(e.message,'get_feasible_combinations_of_beliefs() requires nonempty choice of U in lcsas object.'))
 	end
 
@@ -278,9 +278,9 @@ function test_get_feasible_combinations_of_beliefs4(testCase)
 
 	[ possible_LK_realizations , possible_choices , choices_as_binary_flags ] = oppRotLCSAS.get_feasible_combinations_of_beliefs( b1 );
 
-	disp(possible_LK_realizations{1})
-	disp(possible_LK_realizations{1}(end).words{1})
-	disp(length(possible_LK_realizations))
+	% disp(possible_LK_realizations{1})
+	% disp(possible_LK_realizations{1}(end).words{1})
+	% disp(length(possible_LK_realizations))
 
 	assert(length(possible_LK_realizations) == 1)
 
@@ -302,3 +302,50 @@ function test_contains_array_input1(testCase)
 	[ word_in_L , location_in_L ] = L_arr.contains(target_word);
 
 	assert( all(word_in_L) && all( location_in_L == [2,1] ))
+
+function test_subseteq1(testCase)
+	%test_subseteq1
+	%Description:
+	%	Verifies that the subseteq works for two similar languages.
+
+	% Constants
+	L1 = Language([1,2,3],[2,3,4]);
+	L2 = Language([2,3,4]);
+
+	assert( L2.subseteq(L1) )
+
+function test_subseteq2(testCase)
+	%test_subseteq2
+	%Description:
+	%	Verifies that error handling happens properly when two different sized arrays are given to subseteq
+
+	% Constants
+	L1 = Language([1,2,3],[2,3,4]);
+	L2 = Language([2,3,4]);
+
+	L_arr1 = [L1;L2];
+
+	% 
+
+	try
+		L_arr1.subseteq(L1)
+	catch e
+		disp(e.message)
+		assert(strcmp(e.message,'The size of obj is 2  1 while the size of L_in is 1  1.'))
+	end
+
+function test_subseteq3(testCase)
+	%test_subseteq3
+	%Description:
+	%	Verifies that error handling happens properly when two different sized arrays are given to subseteq
+
+	% Constants
+	L1 = Language([1,2,3],[2,3,4]);
+	L2 = Language([2,3,4]);
+
+	L_arr1 = [L1;L1];
+	L_arr2 = [L2;L2];
+
+	% Test
+
+	assert( L_arr2.subseteq(L_arr1) )

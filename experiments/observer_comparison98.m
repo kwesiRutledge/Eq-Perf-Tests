@@ -201,6 +201,8 @@ function [results] = observer_comparison98( varargin )
 				x0 , ...
 				K{knowl_seq_index} , k{knowl_seq_index} , knowl_seq );
 
+			
+
 			 % Create Constraints
 			 if matching_behavior(knowl_seq_index)
 			 % 	Pw_prime = 1;

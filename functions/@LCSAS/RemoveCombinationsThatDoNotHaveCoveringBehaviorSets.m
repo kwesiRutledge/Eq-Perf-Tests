@@ -36,36 +36,8 @@ function [ combinations_out ] = RemoveCombinationsThatDoNotHaveCoveringBehaviorS
 			temp_choice_indices = unfiltered_choices_with_cardinality(choice_idx,:);
 			temp_choice = KnowledgePaths(:,temp_choice_indices);
 
-			% Find All Active Paths Containing word index 1, then 2, then 3 ...
-			[ path_subset_list , index_subset_list ] = temp_choice.find_paths_with_ending_from( L ); % Result stored in path_subset_list{1}, path_subset_list{2}, ...
-
-			% % Find the Disturbance Sets associated with each element of temp_choice.
-			% for subset_elt_index = 1:size(temp_choice,2)
-			% 	temp_path = temp_choice(:,subset_elt_index);
-			% 	LK_w{subset_elt_index} = lcsas0.find_hypothesis_generating_disturbances( temp_path(end) );
-			% end
-
-			% Only Add Combinations to the final list (combinations_out) if the combinations contain all words
-			% from L.
-
-			all_words_covered = true;
-
-			% Check each word in L.
-			for word_index = 1 : L.cardinality()
-				
-				paths_in_subset_containing_word_i = path_subset_list{word_index};
-				indices_in_subset_containing_word_i = index_subset_list{word_index};
-
-				% Check for covering
-
-				% path_subset_polyunion = PolyUnion( [ LK_w{ temp_choice_indices(indices_in_subset_containing_word_i) } ] );
-				
-				% all_words_covered = all_words_covered && p_subseteq_pu( WT{word_index} , path_subset_polyunion );
-
-			end
-
 			% If all words are covered, then add the choice.
-			if all_words_covered
+			if temp_choice.EvaluateIfAllWordBehaviorsAreCovered( lcsas_in )
 				combinations_out{cardinality} = [ combinations_out{cardinality} ; temp_choice_indices ];
 			end
 

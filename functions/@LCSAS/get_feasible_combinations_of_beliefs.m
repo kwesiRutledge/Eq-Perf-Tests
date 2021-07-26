@@ -23,6 +23,8 @@ function [ possibleSubsetsOfPaths , possible_choices , choices_as_binary_flags ]
 
 	Px0 = lcsas_in.X0;
 	Pu  = lcsas_in.U;
+
+	L = lcsas_in.L;
     
 	%%%%%%%%%%%%%%%
 	%% Algorithm %%
@@ -31,7 +33,6 @@ function [ possibleSubsetsOfPaths , possible_choices , choices_as_binary_flags ]
 	if gfcob_settings.verbosity > 0
 		disp('Starting get_feasible_combinations_of_beliefs()...')
 	end
-
 
 	%% Construct Disturbance Sets Associated with Each Element of LK
 	if isempty(ibs_sets)
@@ -75,10 +76,10 @@ function [ possibleSubsetsOfPaths , possible_choices , choices_as_binary_flags ]
 		disp('- Removed all combinations that did not consider all modes of the system lcsas_in.')
 	end
 
-	% possible_choices = lcsas_in.RemoveCombinationsThatDoNotHaveCoveringBehaviorSets( possible_choices , KnowledgePaths , ibs_sets );
-	% if gfcob_settings.verbosity > 0
-	% 	disp('- Removed all combinations that did not consider all modes of the system lcsas_in.')
-	% end
+	possible_choices = lcsas_in.RemoveCombinationsThatDoNotHaveCoveringBehaviorSets( possible_choices , KnowledgePaths , ibs_sets );
+	if gfcob_settings.verbosity > 0
+		disp('- Removed all combinations that did not consider all modes of the system lcsas_in.')
+	end
 
 	% Transform possible_choices to a list of binary vectors
 	choices_as_binary_flags = {};

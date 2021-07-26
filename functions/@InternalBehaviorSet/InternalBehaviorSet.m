@@ -292,11 +292,11 @@ classdef InternalBehaviorSet < handle
 
 		end
 
-		function [ tf ] = CoversInputW( ibs_array , W_in , target_word )
+		function [ tf ] = CoversWordBehaviors( ibs_array , target_word )
 			%CoversInputW
 			%Description:
 			%	Checks whether or not the array of InternalBeliefSequence objects ibs_array
-			%	spans enough values of w to cover the set W_in.
+			%	spans enough values to cover the behaviors associated with target_word.
 			%	This is done using a simple optimization problem.
 			%
 			%Notes:
@@ -305,26 +305,17 @@ classdef InternalBehaviorSet < handle
 
 			%% Input Processing
 
-			if ~isa(W_in,'Polyhedron')
-				error(['Expected W_in to be a Polyhedron but instead it is of class ' class(W_in) '.' ])
-			end
-
 			%% Constants
 
 			NumIBS = length(ibs_array);
-			W_dim = W_in.Dim;
 			IBS_dim = ibs_array(1).Dim;
 
 			System = ibs_array(1).System;
 			t = ibs_array(1).t;
 			[ n_x , n_u , n_y , n_w , n_v ] = System.Dimensions();
 
-			if W_dim ~= (t*n_w) 
-				error(['The dimension of the InternalBehaviorSet objects is ' num2str(IBS_dim) ' while the dimension of W is ' num2str(W_dim) '.' ])
-			end
-
 		    bloatFactor0 = 10^(-2);
-		    verbosity = 1;
+		    verbosity = 0;
 
 		    eps0 = 10^(-4);
 
@@ -363,7 +354,7 @@ classdef InternalBehaviorSet < handle
 					return;
 				end
 
-				phi_implication_constraint = implies( [ temp_ibs.A * phi <= temp_ibs.b ] + [temp_ibs.Ae * phi == temp_ibs.be] , [b_I == 1] );
+				phi_implication_constraint = implies( [ temp_ibs.A * phi <= temp_ibs.b ] + [temp_ibs.Ae * phi == temp_ibs.be] , [b_I(set_index)] );
 
 			end
 
@@ -376,6 +367,8 @@ classdef InternalBehaviorSet < handle
 			% Solve Optimization Flag
 			ops = sdpsettings('verbose',verbosity,'debug',0);
 			ops = sdpsettings(ops,'solver','gurobi');
+			ops.gurobi.OutputFlag = 0;
+			ops.gurobi.LogToConsole = 0;
 			
 			optim0 = optimize( ...
 				phi_domain_constraint+phi_implication_constraint+not_included_in_any_constraint, ...

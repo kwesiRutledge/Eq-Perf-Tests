@@ -1,4 +1,4 @@
-function [ constraints , dual_vars ] = GetReachabilityConstraints( ibs , X_Target )
+function [ constraints , dual_vars ] = GetReachabilityConstraints( varargin )
 	%Description:
 	%	Creates a reachability constraint based on the internal behavior set ibs and the
 	%	target set.
@@ -6,18 +6,15 @@ function [ constraints , dual_vars ] = GetReachabilityConstraints( ibs , X_Targe
 	%
 	%Usage:
 	%	[ constraints , dual_vars ] = ibs.GetReachabilityConstraints( X_Target )
+	%	[ constraints , dual_vars ] = ibs.GetReachabilityConstraints( X_Target , 'Relaxation' , true )
 
 	%% Input Processing %%
 
-	if ~strcmp(ibs.ibs_settings.fb_type,'state')
-		error(['GetReachabilityConstraints() was designed for state feedback only!'])
-	end
+	[ ibs , X_Target , relax ] = ip_GetReachabilityConstraints(varargin{:});
 
 	%%%%%%%%%%%%%%%
 	%% Constants %%
 	%%%%%%%%%%%%%%%
-
-	A = ibs.A; b = ibs.b; Ae = ibs.Ae; be = ibs.be; %Get Polytope Matrices
 
 	System = ibs.System;
 	L = System.L;
@@ -41,6 +38,15 @@ function [ constraints , dual_vars ] = GetReachabilityConstraints( ibs , X_Targe
 	W_final = System.Dyn(lastSymbol1).P_w;
 
 	% Create the Set Which Will Represent The Possible Sequence of Disturbances
+	if relax
+		ibs_ol = InternalBehaviorSet(ibs.System,ibs.KnowledgeSequence); %Get Open Loop Version of ibs
+
+		A = ibs_ol.A; b = ibs_ol.b; 
+		Ae = ibs_ol.Ae; be = ibs_ol.be; %Get Polytope Matrices
+
+	else
+		A = ibs.A; b = ibs.b; Ae = ibs.Ae; be = ibs.be; %Get Polytope Matrices
+	end
 
 	H = [ A ; Ae ; -Ae];
 	H = [ H , zeros(size(H,1),n_w) ; zeros(size(W_final.A,1),ibs.Dim) , W_final.A ];
@@ -81,3 +87,33 @@ function [ constraints , dual_vars ] = GetReachabilityConstraints( ibs , X_Targe
 
 
 end
+
+function [ ibs , X_Target , relax ] = ip_GetReachabilityConstraints(varargin)
+	%Description:
+	%	Creates the potential inputs from the call to ip.
+
+	%% Get IBS %%
+
+	ibs = varargin{1};
+	X_Target = varargin{2};
+
+	if ~strcmp(ibs.ibs_settings.fb_type,'state')
+		error(['GetReachabilityConstraints() was designed for state feedback only!'])
+	end
+
+	%% Check To See If Any Desired Settings Were Given %%
+	relax = false;
+
+	argument_index = 3;
+	while argument_index <= nargin
+		switch varargin{argument_index}
+		case 'Relaxation'
+			relax = varargin{argument_index+1};
+			argument_index = argument_index + 2;
+		otherwise
+			error(['Unexpected input to GetInputBoundConstraints(): ' varargin{argument_index} ])
+		end
+	end
+
+
+end 

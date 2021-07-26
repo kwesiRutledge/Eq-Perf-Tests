@@ -130,7 +130,7 @@ function [ lcsas0 , KnowledgeSequence , K , k , ibs_settings ] = ip_InternalBeha
 
 	if strcmp(ibs_settings.OpenLoopOrClosedLoop,'Closed')
 		if ~all( size(K) == [T*n_u,T*n_w] )
-			error(['Expected K to be of size ' num2str(t*n_u) ' x ' num2str(t*n_w) ', but received matrix of size ' num2str(size(K)) '.' ])
+			error(['Expected K to be of size ' num2str(T*n_u) ' x ' num2str(T*n_w) ', but received matrix of size ' num2str(size(K)) '.' ])
 		end
 
 		if ~all( size(k) == [T*n_u,1] )

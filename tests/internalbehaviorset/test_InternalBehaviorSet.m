@@ -128,7 +128,7 @@ function test_InternalBehaviorSet_Constructor4(testCase)
 
 	% Algorithm
 	ibs1 = InternalBehaviorSet(lcsas0,temp_belief_sequence, ...
-		'OpenLoopOrClosedLoop','Closed',zeros(1*n_u,1*n_w),zeros(1*n_u));
+		'OpenLoopOrClosedLoop','Closed',zeros(4*n_u,4*n_w),zeros(4*n_u,1));
 
 	assert( strcmp(ibs1.ibs_settings.OpenLoopOrClosedLoop,'Closed')  )
 
@@ -151,7 +151,7 @@ function test_InternalBehaviorSet_Constructor5(testCase)
 			'OpenLoopOrClosedLoop','Closed',zeros(2*n_u,1*n_w),zeros(1*n_u));
 	catch e
 		%disp(e.message)
-		assert( strcmp(e.message,['Expected K to be of size 1 x 2, but received matrix of size 2  2.' ]) )
+		assert( strcmp(e.message,['Expected K to be of size 4 x 8, but received matrix of size 2  2.' ]) )
 	end
 
 function [lcsas,eta_w,eta_v,eta_u,eta_x0] = get_simple_lcsas2()
@@ -285,8 +285,8 @@ function test_InternalBehaviorSet_CoversInputW1(testCase)
 	[lcsas0,eta_w,~,~] = get_simple_lcsas2(); %Get Simple Dynamics
 	L1 = Language(lcsas0.L.words{1});
 	L2 = Language(lcsas0.L.words{2});
-	temp_belief_sequence1 = [L1];
-	temp_belief_sequence2 = [L2];
+	temp_belief_sequence1 = [lcsas0.L;L1];
+	temp_belief_sequence2 = [lcsas0.L;lcsas0.L];
 
 	%Create Example InternalBehaviorSet
 	ibs1 = InternalBehaviorSet(lcsas0,temp_belief_sequence1);
@@ -297,9 +297,9 @@ function test_InternalBehaviorSet_CoversInputW1(testCase)
 
 	ibs_array = [ibs1;ibs2];
 
-	error('This function cannot be solved efficiently!')
+	%error('This function cannot be solved efficiently!')
 
-	assert( ibs_array.CoversInputW(W_prime) )
+	assert( ibs_array.CoversInputW(W_prime,lcsas0.L.words{1}) )
 
 function test_InternalBehaviorSet_CoversInputW2(testCase)
 	%Description:
@@ -312,21 +312,21 @@ function test_InternalBehaviorSet_CoversInputW2(testCase)
 	[lcsas0,eta_w,~,~] = get_simple_lcsas2(); %Get Simple Dynamics
 	L1 = Language(lcsas0.L.words{1});
 	L2 = Language(lcsas0.L.words{2});
-	temp_belief_sequence1 = [L1];
-	temp_belief_sequence2 = [L2];
+	temp_belief_sequence1 = [lcsas0.L;L1];
+	temp_belief_sequence2 = [lcsas0.L;lcsas0.L];
 
 	%Create Example InternalBehaviorSet
 	ibs1 = InternalBehaviorSet(lcsas0,temp_belief_sequence1);
 	ibs2 = InternalBehaviorSet(lcsas0,temp_belief_sequence2);
 
 	% Create Target Set to Cover
-	W_prime = Polyhedron('lb',-eta_w*ones(1,2),'ub',eta_w*[2,2]);
+	W_prime = Polyhedron('lb',-eta_w*ones(1,2),'ub',eta_w*[2,1]);
 
-	ibs_array = [ibs1;ibs2];
+	ibs_array = [ibs2];
 
-	error('This function cannot be solved efficiently!')
+	%error('This function cannot be solved efficiently!')
 
-	assert( ~ibs_array.CoversInputW(W_prime) )
+	assert( ~ibs_array.CoversInputW(W_prime,lcsas0.L.words{2}) )
 
 function test_InternalBehaviorSet_containsExternalBehavior1(testCase)
 	%Description:

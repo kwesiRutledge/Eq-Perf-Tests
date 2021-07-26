@@ -292,7 +292,7 @@ classdef InternalBehaviorSet < handle
 
 		end
 
-		function [ tf ] = CoversInputW( ibs_array , W_in )
+		function [ tf ] = CoversInputW( ibs_array , W_in , target_word )
 			%CoversInputW
 			%Description:
 			%	Checks whether or not the array of InternalBeliefSequence objects ibs_array
@@ -315,12 +315,12 @@ classdef InternalBehaviorSet < handle
 			W_dim = W_in.Dim;
 			IBS_dim = ibs_array(1).Dim;
 
-			lcsas = ibs_array(1).System;
+			System = ibs_array(1).System;
 			t = ibs_array(1).t;
-			[ n_x , n_u , n_y , n_w , n_v ] = lcsas.Dimensions();
+			[ n_x , n_u , n_y , n_w , n_v ] = System.Dimensions();
 
 			if W_dim ~= (t*n_w) 
-				error(['The dimension of the InternalBehaviorSet objects is ' num2str(t*n_w) ' while the dimension of W is ' num2str(W_dim) '.' ])
+				error(['The dimension of the InternalBehaviorSet objects is ' num2str(IBS_dim) ' while the dimension of W is ' num2str(W_dim) '.' ])
 			end
 
 		    bloatFactor0 = 10^(-2);
@@ -328,20 +328,19 @@ classdef InternalBehaviorSet < handle
 
 		    eps0 = 10^(-4);
 
-		    cg = constr_gen();
+		    cg = constr_gen(0);
 
 			%% Algorithm
-
-			w = sdpvar(W_dim,1,'full');
 			x_cell_arr = {}; %x = sdpvar(ibs_array(1).Dim,1,'full');
 			y_cell_arr = {};
 			b = binvar(NumIBS,1);
 
-			% Constrain x to be in W_in
-			x_in_p_constraint = [ W_in.A * w <= W_in.b ];
-			if ~isempty(W_in.Ae)
-				x_in_p_constraint = x_in_p_constraint + [ W_in.Ae * w == W_in.be ];
-			end
+			% Create Largest Possible Phi Set for This Word
+			StarSequence = [ System.L ; repmat(Language(target_word),t,1) ];
+			ibs_star = InternalBehaviorSet(System,StarSequence);
+
+			phi = sdpvar(ibs_star.Dim,1,'full');
+			phi_domain_constraint = [ ibs_star.A * phi <= ibs_star.b ] + [ ibs_star.Ae * phi == ibs_star.be ];
 
 			% Constrain x so that if it is in any individual element of the polyunion
 			% pu_in, then the binary flag is triggered.
@@ -350,60 +349,42 @@ classdef InternalBehaviorSet < handle
             ibs_array_as_polys = [];
             objective_vec = [];
             word_selectors = {}; sf_arr = {};
+
+            b_I = binvar(NumIBS,1);
+
+            phi_implication_constraint = [];
 			for set_index = 1:NumIBS
 				
-				% Create Constraint Component
-				% [ temp_containment_condition , temp_implication , temp_word_selector , satisfaction_flag , x_out ] = ibs_array(set_index).CreateContainmentConstraintOnW( W_in );
-				% word_selectors{end+1} = temp_word_selector;
-				% x_cell_arr{end+1} = x_out;
-				% sf_arr{end+1} = satisfaction_flag;
-				% x_in_pu_constraint = x_in_pu_constraint + temp_containment_condition; %temp_implication + [ sum(word_selectors{end}) == b(set_index) ];
+				%Get Current ibs, and make conditional constraint for phi if it is in this set.
+				temp_ibs = ibs_array(set_index);
 
-				% temp_ibs = ibs_array(set_index);
-				% temp_H = temp_ibs.A; temp_h = temp_ibs.b;
-				% if ~isempty(temp_ibs.Ae)
-				% 	temp_H = [temp_H;temp_ibs.Ae;-temp_ibs.Ae];
-				% 	temp_h = [temp_h;temp_ibs.be;-temp_ibs.be];
-				% end
+				if temp_ibs.KnowledgeSequence == StarSequence
+					tf = true;
+					return;
+				end
 
-				temp_ibs = ibs_array(1);
-				[ temp_empty_constraint , temp_y , doesnt_contain ] = temp_ibs.CreateNoncontainmentConditionOnW( w );
-				y_cell_arr{end+1} = temp_y;
-
-				x_in_pu_constraint = x_in_pu_constraint + temp_empty_constraint; %+ [ b(set_index) == doesnt_contain ];
-
-				%Add to objective;
-				%objective_vec = [objective_vec;sf_arr{end}];
+				phi_implication_constraint = implies( [ temp_ibs.A * phi <= temp_ibs.b ] + [temp_ibs.Ae * phi == temp_ibs.be] , [b_I == 1] );
 
 			end
 
+			% Make sure that phi is in none of the given consistency sets
+			not_included_in_any_constraint = [ sum(b_I) == 0 ];
+
 			% Create objective
-			%objective = sum(b);
-			%objective = min(objective_vec);
-			% objective = -sum(b);
 			objective = [];
 
 			% Solve Optimization Flag
 			ops = sdpsettings('verbose',verbosity,'debug',0);
 			ops = sdpsettings(ops,'solver','gurobi');
 			
-			optim0 = optimize(x_in_p_constraint+x_in_pu_constraint,objective,ops);
-
-			% if value(objective) == NumIBS
-			% 	% disp(value(b))
-			% 	% disp(value(w))
-			% 	disp(value(objective_vec))
-
-			% 	tf = false;
-			% else
-			% 	tf = true;
-			% end
+			optim0 = optimize( ...
+				phi_domain_constraint+phi_implication_constraint+not_included_in_any_constraint, ...
+				objective, ...
+				ops ...
+			);
 
 			if optim0.problem == 0
 				%Problem is feasible. There exists a point that is not covered.
-				disp(value(w))
-				disp(value(w(2)))
-
 				tf = false;
 			else
 				%Problem is not feasible. There does not exist a point that is uncovered.

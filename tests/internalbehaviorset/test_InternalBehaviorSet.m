@@ -275,7 +275,7 @@ function test_InternalBehaviorSet_CoversInputPolyhedron2(testCase)
 
 	assert( ~ibs_array.CoversInputPolyhedron(W) )
 
-function test_InternalBehaviorSet_CoversInputW1(testCase)
+function test_InternalBehaviorSet_CoversWordBehaviors1(testCase)
 	%Description:
 	%	Tests if a given input Polyhedron is covered by a set of InternalBehaviorSets
 
@@ -299,9 +299,9 @@ function test_InternalBehaviorSet_CoversInputW1(testCase)
 
 	%error('This function cannot be solved efficiently!')
 
-	assert( ibs_array.CoversInputW(W_prime,lcsas0.L.words{1}) )
+	assert( ibs_array.CoversWordBehaviors(lcsas0.L.words{1}) )
 
-function test_InternalBehaviorSet_CoversInputW2(testCase)
+function test_InternalBehaviorSet_CoversWordBehaviors2(testCase)
 	%Description:
 	%	Tests if a given input Polyhedron is covered by a set of InternalBehaviorSets
 	%	The input W_prime should NOT BE covered
@@ -326,7 +326,7 @@ function test_InternalBehaviorSet_CoversInputW2(testCase)
 
 	%error('This function cannot be solved efficiently!')
 
-	assert( ~ibs_array.CoversInputW(W_prime,lcsas0.L.words{2}) )
+	assert( ~ibs_array.CoversWordBehaviors(lcsas0.L.words{2}) )
 
 function test_InternalBehaviorSet_containsExternalBehavior1(testCase)
 	%Description:

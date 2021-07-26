@@ -112,7 +112,7 @@ function [results] = observer_comparison102( varargin )
 	results.LK_Sequences = LK_sequences;
 	results.LK_w = LK_w;
 
-	[ possibleSubsetsOfPaths , possible_choices , choices_as_binary_flags ] = lcsas0.get_feasible_combinations_of_beliefs( LK_sequences([2:end],:) , 'verbosity' , 1 );
+	[ possibleSubsetsOfPaths , possible_choices , choices_as_binary_flags ] = lcsas0.get_feasible_combinations_of_beliefs( LK_sequences , 'verbosity' , 1 );
 
 	results.MatchingBehaviorInstances = choices_as_binary_flags;
 	results.possibleSubsetsOfPaths = possibleSubsetsOfPaths;
@@ -194,7 +194,7 @@ function [results] = observer_comparison102( varargin )
 			 	ibs_ksi = InternalBehaviorSet(lcsas0,knowl_seq, ...
 					'OpenLoopOrClosedLoop','Closed',K{knowl_seq_index},k{knowl_seq_index});
 
-			 	[ temp_constraint , input_bound_dual_vars{end+1} ] = ibs_ksi.GetInputBoundConstraints();
+			 	[ temp_constraint , input_bound_dual_vars{end+1} ] = ibs_ksi.GetInputBoundConstraints('Relaxation',true);
 
 			 	input_bounds_constraints = input_bounds_constraints + temp_constraint;
 			 end 
@@ -268,7 +268,7 @@ function [results] = observer_comparison102( varargin )
 					ibs_ksi = InternalBehaviorSet(lcsas0,knowl_seq, ...
 													'OpenLoopOrClosedLoop','Closed',K{knowl_seq_index},k{knowl_seq_index});
 					
-					[ temp_constraints , reachability_dual_vars{end+1} ] = ibs_ksi.GetReachabilityConstraints( P_target );
+					[ temp_constraints , reachability_dual_vars{end+1} ] = ibs_ksi.GetReachabilityConstraints( P_target , 'Relaxation' , true );
 
 					guaranteed_reachability_constraint = guaranteed_reachability_constraint + temp_constraints;
 				end
@@ -290,7 +290,7 @@ function [results] = observer_comparison102( varargin )
 		%optimization_constraints = 	feasible_belief_constraints + input_bounds_constraints + matching_behavior_constraint + guaranteed_reachability_constraint; %UNSUCCESSFUL
 
 		ops = sdpsettings(	'verbose',1,'debug',1);
-		ops.gurobi.NodeLimit = 2.5*10^4;
+		ops.gurobi.NodeLimit = 10^5;
 
 		switch solution_approach
 			case 'Bilinear (fmincon)'

@@ -139,8 +139,8 @@ function [results] = observer_comparison102( varargin )
 	for choice_index = 1:length(choices_as_binary_flags)
 
 		disp(' ')
-		disp(['Choice #' num2str(choice_index) ])
-		disp(['- Cardinality of Choices = ' num2str(sum(choices_as_binary_flags{choice_index})) ])
+		disp(['Choice ' num2str(choice_index) '/' num2str(length(choices_as_binary_flags)) ])
+		disp(['- Cardinality of Choice = ' num2str(sum(choices_as_binary_flags{choice_index})) ])
 		disp(['- Number of Sequences in LK_sequences = ' num2str(size(LK_sequences,2)) ])
 		disp(' ')
 

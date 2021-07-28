@@ -70,16 +70,23 @@ function [ possibleSubsetsOfPaths , possible_choices , choices_as_binary_flags ]
 	% Remove All Choices that:
 	% - Do Not Respect/Consider All Modes
 	% - Do Not Have a Covering Set of Disturbances
+	% OR
+	% - Do Not Branch Properly
 
 	possible_choices = RemoveCombinationsThatDoNotConsiderAllModes( possible_choices , lcsas_in , KnowledgePaths );
 	if gfcob_settings.verbosity > 0
 		disp('- Removed all combinations that did not consider all modes of the system lcsas_in.')
 	end
 
-	possible_choices = lcsas_in.RemoveCombinationsThatDoNotHaveCoveringBehaviorSets( possible_choices , KnowledgePaths , ibs_sets );
+	possible_choices = RemoveCombinationsThatDoNotBranchProperly( possible_choices , lcsas_in , KnowledgePaths );
 	if gfcob_settings.verbosity > 0
 		disp('- Removed all combinations that did not consider all modes of the system lcsas_in.')
 	end
+
+	% possible_choices = lcsas_in.RemoveCombinationsThatDoNotHaveCoveringBehaviorSets( possible_choices , KnowledgePaths , ibs_sets );
+	% if gfcob_settings.verbosity > 0
+	% 	disp('- Removed all combinations that did not consider all modes of the system lcsas_in.')
+	% end
 
 	% Transform possible_choices to a list of binary vectors
 	choices_as_binary_flags = {};
@@ -215,6 +222,45 @@ function [ possible_choices_out ] = RemoveCombinationsThatDoNotConsiderAllModes(
 				if L == ll_union
 					possible_choices_out{cardinality} = [ possible_choices_out{cardinality} ; temp_choice_indices ];
 				end
+			end
+
+		end
+
+	end
+
+
+end
+
+function [ possible_choices_out ] = RemoveCombinationsThatDoNotBranchProperly( possible_choices , lcsas_in , KnowledgePaths )
+	%Description:
+	%	Checks to see if each possible_choice in possible_choices properly branches. (i.e. for each path in possible_choice,
+	%	if it ever changes cardinality, then is there a path with the same prefix but a complementary switch at the same point).
+	%
+	%Example:
+	%	If we notice a change in path cardinality (i.e. |p_{t-1}| = n and |p_{t}| < n), then it should be the case that there
+	%	is a path with the same prefix as p (i.e. p'_{tau} = p_{tau} for all tau <= t-1) such that p'_{t} \cup p_{t} = L.
+
+	%% Variables
+
+	L = lcsas_in.L;
+
+	%% Algorithm
+
+	possible_choices_out = {};
+	for cardinality = 1:length(possible_choices)
+
+		unfiltered_choices_with_cardinality = possible_choices{cardinality};
+		possible_choices_out{cardinality} = [];
+
+		for choice_idx = 1:size(possible_choices{cardinality},1)
+			temp_choice_indices = unfiltered_choices_with_cardinality(choice_idx,:);
+			temp_choice = KnowledgePaths(:,temp_choice_indices);
+
+			% Only Add Combinations to the final list (possible_choices_out) if the combinations contain all words
+			% from L.
+
+			if temp_choice.IsProperlyBranching( L )
+				possible_choices_out{cardinality} = [ possible_choices_out{cardinality} ; temp_choice_indices ];
 			end
 
 		end

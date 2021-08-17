@@ -1,5 +1,5 @@
-function [results] = observer_comparison102( varargin )
-	%observer_comparison98.m
+function [results] = observer_comparison103( varargin )
+	%observer_comparison103.m
 	%Description:
 	%	Attempting to implement a solution to subproblem 3 of the LCSLS wiki pages
 	%	using an enumeration based version of the approach given in observer_comparison86.m.
@@ -69,6 +69,8 @@ function [results] = observer_comparison102( varargin )
 			[ lcsas0 , x0 , TimeHorizon , P_target ] = get_differently_loaded_drone_lcsas('TimeHorizon',TimeHorizon);
 			Pu = lcsas0.U;
 			Px0 = lcsas0.X0;
+
+% 			lcsas0.L = Language(2*ones(1,TimeHorizon));
 		otherwise
 			error(['Expected a value between 1 and 3. Received ' num2str(system_option_val) '.' ])
 	end
@@ -136,10 +138,8 @@ function [results] = observer_comparison102( varargin )
 
 	OverallRuntimeStart = tic();
 
-	choice_index = length(choices_as_binary_flags);
-	% choice_index = 1338;
-	while choice_index >= 1
-	% for choice_index = 1:length(choices_as_binary_flags)
+	%choice_index = length(choices_as_binary_flags);
+	for choice_index = 1:length(choices_as_binary_flags)
 
 		disp(' ')
 		disp(['Choice ' num2str(choice_index) '/' num2str(length(choices_as_binary_flags)) ])
@@ -197,9 +197,9 @@ function [results] = observer_comparison102( varargin )
 			 	ibs_ksi = InternalBehaviorSet(lcsas0,knowl_seq, ...
 					'OpenLoopOrClosedLoop','Closed',K{knowl_seq_index},k{knowl_seq_index});
 
-			 	[ temp_constraint , input_bound_dual_vars{end+1} ] = ibs_ksi.GetInputBoundConstraints('Relaxation',true);
+			 	[ temp_constraints , input_bound_dual_vars{end+1} ] = ibs_ksi.GetInputBoundConstraints('Relaxation',true);
 
-			 	input_bounds_constraints = input_bounds_constraints + temp_constraint;
+			 	input_bounds_constraints = input_bounds_constraints + temp_constraints;
 			 end 
 		end
 
@@ -224,9 +224,9 @@ function [results] = observer_comparison102( varargin )
 				ibs_ksi = InternalBehaviorSet(lcsas0,knowl_seq, ...
 					'OpenLoopOrClosedLoop','Closed',K{knowl_seq_index},k{knowl_seq_index});
 
-			 	[ temp_constraint, temp_dummy_w{end+1} ] = ibs_ksi.CreateNonemptyConstraint();
+			 	[ temp_constraints, temp_dummy_w{end+1} ] = ibs_ksi.CreateNonemptyConstraint();
 
-			 	feasible_belief_constraints = feasible_belief_constraints + temp_constraint;
+			 	feasible_belief_constraints = feasible_belief_constraints + temp_constraints;
 
 			 	% Construct P^C( knowl_seq )
 			 	P_C_indices = ~matching_behavior;
@@ -240,8 +240,8 @@ function [results] = observer_comparison102( varargin )
 			 				ibs_pci = InternalBehaviorSet(lcsas0,temp_seq, ...
 			 					'OpenLoopOrClosedLoop','Closed',K{knowl_seq_index},k{knowl_seq_index});
 
-			 				[ temp_constraint , temp_dummy_y{end+1} ] = ibs_pci.CreateEmptyConstraint();
-			 				infeasible_belief_constraints = infeasible_belief_constraints + temp_constraint;
+			 				[ temp_constraints , temp_dummy_y{end+1} ] = ibs_pci.CreateEmptyConstraint();
+			 				infeasible_belief_constraints = infeasible_belief_constraints + temp_constraints;
 			 			end
 
 			 		end
@@ -252,7 +252,8 @@ function [results] = observer_comparison102( varargin )
 		end
 
 		%% Create Causal Detection Constraints %%
-		causal_detection_constraints = cg.get_belief_prefix_gain_constraints( lcsas0 , K , k , LK_sequences , 'Ignore K');
+		causal_detection_constraints = cg.get_belief_prefix_gain_constraints( lcsas0 , K , k , LK_sequences );
+		causal_gain_constraints = lcsas0.create_lower_diagonal_constraint_on_gains( K , 'Disturbance' );
 
 		%% Create Robust Reachability Constraints
 
@@ -263,19 +264,15 @@ function [results] = observer_comparison102( varargin )
 			
 			knowl_seq = LK_sequences(:,knowl_seq_index);
 			
-			for word_index = 1:temp_last_lang.cardinality()
+			% Create Constraints
+			if matching_behavior(knowl_seq_index)
 
-				% Create Constraints
-				if matching_behavior(knowl_seq_index)
+				ibs_ksi = InternalBehaviorSet( lcsas0 , knowl_seq , ...
+												'OpenLoopOrClosedLoop','Closed', K{knowl_seq_index}, k{knowl_seq_index});
+				
+				[ temp_constraints , reachability_dual_vars{end+1} ] = ibs_ksi.GetReachabilityConstraints( P_target , 'Relaxation' , true );
 
-					ibs_ksi = InternalBehaviorSet(lcsas0,knowl_seq, ...
-													'OpenLoopOrClosedLoop','Closed',K{knowl_seq_index},k{knowl_seq_index});
-					
-					[ temp_constraints , reachability_dual_vars{end+1} ] = ibs_ksi.GetReachabilityConstraints( P_target , 'Relaxation' , true );
-
-					guaranteed_reachability_constraint = guaranteed_reachability_constraint + temp_constraints;
-				end
-
+				guaranteed_reachability_constraint = guaranteed_reachability_constraint + temp_constraints;
 			end
 
 		end
@@ -284,7 +281,9 @@ function [results] = observer_comparison102( varargin )
 		%% Optimize ? %%
 		%%%%%%%%%%%%%%%%
 
-		optimization_constraints = 	feasible_belief_constraints + infeasible_belief_constraints + input_bounds_constraints + matching_behavior_constraint + guaranteed_reachability_constraint + causal_detection_constraints %+ ...
+		optimization_constraints = 	feasible_belief_constraints + infeasible_belief_constraints + ...
+									input_bounds_constraints + matching_behavior_constraint + ...
+									guaranteed_reachability_constraint + causal_detection_constraints + causal_gain_constraints %+ ...
 		
 		%optimization_constraints = 	feasible_belief_constraints ; % SUCCESSFUL
 		%optimization_constraints = 	feasible_belief_constraints + infeasible_belief_constraints; % UNSUCCESSFUL
@@ -344,15 +343,57 @@ function [results] = observer_comparison102( varargin )
 		end
 		results.K2 = tempK2;
 
+		for Lambda_index = 1:length(reachability_dual_vars)
+			LambdaReach{Lambda_index} = value(reachability_dual_vars{Lambda_index});
+		end
+		results.Experiment{choice_index}.LambdaReach = LambdaReach
+
 		%%%%%%%%%%%%%%%%%%%%%%%
 		%% Visualize Results %%
 		%%%%%%%%%%%%%%%%%%%%%%%
 
 		%Only visualize if the problem was feasible.
 
+		results.Experiment{choice_index}.SimulationData = [];
+
 		if optim0.problem == 0
-			break;
+
+			cbc0 = ConsistentBeliefsController( lcsas0 , LK_sequences(:,matching_behavior) , ...
+												results.Experiment{choice_index}.K, ...
+												results.Experiment{choice_index}.k );
+
+			[ tf , norm_matrix_diff , vector_diff ] = check_reachability_condition( cbc0 , LambdaReach , P_target , true )
+			results.Experiment{choice_index}.ReachabilityConstraintData.Satisfied = tf;
+			results.Experiment{choice_index}.ReachabilityConstraintData.NormMatrixDiff = norm_matrix_diff;
+			results.Experiment{choice_index}.ReachabilityConstraintData.VectorDiff = vector_diff;
+
+			figure;
+
+			hold on;
+			plot(lcsas0.X0)
+			plot(P_target)
+
+			for simulation_index = 1:10
+				[ x_0_t, u_0_tm1 , y_0_t , sig ] = cbc0.simulate_1run();
+				% for t = 0:TimeHorizon
+				% 	x_t = x_0_t(:,t+1);
+				% 	scatter(x_t(1),x_t(2))
+				% end
+				plot(x_0_t(1,:),x_0_t(2,:))
+				cbc0.clear_histories()
+
+				%Save data
+				results.Experiment{choice_index}.SimulationData = [ results.Experiment{choice_index}.SimulationData ; struct('x_0_t',x_0_t,'u_0_tm1',u_0_tm1) ];
+
+			end
+
+			axis([-3,4,-4,4])
+
+
+			return;
 		end
+
+
 
 		% if optim0.problem == 0 %The problem was feasible.
 
@@ -387,18 +428,5 @@ function [results] = observer_comparison102( varargin )
 	end
 
 	results.OverallRuntime = toc(OverallRuntimeStart);
-
-	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-	%% Determine if Controller Worked %%
-	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-	% x1_T_validation = [ zeros(2,TimeHorizon*2), eye(2) ]*(J1([1:2*(TimeHorizon+1)],[1:2])*x0+S_u1([1:2*(TimeHorizon+1)],[1:TimeHorizon])*results.u([1:TimeHorizon],1));
-	% x2_T_validation = [ zeros(2,TimeHorizon*2), eye(2) ]*(J2([1:2*(TimeHorizon+1)],[1:2])*x0+S_u2([1:2*(TimeHorizon+1)],[1:TimeHorizon])*results.u([1:TimeHorizon],2));
-
-	% disp('is x1_T_validation in P_target?')
-	% P_target.contains(x1_T_validation)
-
-	% disp('is x2_T_validation in P_target?')
-	% P_target.contains(x2_T_validation)
 
 end

@@ -73,10 +73,10 @@ function [ possibleSubsetsOfPaths , possible_choices , choices_as_binary_flags ]
 	% OR
 	% - Do Not Branch Properly
 
-	possible_choices = RemoveCombinationsThatDoNotConsiderAllModes( possible_choices , lcsas_in , KnowledgePaths );
-	if gfcob_settings.verbosity > 0
-		disp('- Removed all combinations that did not consider all modes of the system lcsas_in.')
-	end
+% 	possible_choices = RemoveCombinationsThatDoNotConsiderAllModes( possible_choices , lcsas_in , KnowledgePaths );
+% 	if gfcob_settings.verbosity > 0
+% 		disp('- Removed all combinations that did not consider all modes of the system lcsas_in.')
+% 	end
 
 	possible_choices = RemoveCombinationsThatDoNotBranchProperly( possible_choices , lcsas_in , KnowledgePaths );
 	if gfcob_settings.verbosity > 0

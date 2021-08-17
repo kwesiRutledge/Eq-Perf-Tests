@@ -70,13 +70,13 @@ function [ dt , m1 , m2 , TimeHorizon , x0 , X_target , U ] = ip_get_differently
 	%%%%%%%%%%%%%%
 
 	drone_settings = struct( ...
-		'dt' , 0.1 , ...
-		'm1' , 10 , ... %kilograms
-		'm2' , 15 , ... %kilograms
+		'dt' , 0.2 , ...
+		'm1' , 1.0 , ... %kilograms
+		'm2' , 2.0 , ... %kilograms
 		'TimeHorizon' , 8 , ...
 		'x0' , [ 1 ; 0 ] , ...
-		'X_target' , Polyhedron('lb',2,'ub',3) * Polyhedron('lb',-1,'ub',1) , ...
-		'U' , Polyhedron('lb',-2,'ub',2) );
+		'X_target' , Polyhedron('lb',2,'ub',4) * Polyhedron('lb',-5,'ub',5) , ...
+		'eta_u' , 40 ); %N
 
 	%%%%%%%%%%%%%%%%
 	%% Processing %%
@@ -116,6 +116,6 @@ function [ dt , m1 , m2 , TimeHorizon , x0 , X_target , U ] = ip_get_differently
 	TimeHorizon = drone_settings.TimeHorizon;
 	x0 = drone_settings.x0;
 	X_target = drone_settings.X_target;
-	U = drone_settings.U;
+	U = Polyhedron('lb',-drone_settings.eta_u,'ub',drone_settings.eta_u);
 
 end

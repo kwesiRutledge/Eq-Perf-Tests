@@ -1,5 +1,5 @@
 function [l_diag_constr] = get_causal_constr_on_extd_gains( obj , lcsas , Q_set )
-	%create_sadraddini_cond.m
+	%get_causal_constr_on_extd_gains.m
 	%Description:
 	%	This function should use the dimensions of the lcsas to create causality constraints
 	%	on the transformed feedback gains Q.

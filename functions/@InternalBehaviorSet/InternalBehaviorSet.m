@@ -125,22 +125,30 @@ classdef InternalBehaviorSet < handle
 
 			A = []; b = [];
 			Ae = []; be = [];
+			if t == 0
+				%The consistency set for time 0 is just the initial condition set.
+				A = lcsas.X0.A;
+				b = lcsas.X0.b;
 
-		    for tau = 1:t
-				L_tau = KnowledgeSequence(tau+1);
+				Ae = lcsas.X0.Ae;
+				be = lcsas.X0.be;
+			else
+			    for tau = 1:t
+					L_tau = KnowledgeSequence(tau+1);
 
-				%Create a Part of the A Matrix for Each word in L_tau
-				[A_projected,b_projected,Ae_projected,be_projected] = ibs.CreatePolytopeMatricesAtTime(tau,L_tau,ibs_settings);
-				%Extend all projected matrices so that they can fit in A,b,Ae,be
-				[ tempA , tempb , tempAe , tempbe ] = ibs.AdjustIBSMatricesFor( tau , L_tau , ...
-																				A_projected , b_projected , Ae_projected , be_projected );
+					%Create a Part of the A Matrix for Each word in L_tau
+					[A_projected,b_projected,Ae_projected,be_projected] = ibs.CreatePolytopeMatricesAtTime(tau,L_tau,ibs_settings);
+					%Extend all projected matrices so that they can fit in A,b,Ae,be
+					[ tempA , tempb , tempAe , tempbe ] = ibs.AdjustIBSMatricesFor( tau , L_tau , ...
+																					A_projected , b_projected , Ae_projected , be_projected );
 
-				A = [ A ; tempA ];
-				b = [ b ; tempb ];
-				Ae = [ Ae ; tempAe ];
-				be = [ be ; tempbe ]; 
+					A = [ A ; tempA ];
+					b = [ b ; tempb ];
+					Ae = [ Ae ; tempAe ];
+					be = [ be ; tempbe ]; 
 
-		    end
+			    end
+			end
 
 		    ibs.A = A;
 		    ibs.b = b;
@@ -641,8 +649,8 @@ classdef InternalBehaviorSet < handle
 					[ ~ , tw_index ] = L.contains(temp_word);
 
 					selectionMatrices{ll_index} = [ ...
-						zeros(n_w*t,n_x*(t+1) + n_u*t + (tw_index-1)*n_w*t ) , ...
-						eye(n_w*t) , ...
+						zeros( n_w*t , n_x*(t+1) + n_u*t + (tw_index-1)*n_w*t ) , ...
+						eye( n_w*t ) , ...
 						zeros( n_w*t , Dim-n_x*(t+1)-n_u*t-tw_index*n_w*t) ...
 						];
 

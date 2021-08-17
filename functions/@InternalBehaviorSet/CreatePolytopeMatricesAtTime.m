@@ -100,8 +100,10 @@ function [A,b,Ae,be] = CreatePolytopeMatricesAtTime(ibs,t,L_t,ibs_settings)
 		% Add Equality Constraints Between Words in Internal Behavior Sets
 		% for word_ind = 2:L_t.cardinality()
 		% 	Ltc = L_t.cardinality();
+		%
 		% 	%matching_x_block = [ eye(n_x*(t+1)) , zeros( n_x*(t+1) , (-2+word_ind)*n_x*(t+1) ) , -eye(n_x*(t+1)) , zeros(n_x*(t+1) , (Ltc-word_ind)*n_x*(t+1) ) ];
-  %           matching_x0_block = [ eye(n_x) , zeros(n_x,(-2+word_ind)*n_x ) , -eye(n_x) , zeros(n_x , (Ltc-word_ind)*n_x ) ];
+		%   matching_x0_block = [ eye(n_x) , zeros(n_x,(-2+word_ind)*n_x ) , -eye(n_x) , zeros(n_x , (Ltc-word_ind)*n_x ) ];
+		%
 		% 	Ae = [	Ae ;
 		% 			zeros(n_x,n_x*(t+1)) , zeros(n_x,size(S_block,2)) , zeros(n_x,size(H_block,2)) , matching_x0_block  ];
 

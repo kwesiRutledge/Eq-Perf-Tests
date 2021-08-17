@@ -17,6 +17,7 @@ classdef ExternalBehaviorSet < handle
 
 		% Other Things
 		Dim;
+		Settings;
 	end
 
 	methods
@@ -53,11 +54,13 @@ classdef ExternalBehaviorSet < handle
 			%				  computation of Consist_set (true) which requires projection operations to be called and may be very slow.
 			%
 			%Example Usage:
-			%	[ebs] = consistent_set(lcsas,t,L)			
+			%	[ebs] = ExternalBehaviorSet(lcsas,KnowledgeSequence)
+			%	ebs = ExternalBehaviorSet(lcsas,KnowledgeSequence,'fb_method','state')			
 
 			%% Input Processing
 			[ lcsas , KnowledgeSequence , ebs_settings ] = input_processing_ExternalBehaviorSet(varargin{:});
-            
+            ebs.Settings = ebs_settings;
+
             %% Constants %%
             [ n_x , n_u , n_y , n_w , n_v ] = lcsas.Dimensions();
             
@@ -70,6 +73,7 @@ classdef ExternalBehaviorSet < handle
 			%% Define Object
 			ebs.t = t;
 			ebs.System = lcsas;
+            ebs.KnowledgeSequence = KnowledgeSequence;
 			ebs.AsPolyhedron = [];
             
             switch ebs_settings.fb_type
@@ -150,46 +154,6 @@ classdef ExternalBehaviorSet < handle
 			%	a Polyhedron and then does the comparison.
 
 			tf = le(ebs2,ebs1);
-
-		end
-
-		function [tf] = contains(ebs,external_behavior)
-			%Description:
-			%	Determines if an external behavior is part of this target ExternalBehaviorSet.
-			%
-			%Usage:
-			%	tf = ebs.contains( external_behavior )
-
-			%%%%%%%%%%%%%%%
-			%% Constants %%
-			%%%%%%%%%%%%%%%
-
-			ibs = ebs.ParentInternalBehaviorSet;
-
-			ib_dim = ibs.Dim;
-			eb_dim = ebs.Dim;
-
-			verbosity = 1;
-			options = sdpsettings('verbose',verbosity);
-
-			%%%%%%%%%%%%%%%
-			%% Algorithm %%
-			%%%%%%%%%%%%%%%
-
-			% Construct Optimization Variables
-			internal_behavior = sdpvar(ib_dim,1,'full');
-
-			% Construct Constraints
-			ib_match_constraint = [ [eye(eb_dim) , zeros(eb_dim,ib_dim-eb_dim)]*internal_behavior == external_behavior ];
-
-			valid_ib_constraint = 	[ ibs.A * internal_behavior <= ibs.b ] + ...
-									[ ibs.Ae * internal_behavior == ibs.be ];
-
-			%Run optimization
-			diagnostics = optimize(	ib_match_constraint+valid_ib_constraint, ...
-									[], options);
-
-			tf = (diagnostics.problem == 0);
 
 		end
 

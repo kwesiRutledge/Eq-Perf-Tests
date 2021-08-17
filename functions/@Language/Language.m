@@ -545,6 +545,30 @@ classdef Language
 
 		end
 
+		function subset_flag = le(obj,L_in)
+			%Description:
+			%	
+			%Usage:
+			%	subset_flag = le(L1,L2)
+			%	subset_flag = L1 <= L2;
+			%
+
+			subset_flag = obj.subseteq(L_in);
+		end
+
+		function subset_flag = ge(obj,L_in)
+			%Description:
+			%
+			%Usage:
+			%	subset_flag = ge(L1,L2)
+			%	subset_flag = L1 >= L2;
+			%
+
+			subset_flag = L_in.subseteq(obj);
+		end
+
+
+
 	end
 
 end

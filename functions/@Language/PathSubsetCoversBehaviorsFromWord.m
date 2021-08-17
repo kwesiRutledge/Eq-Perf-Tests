@@ -1,5 +1,8 @@
 function tf = PathSubsetCoversBehaviorsFromWord( PathMatrix , Word , System )
 	%Description:
+	%
+	%Usage:
+	%	tf = Paths.PathSubsetCoversBehaviorsFromWord( Word , System )
 
 	%% Input Processing %%
 

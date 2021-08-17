@@ -13,4 +13,6 @@ TimeHorizon = 6;
 
 %% Synthesis %%
 
-[ drone_controller , info ] = lcsas0.FindConsistentBeliefController( P_target , 'SearchStrategy' , 'DescendingCardinality+MostlyIgnoreAllModeSequence' )
+[ drone_controller , info ] = lcsas0.FindConsistentBeliefController( P_target , ...
+																		'SearchStrategy' , 'DescendingCardinality+PreferAllModeSequence', ...
+																		'UseParallelization' , true )

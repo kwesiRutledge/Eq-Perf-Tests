@@ -43,10 +43,10 @@ function [lcsas_out,TimeHorizon,Pu,Pw,x0,Px0,X_Target] = get_cdc2021_similar_rot
 	% TimeHorizon = 4;
 
 	% Create PuT
-	eta_u = 0.5*eta_w;
+	eta_u = 3*eta_w;
 	Pu = Polyhedron(...
 		'lb',-eta_u*ones(1,dim_x), ...
-		'ub', eta_u*ones(1,dim_x))
+		'ub', eta_u*ones(1,dim_x));
 
 	Px0 = Polyhedron('lb',x0','ub',x0');
 

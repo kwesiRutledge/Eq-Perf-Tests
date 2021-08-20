@@ -11,6 +11,7 @@ function [ controller , synthesis_info ] = FindConsistentBeliefController( varar
 
 	synthesis_info.System = lcsas;
 	synthesis_info.TargetSet = X_Target;
+	synthesis_info.SynthesisSettings = settings;
 
 	%%%%%%%%%%%%%%%
 	%% Constants %%
@@ -115,7 +116,7 @@ function [ controller , synthesis_info ] = FindConsistentBeliefController( varar
 
 			 	feasible_belief_constraints = feasible_belief_constraints + temp_constraints;
 
-			 	% Construct P^C( knowl_seq )
+			 	% Construct P^"C"( knowl_seq )
 			 	P_C_indices = ~active_sequence_flags;
 			 	for pci_index = 1:length(P_C_indices)
 			 		%If this sequence is in the complement
@@ -123,7 +124,7 @@ function [ controller , synthesis_info ] = FindConsistentBeliefController( varar
 			 			%Grab path
 			 			temp_seq = unchecked_knowledge_sequences(:,pci_index);
 			 			%If this sequence IS NOT a subset of knowl_seq, then enforce empty constraint of closed loop.
-			 			if ~temp_seq.contains(knowl_seq)
+			 			if ~(knowl_seq <= temp_seq)
 			 				ibs_pci = InternalBehaviorSet(lcsas,temp_seq, ...
 			 					'OpenLoopOrClosedLoop','Closed',K{knowl_seq_index},k{knowl_seq_index});
 
@@ -181,6 +182,30 @@ function [ controller , synthesis_info ] = FindConsistentBeliefController( varar
 		synthesis_info.Timing.Experiment{subset_index}.ForExperiment = toc(subset_index_start_time);
 
 		if optim0.problem == 0
+			%% Create Controller
+			
+			synthesis_info.K = {};
+			synthesis_info.k = {};
+
+			for K_index = 1:length(K)
+				synthesis_info.K{K_index} = value(K{K_index});
+				synthesis_info.k{K_index} = value(k{K_index});
+			end
+
+			for Lambda_index = 1:length(reachability_dual_vars)
+				LambdaReach{Lambda_index} = value(reachability_dual_vars{Lambda_index});
+			end
+			synthesis_info.LambdaReach = LambdaReach
+
+			controller = ConsistentBeliefsController( lcsas , unchecked_knowledge_sequences(:,active_sequence_flags) , ...
+														{ synthesis_info.K{active_sequence_flags} } , ...
+														{ synthesis_info.k{active_sequence_flags} } );
+
+			[ tf , norm_matrix_diff , vector_diff ] = check_reachability_condition( controller , LambdaReach , X_Target , true );
+			synthesis_info.ReachabilityConstraintData.Satisfied = tf;
+			synthesis_info.ReachabilityConstraintData.NormMatrixDiff = norm_matrix_diff;
+			synthesis_info.ReachabilityConstraintData.VectorDiff = vector_diff;
+
 			break;
 		end
 
@@ -189,8 +214,6 @@ function [ controller , synthesis_info ] = FindConsistentBeliefController( varar
 
 	synthesis_info.Timing.SearchForFeasibleP = toc(P_search_start);
 	synthesis_info.Timing.Overall = toc(algorithm_start);
-
-	controller = [];
 
 end
 
@@ -274,7 +297,7 @@ function [ controller , synthesis_info ] = FindConsistentBeliefController_Parall
 
 		% end
 
-		F{subset_index} = parfeval(p,@PerSubsetSynthesisAlgorithm,2,subset_index,choices_as_binary_flags{subset_index},settings, possible_subsets_of_paths, unchecked_knowledge_sequences);
+		F{subset_index} = parfeval(p,@PerSubsetSynthesisAlgorithm,2,lcsas,subset_index,choices_as_binary_flags{subset_index},settings, possible_subsets_of_paths, unchecked_knowledge_sequences);
 
 		if mod(subset_index,20) == 0
 			disp(['Used parfeval ' num2str(subset_index) ' times.'])
@@ -293,11 +316,13 @@ function [ controller , synthesis_info ] = FindConsistentBeliefController_Parall
 	end
 
 	next_update_at = 20;
-	while numSubsetsFinished ~= len(possible_subsets_of_paths)
+	while numSubsetsFinished ~= length(possible_subsets_of_paths)
 
 		numSubsetsFinished = 0;
 		for subset_index = 1:length(F)
-			numSubsetsFinished = numSubsetsFinished + strcmp(F{subset_index}.State,'finished');
+			if strcmp(F{subset_index}.State,'finished')
+				numSubsetsFinished = numSubsetsFinished + 1;
+			end
 		end
 
 		if mod(subset_index,20) == 0
@@ -307,10 +332,18 @@ function [ controller , synthesis_info ] = FindConsistentBeliefController_Parall
 		if numSubsetsFinished > next_update_at
 			disp(['Completed ' num2str(numSubsetsFinished) ' attempts!' ])
 			next_update_at = next_update_at + 20;
+		else
+			disp(['- No Updates. In Checking loop.'])
 		end
 
 	end
 
+	% Fetch results
+	for subset_index = 1:length(F)
+		[ cbc , optim_info ] = fetchOutputs(F{subset_index});
+		synthesis_info.Experiment{subset_index}.Controller = cbc;
+		synthesis_info.Experiment{subset_index}.OptimizationInfo = optim_info;
+	end
 
 
 	synthesis_info.Timing.SearchForFeasibleP = toc(P_search_start);
@@ -322,7 +355,7 @@ function [ controller , synthesis_info ] = FindConsistentBeliefController_Parall
 
 end
 
-function [ controller, optim0 ] = PerSubsetSynthesisAlgorithm( subset_index , active_sequence_flags , settings , possible_subsets_of_paths , unchecked_knowledge_sequences )
+function [ controller, optim0 ] = PerSubsetSynthesisAlgorithm( lcsas , subset_index , active_sequence_flags , settings , possible_subsets_of_paths , unchecked_knowledge_sequences )
 
 	%% Constants
 

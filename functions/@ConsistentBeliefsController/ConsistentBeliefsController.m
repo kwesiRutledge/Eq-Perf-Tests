@@ -248,6 +248,7 @@ classdef ConsistentBeliefsController < handle
 			end
 
 			cbc.u_hist = [cbc.u_hist,u];
+            u
 		end
 
 		function [ detected_index ] = prefix_detection( cbc )
@@ -343,10 +344,6 @@ classdef ConsistentBeliefsController < handle
 			%%%%%%%%%%%%%%%
 			%% Algorithm %%
 			%%%%%%%%%%%%%%%
-
-            if rand_word_ind == 2
-                1;
-            end
             
 			%Constants
 			% T = size(obj.L,2);
@@ -376,16 +373,18 @@ classdef ConsistentBeliefsController < handle
 
 			% v = obj.gen_rand_vars( lcsas , sig , 'v' );
 
-			%Simulate system forward.
+			%Initilize system
 			x_t = x0;
 			q_t = sig(1);
 
 			y_t = System.Dyn(q_t).C*x0 + System.Dyn(q_t).C_v*v(:,1);
 
+            %Initialize Controller Histories
+            cbc.clear_histories();
 			x_0_t = x_t; cbc.x_hist = x_0_t;
 			y_0_t = y_t; cbc.y_hist = y_0_t;
 			x_tp1 = Inf(n_x,1);
-
+            
 			for t = 0:T-1
 				q_t = sig(t+1);
 
@@ -408,8 +407,12 @@ classdef ConsistentBeliefsController < handle
 				y_t = System.Dyn(q_tp1).C*x_t + System.Dyn(q_tp1).C_v*v(:,t+1);
 				y_0_t = [y_0_t, y_t];
 				cbc.y_hist = y_0_t;
-			end
+            end
 
+            if T == 3
+                disp('What?')
+            end
+            
 			u_0_tm1 = cbc.u_hist;
 
 		end

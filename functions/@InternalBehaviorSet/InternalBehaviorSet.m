@@ -72,6 +72,7 @@ classdef InternalBehaviorSet < handle
 			%Example Usage:
 			%	[ internal_behavior_set ] = InternalBehaviorSet( lcsas , KnowledgeSequence )
 			%	[ internal_behavior_set ] = InternalBehaviorSet( lcsas , KnowledgeSequence , 'fb_type' , 'state' )
+			%	[ internal_behavior_set ] = InternalBehaviorSet( lcsas , KnowledgeSequence , 'fb_type' , 'state' , 'OpenLoopOrClosedLoop' , 'Closed' , K , k )
 			%
 			%Assumptions:
 			%	This formulation assumes that the system does not include a disturbed measurements. i.e. We can perfectly observe the state

@@ -83,10 +83,10 @@ function [ possibleSubsetsOfPaths , possible_choices , choices_as_binary_flags ]
 		disp('- Removed all combinations that did not consider all modes of the system lcsas_in.')
 	end
 
-	% possible_choices = lcsas_in.RemoveCombinationsThatDoNotHaveCoveringBehaviorSets( possible_choices , KnowledgePaths , ibs_sets );
-	% if gfcob_settings.verbosity > 0
-	% 	disp('- Removed all combinations that did not consider all modes of the system lcsas_in.')
-	% end
+	possible_choices = lcsas_in.RemoveCombinationsThatDoNotHaveCoveringBehaviorSets( possible_choices , KnowledgePaths , ibs_sets );
+	if gfcob_settings.verbosity > 0
+		disp('- Removed all combinations that did not consider all modes of the system lcsas_in.')
+	end
 
 	% Transform possible_choices to a list of binary vectors
 	choices_as_binary_flags = {};

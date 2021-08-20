@@ -49,7 +49,8 @@ function [ A_cl , b_cl , Ae_cl , be_cl ] = GetClosedLoopMatrices( ibs )
 
 	H_cl = []; h_cl = [];
 
-	Ae_p = [zeros(n_u*t,n_x*(t+1)),-eye(n_u*t),K([1:n_u*t],[1:n_w*t]),zeros(n_u*t,ibs.Dim-n_x*(t+1)-(n_u+n_w)*t)];
+	Ae_p = [zeros(n_u*t,n_x*(t+1)),-eye(n_u*t),zeros(n_u*t,ibs.Dim-n_x*(t+1)-(n_u)*t)] + ...
+			K([1:n_u*t],[1:n_w*t]) * SelectWMatrix1;
 	be_p = [-k([1:n_u*t],1)];
 
 	%% Create Outputs %%

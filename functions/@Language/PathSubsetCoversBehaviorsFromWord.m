@@ -1,4 +1,4 @@
-function tf = PathSubsetCoversBehaviorsFromWord( PathMatrix , Word , System )
+function tf = PathSubsetCoversBehaviorsFromWord( PathsSubset , Word , System )
 	%Description:
 	%
 	%Usage:
@@ -12,14 +12,14 @@ function tf = PathSubsetCoversBehaviorsFromWord( PathMatrix , Word , System )
 
 	%% Constants %%
 
-	[T,NumPaths] = size(PathMatrix); 
+	[T,NumPaths] = size(PathsSubset); 
 
 	%% Algorithm %%
 
 	% Create InternalBehaviorSets.
 	ibs_array = [];
 	for path_index = 1:NumPaths
-		ibs_array = [ibs_array; InternalBehaviorSet( System , PathMatrix(:,path_index) ) ];
+		ibs_array = [ibs_array; InternalBehaviorSet( System , PathsSubset(:,path_index) ) ];
 	end
 
 	[tf] = ibs_array.CoversWordBehaviors( Word );

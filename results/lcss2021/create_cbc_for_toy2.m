@@ -13,7 +13,8 @@ TimeHorizon = 4;
 
 %% Synthesis %%
 
-[ toy2_controller , info ] = lcsas0.FindConsistentBeliefController( P_target , 'SearchStrategy' , 'AscendingCardinality' );
+[ toy2_controller , info ] = lcsas0.FindConsistentBeliefController( P_target , 'SearchStrategy' , 'AscendingCardinality' , ...
+																				'DoOptimizationPruningWhere' , 'DuringSearch');
 
 %% Visualizing %%
 
@@ -25,7 +26,7 @@ hold on;
 plot(lcsas0.X0)
 plot(P_target)
 
-for simulation_index = 1:10
+for simulation_index = 1:15
 	[ x_0_t, u_0_tm1 , y_0_t , sig ] = toy2_controller.simulate_1run()
 
 	% for t = 0:TimeHorizon

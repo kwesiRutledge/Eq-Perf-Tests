@@ -61,10 +61,9 @@ function [ constraints , dual_vars ] = GetReachabilityConstraints( varargin )
 	end
 
 	% Create Containment Based on Full Length Disturbances from H
-	SelectWMatrices = ibs.SelectW();
 	SelectX0Matrices = ibs.SelectX0();
 
-	selectW1 = SelectWMatrices{1};
+	selectW1 = ibs.SelectW();
 	selectX0 = SelectX0Matrices{1};
 
 	% selectWAndX0 = [ 	selectW1, zeros(n_w*(T-1),n_w) ; 

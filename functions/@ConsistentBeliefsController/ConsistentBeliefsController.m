@@ -166,7 +166,7 @@ classdef ConsistentBeliefsController < handle
 				x_taup1 = cbc.x_hist(:,tau+1+1);
 				u_tau 	= cbc.u_hist(:,tau+1);
 
-				first_hypothesis = most_recent_hypotheses.words{1};
+				first_hypothesis = most_recent_hypotheses.words{1}
 				hypothesisDynamicsAtTau = System.Dyn( first_hypothesis(tau+1) );
 
 				w_tau = hypothesisDynamicsAtTau.find_w_that_completes( x_tau , u_tau , x_taup1 );
@@ -248,7 +248,6 @@ classdef ConsistentBeliefsController < handle
 			end
 
 			cbc.u_hist = [cbc.u_hist,u];
-            u
 		end
 
 		function [ detected_index ] = prefix_detection( cbc )
@@ -291,8 +290,8 @@ classdef ConsistentBeliefsController < handle
 			end
 
 			%Search through all matching indices for the one with maximum cardinality.
-			detected_index = matching_indices(1);
-			detected_prefix = KnowledgeSequences([1:t+1],detected_index);
+			detected_index = matching_indices(1)
+			detected_prefix = KnowledgeSequences([1:t+1],detected_index)
 
 			for mi_index = 2:length(matching_indices)
 				mi = matching_indices(mi_index);

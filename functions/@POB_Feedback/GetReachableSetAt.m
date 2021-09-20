@@ -52,7 +52,6 @@ function [ReachableSet] = GetReachableSetAt( varargin )
 	x = ( S_w_trimmed + S_u_trimmed * K_trimmed)*PwT + S_u_trimmed*k_trimmed + J_trimmed * Px0 + f_bar_prime ;
 
 	ReachableSet = x.projection(n_x*t+[1:n_x]);
-	
 
 end
 

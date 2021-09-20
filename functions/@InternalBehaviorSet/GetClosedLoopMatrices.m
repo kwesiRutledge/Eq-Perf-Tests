@@ -39,8 +39,7 @@ function [ A_cl , b_cl , Ae_cl , be_cl ] = GetClosedLoopMatrices( ibs )
 	K = ibs.K; k = ibs.k;
 
 	%This matrix is needed to select the "w" trajectory corresponding to the current mode.
-	SelectWMatrices = ibs.SelectW();
-	SelectWMatrix1 = SelectWMatrices{1};
+	SelectWMatrix1 = ibs.SelectW();
 
 	%% Algorithm %%
 

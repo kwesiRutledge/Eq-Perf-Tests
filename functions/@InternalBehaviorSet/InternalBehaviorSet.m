@@ -390,7 +390,7 @@ classdef InternalBehaviorSet < handle
 				tf = false;
 			else
 				%Problem is not feasible. There does not exist a point that is uncovered.
-				disp(value(optim0.problem))
+				%disp(value(optim0.problem))
 				tf = true;
 			end
 
@@ -618,10 +618,10 @@ classdef InternalBehaviorSet < handle
 
 		end
 
-		function [ selectionMatrices ] = SelectW( ibs )
+		function [ selectionMatrix ] = SelectW( ibs )
 			%Description:
-			%	Finds a set of matrices which select each of the "w" matrix dimensions
-			%	available in this Internal Behavior Set.
+			%	Finds a matrix which selects the "w" dimensions
+			%	that this InternalBehaviorSet is defined with respect to.
 			%
 			%Usage:
 			%	selectionMatrices = ibs.SelectW();
@@ -640,22 +640,38 @@ classdef InternalBehaviorSet < handle
 
 			%% Algorithm %%
 
-			selectionMatrices = {};
+			selectionMatrix = [];
 
 			switch ibs_settings.fb_type
 			case 'state'
 
-				for ll_index = 1:LastLang.cardinality()
-					temp_word = LastLang.words{ll_index};
-					[ ~ , tw_index ] = L.contains(temp_word);
+				%Build Single W Matrix
+				% selectionMatrix = zeros( n_w*t , n_x*(t+1) + n_u*t + (tw_index-1)*n_w*t );
 
-					selectionMatrices{ll_index} = [ ...
-						zeros( n_w*t , n_x*(t+1) + n_u*t + (tw_index-1)*n_w*t ) , ...
-						eye( n_w*t ) , ...
-						zeros( n_w*t , Dim-n_x*(t+1)-n_u*t-tw_index*n_w*t) ...
-						];
+				for k = 1:t
+					L_k = ibs.KnowledgeSequence(k+1);
+					first_word_k = L_k.words{1};
+					[ ~ , fw_index ] = L.contains(first_word_k);
+
+					%Based on which mode the first word belongs to, add a row to the
+					%selection matrix
+					selectionMatrix = [ selectionMatrix ;
+										zeros( n_w , n_x*(t+1) + n_u*t + (fw_index-1)*n_w*t + n_w*(k-1) ) , eye(n_w) , zeros( n_w , Dim-n_x*(t+1)-n_u*t-(fw_index-1)*n_w*t - n_w*(k)) ];
 
 				end
+
+
+				% for ll_index = 1:LastLang.cardinality()
+				% 	temp_word = LastLang.words{ll_index};
+				% 	[ ~ , tw_index ] = L.contains(temp_word);
+
+				% 	selectionMatrices{ll_index} = [ ...
+				% 		zeros( n_w*t , n_x*(t+1) + n_u*t + (tw_index-1)*n_w*t ) , ...
+				% 		eye( n_w*t ) , ...
+				% 		zeros( n_w*t , Dim-n_x*(t+1)-n_u*t-tw_index*n_w*t) ...
+				% 		];
+
+				% end
 			case 'output'
 
 				error(['The output feedback version of SelectW() is not working yet!'])

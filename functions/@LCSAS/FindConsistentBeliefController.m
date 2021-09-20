@@ -2,8 +2,15 @@ function [ controller , synthesis_info ] = FindConsistentBeliefController( varar
 	%Description:
 	%	Finds a ConsistentBeliefController according to the method defined in our Journal submission.
 	%
+	%Inputs:
+	%	- 'SearchStrategy': Optional input argument.
+	%						Defines how the algorithm will search through the set of all possible KnowledgeSequence objects (i.e. 
+	%						P-tilde objects in the math). Can be in 'DescendingCardinality', 'AscendingCardinality', ...
+	%						By default the search strategy is 'AscendingCardinality'
+	%
 	%Usage:
 	%	[ cbc_out , synthesis_info ] = system.FindConsistentBeliefController( X_Target )
+	%	[ cbc_out , synthesis_info ] = system.FindConsistentBeliefController( X_Target , 'SearchStrategy' , 'DescendingCardinality' )
 
 	%% Input Processing %%
 
@@ -41,23 +48,29 @@ function [ controller , synthesis_info ] = FindConsistentBeliefController( varar
 
 	num_knowl_sequences = size(unchecked_knowledge_sequences,2);
 
-	[ possible_subsets_of_paths , ~ , choices_as_binary_flags ] = lcsas.get_feasible_combinations_of_beliefs( unchecked_knowledge_sequences , 'verbosity' , settings.verbosity );
+	[ possible_subsets_of_paths , ~ , choices_as_binary_flags ] = lcsas.get_feasible_combinations_of_beliefs( unchecked_knowledge_sequences , ...
+																												'verbosity' , settings.verbosity , ... 
+																												'SkipOptimizationBasedPruning', strcmp(settings.DoOptimizationPruningWhere,'DuringSearch') );
 	synthesis_info.PossibleSubsetsOfPaths = possible_subsets_of_paths;
 
 	[ possible_subsets_of_paths , choices_as_binary_flags ] = organize_subsets_of_paths( unchecked_knowledge_sequences , choices_as_binary_flags , settings.subset_search_strategy );
 
 	synthesis_info.Timing.ConstructingAllSubsets = toc(algorithm_start);
 
-	%% Constructing controller
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	%% Constructing controller %%
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 	P_search_start = tic();
 	synthesis_info.Timing.Experiment = {};
 
 	for subset_index = 1:length(possible_subsets_of_paths)
 
-		%Start this iteration
+		%Start this iteration (Housekeeping)
 		subset_index_start_time = tic;
 		active_sequence_flags = choices_as_binary_flags{subset_index};
+
+		%% Make Announcements %%
 
 		if settings.verbosity > 0
 			disp(' ')
@@ -65,6 +78,18 @@ function [ controller , synthesis_info ] = FindConsistentBeliefController( varar
 			disp(['- Cardinality of Choice = ' num2str(sum(active_sequence_flags)) ])
 			disp(['- Number of Sequences in LK_sequences = ' num2str(size(unchecked_knowledge_sequences,2)) ])
 			disp(' ')
+		end
+
+		%% Optional Optimization Based Pruning %%
+
+		if strcmp(settings.DoOptimizationPruningWhere,'DuringSearch')
+			%Check to see if the proposed paths "cover"
+			temp_choice = unchecked_knowledge_sequences(:,active_sequence_flags);
+
+			if ~temp_choice.EvaluateIfAllWordBehaviorsAreCovered( lcsas )
+				synthesis_info.About(subset_index).Message = 'Infeasible (System Detected that Subset Did Not Cover)';
+				continue;
+			end
 		end
 
 
@@ -124,7 +149,7 @@ function [ controller , synthesis_info ] = FindConsistentBeliefController( varar
 			 			%Grab path
 			 			temp_seq = unchecked_knowledge_sequences(:,pci_index);
 			 			%If this sequence IS NOT a subset of knowl_seq, then enforce empty constraint of closed loop.
-			 			if ~(knowl_seq <= temp_seq)
+			 			if ~(temp_seq <= knowl_seq)
 			 				ibs_pci = InternalBehaviorSet(lcsas,temp_seq, ...
 			 					'OpenLoopOrClosedLoop','Closed',K{knowl_seq_index},k{knowl_seq_index});
 
@@ -172,7 +197,7 @@ function [ controller , synthesis_info ] = FindConsistentBeliefController( varar
 									guaranteed_reachability_constraint + causal_detection_constraints + causal_gain_constraints
 
 		ops = sdpsettings(	'verbose',settings.verbosity,'debug',1);
-		ops.gurobi.NodeLimit = 10^5;
+		ops.gurobi.NodeLimit = settings.GurobiNodeLimit;
 
 		ops = sdpsettings(ops,'solver','gurobi');
 		optim0 = optimize(optimization_constraints,[],ops);
@@ -180,6 +205,10 @@ function [ controller , synthesis_info ] = FindConsistentBeliefController( varar
 		synthesis_info.Timing.Experiment{subset_index}.Optimization.yalmiptime = optim0.yalmiptime;
 		synthesis_info.Timing.Experiment{subset_index}.Optimization.solvertime = optim0.solvertime; 
 		synthesis_info.Timing.Experiment{subset_index}.ForExperiment = toc(subset_index_start_time);
+
+
+
+		controller = [];
 
 		if optim0.problem == 0
 			%% Create Controller
@@ -206,7 +235,13 @@ function [ controller , synthesis_info ] = FindConsistentBeliefController( varar
 			synthesis_info.ReachabilityConstraintData.NormMatrixDiff = norm_matrix_diff;
 			synthesis_info.ReachabilityConstraintData.VectorDiff = vector_diff;
 
+			synthesis_info.About(subset_index).problem = optim0.problem;
+			synthesis_info.About(subset_index).Message = 'Solved!';
+
 			break;
+		else
+			synthesis_info.About(subset_index).problem = optim0.problem;
+			synthesis_info.About(subset_index).Message = 'Not Solved (Optimization''s ''problem'' field was not satisfactory.)';
 		end
 
 
@@ -227,8 +262,12 @@ function [ lcsas , X_Target , settings ] = ip_FindConsistentBeliefController( va
 	settings = struct( ...
 		'verbosity', 1 , ...
 		'subset_search_strategy' , 'AscendingCardinality' , ...
-		'UseParallelization' , false ...
+		'UseParallelization' , false , ...
+		'DoOptimizationPruningWhere' , 'BeforeSearch' , ...
+		'GurobiNodeLimit', 10^5 ...
 		);
+
+	PruneBeliefsWhere_options = {'BeforeSearch','DuringSearch'};
 
 	%% Algorithm %%
 
@@ -244,6 +283,15 @@ function [ lcsas , X_Target , settings ] = ip_FindConsistentBeliefController( va
 					argument_index = argument_index + 2;
 				case 'UseParallelization'
 					settings.UseParallelization = varargin{argument_index+1};
+					argument_index = argument_index + 2;
+				case 'DoOptimizationPruningWhere'
+					settings.DoOptimizationPruningWhere = varargin{argument_index+1};
+					if ~any(strcmp(settings.DoOptimizationPruningWhere,PruneBeliefsWhere_options))
+						error(['The input ' varargin{argument_index+1} 'for DoOptimizationPruningWhere is not allowed!'])
+					end
+					argument_index = argument_index + 2;
+				case 'GurobiNodeLimit'
+					settings.GurobiNodeLimit = varargin{argument_index+1};
 					argument_index = argument_index + 2;
 				otherwise
 					error(['Unexpected input to FindConsistentBeliefController: ' varargin{argument_index} ]);

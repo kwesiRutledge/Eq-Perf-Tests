@@ -83,9 +83,11 @@ function [ possibleSubsetsOfPaths , possible_choices , choices_as_binary_flags ]
 		disp('- Removed all combinations that did not consider all modes of the system lcsas_in.')
 	end
 
-	possible_choices = lcsas_in.RemoveCombinationsThatDoNotHaveCoveringBehaviorSets( possible_choices , KnowledgePaths , ibs_sets );
-	if gfcob_settings.verbosity > 0
-		disp('- Removed all combinations that did not consider all modes of the system lcsas_in.')
+	if ~gfcob_settings.SkipOptimizationBasedPruning
+		possible_choices = lcsas_in.RemoveCombinationsThatDoNotHaveCoveringBehaviorSets( possible_choices , KnowledgePaths , ibs_sets );
+		if gfcob_settings.verbosity > 0
+			disp('- Removed all combinations that did not cover the uncertain variables of lcsas_in (this is done via optimization).')
+		end
 	end
 
 	% Transform possible_choices to a list of binary vectors
@@ -144,7 +146,7 @@ function [ lcsas_in , KnowledgePaths , InternalBehaviorSets , gfcob_settings ] =
 	%% Get Extra Variables
 	
 	InternalBehaviorSets = InternalBehaviorSet.empty;
-	gfcob_settings = struct('verbosity',0);
+	gfcob_settings = struct('verbosity',0,'SkipOptimizationBasedPruning',false);
 
 	arg_index = 3;
 	while arg_index <= nargin
@@ -154,6 +156,9 @@ function [ lcsas_in , KnowledgePaths , InternalBehaviorSets , gfcob_settings ] =
 				arg_index = arg_index + 2;
 			case 'verbosity'
 				gfcob_settings.verbosity = varargin{arg_index+1};
+				arg_index = arg_index + 2;
+			case 'SkipOptimizationBasedPruning'
+				gfcob_settings.SkipOptimizationBasedPruning = varargin{arg_index+1};
 				arg_index = arg_index + 2;
 			otherwise
 				error(['Unexpected input to get_feasible_combinations_of_beliefs: ' varargin{arg_index} ])

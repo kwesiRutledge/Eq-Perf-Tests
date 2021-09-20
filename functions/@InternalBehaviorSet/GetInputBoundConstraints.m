@@ -132,8 +132,7 @@ function [ constraints , dual_vars ] = GetRelaxedInputBoundConstraints(ibs)
 	% Create Input Set Matrices
 
 	% Create Containment Based on Full Length Disturbances from H
-	SelectWMatrices = ibs.SelectW();
-	selectW1 = SelectWMatrices{1};
+	selectW1 = ibs.SelectW();
 
 	selectWAll = [ 	selectW1, zeros(n_w*(T-1),n_w) ; 
 					[ zeros(n_w,ibs.Dim) , eye(n_w) ] ];
@@ -214,8 +213,7 @@ function [ constraints , dual_vars ] = GetCompleteInputBoundConstraints(ibs)
 	% Create Input Set Matrices
 
 	% Create Containment Based on Full Length Disturbances from H
-	SelectWMatrices = ibs.SelectW();
-	selectW1 = SelectWMatrices{1};
+	selectW1 = ibs.SelectW();
 
 	selectWAll = [ 	selectW1, zeros(n_w*(T-1),n_w) ; 
 					[ zeros(n_w,ibs.Dim) , eye(n_w) ] ];

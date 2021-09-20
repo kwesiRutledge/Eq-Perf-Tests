@@ -96,10 +96,9 @@ function [ ibs_array , H_array , h_array , H_T_array , h_T_array ] = create_cont
 		H_array{sequence_index} = H; h_array{sequence_index} = h;
 
 		% Create Containment Based on Full Length Disturbances from H
-		SelectWMatrices = ibs.SelectW();
 		SelectX0Matrices = ibs.SelectX0();
 
-		selectW1 = SelectWMatrices{1};
+		selectW1 = ibs.SelectW();
 		selectX0 = SelectX0Matrices{1};
 
 		selectWAll = [ 	selectW1, zeros(n_w*(T-1),n_w) ; 

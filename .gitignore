@@ -5,6 +5,7 @@
 *.mov
 *.avi
 *.mp4
+*.gif
 
 #ignore saved data files
 *.mat

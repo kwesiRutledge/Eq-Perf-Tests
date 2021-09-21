@@ -567,6 +567,71 @@ classdef Language
 			subset_flag = L_in.subseteq(obj);
 		end
 
+		function [ star_sequence , star_index ] = find_minimal_covering_in( sequence0 , candidate_sequences )
+			%Description:
+			%	Determines which of the knowledge sequences (columns) in candidate_sequences covers
+			%	sequence0.
+
+			% Constants
+			seq0_len = length(sequence0);
+			[cand_len,num_candidates] = size(candidate_sequences);
+
+			% Input Processing
+			if seq0_len ~= cand_len
+				error(['The length of the input sequence is ' num2str(seq0_len) ' and it cannot be covered by sequences of length ' num2str(cand_len) '.' ])
+			end
+
+			% Algorithm
+			covering_sequences = []; covering_sequence_indices = [];
+
+			for sequence_index = 1:num_candidates
+				sequence_i = candidate_sequences(:,sequence_index);
+
+				if sequence_i == sequence0
+					continue; %skip the exact same one.
+				end
+
+				disp(sequence_i >= sequence0)
+
+				if sequence_i >= sequence0
+					covering_sequences = [ covering_sequences , sequence_i ];
+					covering_sequence_indices = [ covering_sequence_indices , sequence_index ];
+				end
+			end
+
+			star_sequence = covering_sequences;
+			star_index = covering_sequence_indices;
+			return
+
+			%Find the element in the sequence which has the smallest prefix
+			num_covering = size(covering_sequences,2);
+			switch num_covering
+				case 0
+					star_sequence = [];
+					star_index = -1;
+				case 1
+					star_sequence = covering_sequences;
+					star_index = covering_sequence_indices;
+				otherwise
+					%Search for the minimal covering sequence from covering_sequences
+					for prefix_length = [ 1 : seq0_len - 1 ]
+						for covering_index = 1:num_covering
+							covering_i = covering_sequences(:,covering_index);
+
+							%When you find the first elment such that
+							% sequence_i(prefix_length) ~= sequence0(prefix_length)
+							%then return
+							if covering_i(prefix_length) ~= sequence0(prefix_length)
+								star_sequence = covering_i;
+								star_index = covering_sequence_indices(covering_index);
+								return;
+							end
+						end
+					end
+
+			end
+
+		end
 
 
 	end

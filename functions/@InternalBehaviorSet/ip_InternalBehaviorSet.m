@@ -35,7 +35,7 @@ function [ lcsas0 , KnowledgeSequence , K , k , ibs_settings ] = ip_InternalBeha
 
 	all_fb_types = {'state','output'};
 	all_fields = {'fb_type','reduce_flag','debug','ReturnEarly','A','b','Ae','be','Dim'};
-	expected_ebs_fields = {'fb_type','reduce_flag'};
+	expected_ebs_fields = {'fb_type','reduce_flag','OpenLoopOrClosedLoop','K','k'};
 
 	K = []; k = [];
 

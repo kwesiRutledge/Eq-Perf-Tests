@@ -14,7 +14,8 @@ TimeHorizon = 4;
 %% Synthesis %%
 
 [ toy2_controller , info ] = lcsas0.FindConsistentBeliefController( P_target , 'SearchStrategy' , 'AscendingCardinality' , ...
-																				'DoOptimizationPruningWhere' , 'DuringSearch');
+																				'DoOptimizationPruningWhere' , 'DuringSearch', ...
+																				'GurobiNodeLimit',10^4);
 
 %% Visualizing %%
 

@@ -8,7 +8,7 @@ addpath(genpath('../../functions/'))
 
 %% Constants %%
 
-TimeHorizon = 5;
+TimeHorizon = 6;
 [ lcsas0 , x0 , TimeHorizon , P_target ] = get_differently_loaded_drone_lcsas('TimeHorizon',TimeHorizon);
 
 %% Synthesis %%

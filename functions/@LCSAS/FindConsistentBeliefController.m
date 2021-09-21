@@ -141,28 +141,102 @@ function [ controller , synthesis_info ] = FindConsistentBeliefController( varar
 
 			 	feasible_belief_constraints = feasible_belief_constraints + temp_constraints;
 
-			 	% Construct P^"C"( knowl_seq )
-			 	P_C_indices = ~active_sequence_flags;
-			 	for pci_index = 1:length(P_C_indices)
-			 		%If this sequence is in the complement
-			 		if P_C_indices(pci_index)
-			 			%Grab path
-			 			temp_seq = unchecked_knowledge_sequences(:,pci_index);
-			 			%If this sequence IS NOT a subset of knowl_seq, then enforce empty constraint of closed loop.
-			 			if ~(temp_seq <= knowl_seq)
-			 				ibs_pci = InternalBehaviorSet(lcsas,temp_seq, ...
-			 					'OpenLoopOrClosedLoop','Closed',K{knowl_seq_index},k{knowl_seq_index});
+			 	% % Construct P^"C"( knowl_seq )
+			 	% P_C_indices = ~active_sequence_flags;
+			 	% for pci_index = 1:length(P_C_indices)
+			 	% 	%If this sequence is in the complement
+			 	% 	if P_C_indices(pci_index)
+			 	% 		%Grab path
+			 	% 		temp_seq = unchecked_knowledge_sequences(:,pci_index);
+			 	% 		%If this sequence IS NOT a subset of knowl_seq, then enforce empty constraint of closed loop.
+			 	% 		if ~(temp_seq <= knowl_seq)
+			 	% 			ibs_pci = InternalBehaviorSet(lcsas,temp_seq, ...
+			 	% 				'OpenLoopOrClosedLoop','Closed',K{knowl_seq_index},k{knowl_seq_index});
 
-			 				[ temp_constraints , temp_dummy_y{end+1} ] = ibs_pci.CreateEmptyConstraint();
-			 				infeasible_belief_constraints = infeasible_belief_constraints + temp_constraints;
-			 			end
+			 	% 			[ temp_constraints , temp_dummy_y{end+1} ] = ibs_pci.CreateEmptyConstraint();
+			 	% 			infeasible_belief_constraints = infeasible_belief_constraints + temp_constraints;
+			 	% 		end
 
-			 		end
-			 	end
+			 	% 	end
+			 	% end
 
 			end
 
 	 	end
+
+	 	% Create constraints on which closed loop beliefs ARE NOT POSSIBLE
+		dummy_var_bound_constraints = []; temp_dummy_w2 = {}; temp_dummy_y2 = {};
+		
+		infeasible_sequences = unchecked_knowledge_sequences(:,~active_sequence_flags);
+		infeasible_sequences_indices = find(~active_sequence_flags)';
+		feasible_sequences = unchecked_knowledge_sequences(:,active_sequence_flags);
+		feasible_sequences_indices = find(active_sequence_flags)';
+
+		for infeas_seq_index = 1:size(infeasible_sequences,2)
+			infeasible_knowl_seq = infeasible_sequences(:,infeas_seq_index);
+			iks_index = infeasible_sequences_indices(infeas_seq_index);
+
+			for feasible_seq_index = 1:size(feasible_sequences,2)
+				feasible_knowl_seq = feasible_sequences(:,feasible_seq_index);
+				fks_index = feasible_sequences_indices(feasible_seq_index);
+
+				if infeasible_knowl_seq <= feasible_knowl_seq
+					%When there is a covering sequence to consider, let's enforce this containment property.
+			 		ebs_in = ExternalBehaviorSet( lcsas , infeasible_knowl_seq , ...
+			 						'OpenLoopOrClosedLoop','Closed',K{fks_index}, k{fks_index} );
+
+			 		ebs_circum = ExternalBehaviorSet( lcsas , feasible_knowl_seq , ...
+			 						'OpenLoopOrClosedLoop','Closed',K{fks_index}, k{fks_index} );
+
+			 		[ temp_dummy_w2{end+1} , temp_constraints ] = CreateContainmentConstraint( ebs_in , ebs_circum );
+			 		infeasible_belief_constraints = infeasible_belief_constraints + temp_constraints;
+			 	else
+			 		ibs_pci = InternalBehaviorSet( lcsas , infeasible_knowl_seq , ...
+				  					'OpenLoopOrClosedLoop','Closed',K{fks_index},k{fks_index} );
+			 		[ temp_constraints , temp_dummy_y2{end+1} ] = ibs_pci.CreateEmptyConstraint();
+			 		infeasible_belief_constraints = infeasible_belief_constraints + temp_constraints;
+			 	end
+
+
+				% %Find "minimal" covering sequence in "i"
+				% [ covering_sequences , covering_sequence_index ] = infeasible_knowl_seq.find_minimal_covering_in(feasible_sequences)
+
+				% if isempty(covering_sequences)
+				% 	%Enforce that the set is empty for all feasible gains in the problem.
+				% 	active_sequence_indices = find(active_sequence_flags);
+
+				% 	for fsi = find(active_sequence_flags)'
+
+				% 		ibs_pci = InternalBehaviorSet( lcsas , infeasible_knowl_seq , ...
+				%  					'OpenLoopOrClosedLoop','Closed',K{fsi},k{fsi} );
+
+				%  		[ temp_constraints , temp_dummy_y2{end+1} ] = ibs_pci.CreateEmptyConstraint();
+				%  		infeasible_belief_constraints = infeasible_belief_constraints + temp_constraints;
+
+				%  	end
+			 % 	else
+
+			 % 		for covering_index = 1:size(covering_sequences,2)
+			 % 			temp_cover_seq = covering_sequences(:,covering_index);
+			 % 			temp_cover_seq_index = covering_sequence_index(covering_index);
+
+				%  		%When there is a covering sequence to consider, let's enforce this containment property.
+				%  		ebs_mcs = ExternalBehaviorSet( lcsas , temp_cover_seq , ...
+				%  						'OpenLoopOrClosedLoop','Closed',K{temp_cover_seq_index}, k{temp_cover_seq_index} );
+
+				%  		ebs_mcs_mix = ExternalBehaviorSet( lcsas , infeasible_knowl_seq , ...
+				%  						'OpenLoopOrClosedLoop','Closed',K{temp_cover_seq_index}, k{temp_cover_seq_index} );
+
+				%  		[ temp_dummy_w2{end+1} , temp_constraints ] = CreateContainmentConstraint( ebs_mcs_mix , ebs_mcs );
+				%  		infeasible_belief_constraints = infeasible_belief_constraints + temp_constraints;
+				%  	end
+
+			 % 	end
+			 		
+			end
+
+	 	end
+
 
 	 	% Create Causal Detection Constraints %%
 		causal_detection_constraints = cg.get_belief_prefix_gain_constraints( lcsas , K , k , unchecked_knowledge_sequences );

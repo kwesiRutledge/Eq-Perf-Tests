@@ -11,10 +11,12 @@ function [lcsas_out,TimeHorizon,Pu,Pw,x0,Px0,X_Target] = get_cdc2021_similar_rot
 	%% Input Processing %%
 	%%%%%%%%%%%%%%%%%%%%%%
 
-	[TimeHorizon,x0] = handle_similar_rotation_inputs(varargin{:});
+	[TimeHorizon,x0,eta_w,eta_u] = handle_similar_rotation_inputs(varargin{:});
 
 	% By default,
 	%	TimeHorizon = 4
+	%	eta_w = 0.5
+	%	eta_u = 3 * eta_w = 1.5
 	%	x0 = [0;0];
 
 	%%%%%%%%%%%%%%%
@@ -36,14 +38,13 @@ function [lcsas_out,TimeHorizon,Pu,Pw,x0,Px0,X_Target] = get_cdc2021_similar_rot
 	K1 = -A1*[ 0 ; r1 ]+[0;r1];
 	K2 = -A2*[ 0 ; r2 ]+[0;r2];
 
-	eta_w = 0.5;
+	
 	Pw = Polyhedron('lb',-eta_w*ones(1,dim_x),'ub',eta_w*ones(1,dim_x));
 	Pv = Pw; %We won't use it.
 
 	% TimeHorizon = 4;
 
 	% Create PuT
-	eta_u = 3*eta_w;
 	Pu = Polyhedron(...
 		'lb',-eta_u*ones(1,dim_x), ...
 		'ub', eta_u*ones(1,dim_x));
@@ -65,7 +66,7 @@ function [lcsas_out,TimeHorizon,Pu,Pw,x0,Px0,X_Target] = get_cdc2021_similar_rot
 
 end
 
-function [ TimeHorizon_out , x0 ] = handle_similar_rotation_inputs( varargin )
+function [ TimeHorizon_out , x0 , eta_w , eta_u ] = handle_similar_rotation_inputs( varargin )
 
 	%%%%%%%%%%%%%%%%%%
 	%% Set Defaults %%
@@ -73,6 +74,8 @@ function [ TimeHorizon_out , x0 ] = handle_similar_rotation_inputs( varargin )
 
 	TimeHorizon_out = 4;
 	x0 = [0;0];
+	eta_w = 0.5;
+	eta_u = 3*eta_w;
 
 	%%%%%%%%%%%%%%%%%%%%
 	%% Process Inputs %%
@@ -87,6 +90,9 @@ function [ TimeHorizon_out , x0 ] = handle_similar_rotation_inputs( varargin )
 					argidx = argidx + 2;
 				case 'x0'
 					x0 = varargin{argidx+1};
+					argidx = argidx + 2;
+				case 'eta_u'
+					eta_u = varargin{argidx+1};
 					argidx = argidx + 2;
 				otherwise
 					error(['Unexpected input given to the function get_cdc2021_similar_rotation_example(): ' varargin{argidx}])

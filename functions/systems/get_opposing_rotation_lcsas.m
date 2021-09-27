@@ -18,7 +18,7 @@ function [lcsas_out,TimeHorizon,Pu,Pw,x0,Px0,X_Target] = get_opposing_rotation_l
 	%	TimeHorizon = 4
 	%	x0 = [-1;0];
 	%	eta_w = 0.25;
-	%	eta_v = 2*eta_w = 0.5
+	%	eta_u = 2*eta_w = 0.5
 	%	X_Target = Polyhedron('lb',-(eta_w*TimeHorizon+eta*sqrt(2))*ones(1,dim_x), 'ub', (eta_w*TimeHorizon+eta_w*sqrt(2))*ones(1,dim_x) ) + [2.75;0];
 
 	%%%%%%%%%%%%%%%
@@ -68,6 +68,14 @@ function [ TimeHorizon_out , x0 , eta_w , eta_u , X_Target ] = handle_similar_ro
 
 	dim_x = 2;
 
+	%% Defaults %%
+
+	TimeHorizon_out = 4;
+	x0 = [-1;0];
+	eta_w = 0.25;
+	eta_u = 10*eta_w;
+
+
 	%%%%%%%%%%%%%%%%%%%%
 	%% Process Inputs %%
 	%%%%%%%%%%%%%%%%%%%%
@@ -88,6 +96,9 @@ function [ TimeHorizon_out , x0 , eta_w , eta_u , X_Target ] = handle_similar_ro
 				case 'eta_v'
 					eta_v = varargin{argidx+1};
 					argidx = argidx + 2;
+				case 'eta_u'
+					eta_u = varargin{argidx+1};
+					argidx = argidx + 2;
 				case 'X_Target'
 					X_Target = varargin{argidx+1};
 					argidx = argidx + 2;
@@ -97,27 +108,9 @@ function [ TimeHorizon_out , x0 , eta_w , eta_u , X_Target ] = handle_similar_ro
 		end
 	end
 
-	%%%%%%%%%%%%%%%%%%
-	%% Set Defaults %%
-	%%%%%%%%%%%%%%%%%%
-
-	if ~exist('TimeHorizon_out')
-		TimeHorizon_out = 4;
-	end
-
-	if ~exist('x0')
-		x0 = [-1;0];
-	end
-
-	if ~exist('eta_w')
-		eta_w = 0.25;
-	end
-
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	%% Defining Dependent Variables %%
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-	eta_u = 2*eta_w;
 
 	target_width = (eta_w*TimeHorizon_out+eta_w*sqrt(2));
 

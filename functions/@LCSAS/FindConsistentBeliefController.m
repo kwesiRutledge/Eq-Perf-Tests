@@ -105,6 +105,12 @@ function [ controller , synthesis_info ] = FindConsistentBeliefController( varar
 		input_bounds_constraints = [];
 		input_bound_dual_vars = {};
 
+		if settings.RemoveBilinearityInInputConstraints
+			strengthen_flag_inputs = 'A_ol';
+		else
+			strengthen_flag_inputs = 'A_cl';
+		end
+
 		for knowl_seq_index = 1:num_knowl_sequences
 			knowl_seq = unchecked_knowledge_sequences(:,knowl_seq_index);
 			% Create Constraints
@@ -112,7 +118,7 @@ function [ controller , synthesis_info ] = FindConsistentBeliefController( varar
 			 	ibs_ksi = InternalBehaviorSet(lcsas,knowl_seq, ...
 					'OpenLoopOrClosedLoop','Closed',K{knowl_seq_index},k{knowl_seq_index});
 
-			 	[ temp_constraints , input_bound_dual_vars{end+1} ] = ibs_ksi.GetInputBoundConstraints('Relaxation',true);
+			 	[ temp_constraints , input_bound_dual_vars{end+1} ] = ibs_ksi.GetInputBoundConstraints('Use A_cl or A_ol?',strengthen_flag_inputs);
 
 			 	input_bounds_constraints = input_bounds_constraints + temp_constraints;
 			 end 
@@ -186,7 +192,7 @@ function [ controller , synthesis_info ] = FindConsistentBeliefController( varar
 			 						'OpenLoopOrClosedLoop','Closed',K{fks_index}, k{fks_index} );
 
 			 		ebs_circum = ExternalBehaviorSet( lcsas , feasible_knowl_seq , ...
-			 						'OpenLoopOrClosedLoop','Closed',K{fks_index}, k{fks_index} );
+			 						'OpenLoopOrClosedLoop','Closed', K{fks_index}, k{fks_index} );
 
 			 		[ temp_dummy_w2{end+1} , temp_constraints ] = CreateContainmentConstraint( ebs_in , ebs_circum );
 			 		infeasible_belief_constraints = infeasible_belief_constraints + temp_constraints;
@@ -246,6 +252,12 @@ function [ controller , synthesis_info ] = FindConsistentBeliefController( varar
 
 		guaranteed_reachability_constraint = [];
 		reachability_dual_vars = {};
+
+		if settings.RemoveBilinearityInReachabilityConstraints
+			strengthen_flag_reachability = 'A_ol';
+		else
+			strengthen_flag_reachability = 'A_cl';
+		end
         
 		for knowl_seq_index = 1:num_knowl_sequences
 			
@@ -257,7 +269,7 @@ function [ controller , synthesis_info ] = FindConsistentBeliefController( varar
 				ibs_ksi = InternalBehaviorSet( lcsas , knowl_seq , ...
 												'OpenLoopOrClosedLoop','Closed', K{knowl_seq_index}, k{knowl_seq_index});
 				
-				[ temp_constraints , reachability_dual_vars{end+1} ] = ibs_ksi.GetReachabilityConstraints( X_Target , 'Relaxation' , true );
+				[ temp_constraints , reachability_dual_vars{end+1} ] = ibs_ksi.GetReachabilityConstraints( X_Target , 'Use A_cl or A_ol?' , strengthen_flag_reachability );
 
 				guaranteed_reachability_constraint = guaranteed_reachability_constraint + temp_constraints;
 			end
@@ -304,7 +316,8 @@ function [ controller , synthesis_info ] = FindConsistentBeliefController( varar
 														{ synthesis_info.K{active_sequence_flags} } , ...
 														{ synthesis_info.k{active_sequence_flags} } );
 
-			[ tf , norm_matrix_diff , vector_diff ] = check_reachability_condition( controller , LambdaReach , X_Target , true );
+			[ tf , norm_matrix_diff , vector_diff ] = check_reachability_condition( controller , LambdaReach , X_Target , ...
+																					settings.RemoveBilinearityInReachabilityConstraints );
 			synthesis_info.ReachabilityConstraintData.Satisfied = tf;
 			synthesis_info.ReachabilityConstraintData.NormMatrixDiff = norm_matrix_diff;
 			synthesis_info.ReachabilityConstraintData.VectorDiff = vector_diff;
@@ -338,7 +351,9 @@ function [ lcsas , X_Target , settings ] = ip_FindConsistentBeliefController( va
 		'subset_search_strategy' , 'AscendingCardinality' , ...
 		'UseParallelization' , false , ...
 		'DoOptimizationPruningWhere' , 'BeforeSearch' , ...
-		'GurobiNodeLimit', 10^5 ...
+		'GurobiNodeLimit', 10^5 , ...
+		'RemoveBilinearityInReachabilityConstraints', true, ...
+		'RemoveBilinearityInInputConstraints', true ...
 		);
 
 	PruneBeliefsWhere_options = {'BeforeSearch','DuringSearch'};
@@ -367,6 +382,13 @@ function [ lcsas , X_Target , settings ] = ip_FindConsistentBeliefController( va
 				case 'GurobiNodeLimit'
 					settings.GurobiNodeLimit = varargin{argument_index+1};
 					argument_index = argument_index + 2;
+				case 'RemoveBilinearityInReachabilityConstraints'
+					settings.RemoveBilinearityInReachabilityConstraints = varargin{argument_index+1};
+					argument_index = argument_index + 2;
+				case 'RemoveBilinearityInInputConstraints'
+					settings.RemoveBilinearityInInputConstraints = varargin{argument_index+1};
+					argument_index = argument_index + 2;
+
 				otherwise
 					error(['Unexpected input to FindConsistentBeliefController: ' varargin{argument_index} ]);
 			end

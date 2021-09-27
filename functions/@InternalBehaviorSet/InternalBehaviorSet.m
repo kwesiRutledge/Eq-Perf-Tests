@@ -158,7 +158,7 @@ classdef InternalBehaviorSet < handle
 		    ibs.Dim = size(A,2);
 		    
 		    % If this is a closed loop set, then use the gain to close the loop!
-		    if strcmp(ibs_settings.OpenLoopOrClosedLoop,'Closed')
+		    if strcmp(ibs_settings.OpenLoopOrClosedLoop,'Closed') && (t > 0)
 		    	[tempA,tempb,tempAe,tempbe] = ibs.GetClosedLoopMatrices();
 		    	%Save matrices
 		    	ibs.A = tempA; ibs.b = tempb; ibs.Ae = tempAe; ibs.be = tempbe;

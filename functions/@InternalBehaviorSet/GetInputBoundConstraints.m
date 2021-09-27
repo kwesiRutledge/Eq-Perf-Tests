@@ -9,7 +9,7 @@ function [ constraints , dual_vars ] = GetInputBoundConstraints( varargin )
 	%	[ constraints , dual_vars ] = ibs.GetInputBoundConstraints('Relaxation',true)
 
 	%% Input Processing %%
-	[ ibs , relax ] = ip_GetInputBoundConstraints(varargin{:});
+	[ ibs , use_cl_or_ol_A ] = ip_GetInputBoundConstraints(varargin{:});
 
 	%%%%%%%%%%%%%%%
 	%% Constants %%
@@ -34,17 +34,20 @@ function [ constraints , dual_vars ] = GetInputBoundConstraints( varargin )
 	%% Algorithm %%
 	%%%%%%%%%%%%%%%
 
-	if relax
+	switch use_cl_or_ol_A
+	case 'A_ol'
 		%Use Open Loop Relaxation
 		[constraints , dual_vars] = GetRelaxedInputBoundConstraints(ibs);
-	else
+	case 'A_cl'
 		%Use Full Closed Loop Matrices to Create Constraint
 		[constraints , dual_vars] = GetCompleteInputBoundConstraints(ibs);
+	otherwise
+		error(['Unexpected value for use_cl_or_ol_A in GetInputBoundConstraints().'])
 	end
 
 end
 
-function [ ibs , relax ] = ip_GetInputBoundConstraints(varargin)
+function [ ibs , use_cl_or_ol_A ] = ip_GetInputBoundConstraints(varargin)
 	%Description:
 	%	Creates the potential inputs from the call to ip.
 
@@ -57,13 +60,13 @@ function [ ibs , relax ] = ip_GetInputBoundConstraints(varargin)
 	end
 
 	%% Check To See If Any Desired Settings Were Given %%
-	relax = false;
+	use_cl_or_ol_A = 'A_ol';
 
 	argument_index = 2;
 	while argument_index <= nargin
 		switch varargin{argument_index}
-		case 'Relaxation'
-			relax = varargin{argument_index+1};
+		case 'Use A_cl or A_ol?'
+			use_cl_or_ol_A = varargin{argument_index+1};
 			argument_index = argument_index + 2;
 		otherwise
 			error(['Unexpected input to GetInputBoundConstraints(): ' varargin{argument_index} ])

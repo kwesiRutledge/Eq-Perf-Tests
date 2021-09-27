@@ -102,6 +102,9 @@ function [ lcsas0 , KnowledgeSequence , K , k , ibs_settings ] = ip_InternalBeha
 
 				ibs_settings.fb_type = ebs_settings.fb_type;
 				ibs_settings.reduce_flag = ebs_settings.reduce_flag;
+				ibs_settings.OpenLoopOrClosedLoop = ebs_settings.OpenLoopOrClosedLoop;
+				K = ebs_settings.K;
+				k = ebs_settings.k;
 
 			otherwise
 				error(['Unexpected input to internal_behavior_set: ' varargin{argument_index} ])

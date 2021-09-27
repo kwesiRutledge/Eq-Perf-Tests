@@ -6,11 +6,11 @@ function [ constraints , dual_vars ] = GetReachabilityConstraints( varargin )
 	%
 	%Usage:
 	%	[ constraints , dual_vars ] = ibs.GetReachabilityConstraints( X_Target )
-	%	[ constraints , dual_vars ] = ibs.GetReachabilityConstraints( X_Target , 'Relaxation' , true )
+	%	[ constraints , dual_vars ] = ibs.GetReachabilityConstraints( X_Target , 'Use A_cl or A_ol?' , A_ol )
 
 	%% Input Processing %%
 
-	[ ibs , X_Target , relax ] = ip_GetReachabilityConstraints(varargin{:});
+	[ ibs , X_Target , use_cl_or_ol_A ] = ip_GetReachabilityConstraints(varargin{:});
 
 	%%%%%%%%%%%%%%%
 	%% Constants %%
@@ -40,14 +40,18 @@ function [ constraints , dual_vars ] = GetReachabilityConstraints( varargin )
 	W_final = System.Dyn(lastSymbol1).P_w;
 
 	% Create the Set Which Will Represent The Possible Sequence of Disturbances
-	if relax
+	switch use_cl_or_ol_A
+	case {'A_ol'}
 		ibs_ol = InternalBehaviorSet(ibs.System,ibs.KnowledgeSequence); %Get Open Loop Version of ibs
 
 		A = ibs_ol.A; b = ibs_ol.b; 
 		Ae = ibs_ol.Ae; be = ibs_ol.be; %Get Polytope Matrices
 
-	else
+	case {'A_cl'}
 		A = ibs.A; b = ibs.b; Ae = ibs.Ae; be = ibs.be; %Get Polytope Matrices
+	
+	otherwise
+		error('Unexpected value for use_cl_or_ol_A in GetReachabilityConstraints().')
 	end
 
 	H = [ A ; Ae ; -Ae];
@@ -104,7 +108,7 @@ function [ constraints , dual_vars ] = GetReachabilityConstraints( varargin )
 
 end
 
-function [ ibs , X_Target , relax ] = ip_GetReachabilityConstraints(varargin)
+function [ ibs , X_Target , use_cl_or_ol_A ] = ip_GetReachabilityConstraints(varargin)
 	%Description:
 	%	Creates the potential inputs from the call to ip.
 
@@ -118,13 +122,13 @@ function [ ibs , X_Target , relax ] = ip_GetReachabilityConstraints(varargin)
 	end
 
 	%% Check To See If Any Desired Settings Were Given %%
-	relax = false;
+	use_cl_or_ol_A = 'A_ol';
 
 	argument_index = 3;
 	while argument_index <= nargin
 		switch varargin{argument_index}
-		case 'Relaxation'
-			relax = varargin{argument_index+1};
+		case 'Use A_cl or A_ol?'
+			use_cl_or_ol_A = varargin{argument_index+1};
 			argument_index = argument_index + 2;
 		otherwise
 			error(['Unexpected input to GetInputBoundConstraints(): ' varargin{argument_index} ])

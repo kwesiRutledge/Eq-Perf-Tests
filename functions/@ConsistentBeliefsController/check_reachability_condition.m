@@ -1,4 +1,4 @@
-function [ tf , norm_matrix_diff , vector_diff ] = check_reachability_condition( cbc , ReachabilityDualVariables , X_Target , relax )
+function [ tf , norm_matrix_diff , vector_diff ] = check_reachability_condition( cbc , ReachabilityDualVariables , X_Target , use_ol_matrices )
 	%Description:
 	%	
 
@@ -9,7 +9,7 @@ function [ tf , norm_matrix_diff , vector_diff ] = check_reachability_condition(
 	%% Constants %%
 	%%%%%%%%%%%%%%%
 	
-	[ ibs_array , H_array , h_array , H_T_array , h_T_array ] = create_containment_target_matrices1( cbc , X_Target , relax );
+	[ ibs_array , H_array , h_array , H_T_array , h_T_array ] = create_containment_target_matrices1( cbc , X_Target , use_ol_matrices );
 
 	eps0 = 10^(-3);
 
@@ -39,7 +39,7 @@ function [ tf , norm_matrix_diff , vector_diff ] = check_reachability_condition(
 
 end
 
-function [ ibs_array , H_array , h_array , H_T_array , h_T_array ] = create_containment_target_matrices1( cbc , X_Target , relax )
+function [ ibs_array , H_array , h_array , H_T_array , h_T_array ] = create_containment_target_matrices1( cbc , X_Target , use_ol_matrices )
 	%Description:
 	%	
 
@@ -61,7 +61,8 @@ function [ ibs_array , H_array , h_array , H_T_array , h_T_array ] = create_cont
 	for sequence_index = 1:num_sequences
 		% Get Sequence Index
 		temp_knowledge_sequence = KnowledgeSequences(:,sequence_index);
-		ibs = InternalBehaviorSet(System,temp_knowledge_sequence);
+		ibs = InternalBehaviorSet(	System,temp_knowledge_sequence, ...
+									'OpenLoopOrClosedLoop','Closed',cbc.K_set{sequence_index},cbc.k_set{sequence_index});
 		ibs_array = [ ibs_array ; ibs ];
 
 		%Use first word in Last Language (of Knowledge Sequence) to Help Create H
@@ -72,7 +73,7 @@ function [ ibs_array , H_array , h_array , H_T_array , h_T_array ] = create_cont
 		W_final = System.Dyn(lastSymbol1).P_w;
 
 		% Create the Set Which Will Represent The Possible Sequence of Disturbances
-		if relax
+		if use_ol_matrices
 			ibs_ol = InternalBehaviorSet(System,temp_knowledge_sequence); %Get Open Loop Version of ibs
 
 			A = ibs_ol.A; b = ibs_ol.b; 

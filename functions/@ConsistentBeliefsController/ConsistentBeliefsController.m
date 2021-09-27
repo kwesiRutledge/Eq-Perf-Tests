@@ -94,7 +94,10 @@ classdef ConsistentBeliefsController < handle
 
 			for t = 0:TimeHorizon-1
 				for ks_index = 1:num_sequences
-					ConsistencySets{t+1,ks_index} = ExternalBehaviorSet( cbc.System , cbc.KnowledgeSequences([1:t+1],ks_index) );
+                    t
+                    ks_index
+					ConsistencySets{t+1,ks_index} = ExternalBehaviorSet( cbc.System , cbc.KnowledgeSequences([1:t+1],ks_index), ...
+                                                                        'OpenLoopOrClosedLoop','Closed',cbc.K_set{ks_index}, cbc.k_set{ks_index} );
 				end
 			end
 			cbc.ConsistencySets = ConsistencySets;
@@ -151,7 +154,7 @@ classdef ConsistentBeliefsController < handle
 
 			t = size(cbc.u_hist,2);
 
-			most_recent_hypotheses = cbc.b_hist(end);
+			%most_recent_hypotheses = cbc.b_hist(end);
 
 			%% Algorithm %%
 
@@ -165,8 +168,10 @@ classdef ConsistentBeliefsController < handle
 				x_tau 	= cbc.x_hist(:,tau+1);
 				x_taup1 = cbc.x_hist(:,tau+1+1);
 				u_tau 	= cbc.u_hist(:,tau+1);
+                
+                hypothesis_at_t = cbc.b_hist(tau+1+1);
 
-				first_hypothesis = most_recent_hypotheses.words{1}
+				first_hypothesis = hypothesis_at_t.words{1};
 				hypothesisDynamicsAtTau = System.Dyn( first_hypothesis(tau+1) );
 
 				w_tau = hypothesisDynamicsAtTau.find_w_that_completes( x_tau , u_tau , x_taup1 );
@@ -233,7 +238,7 @@ classdef ConsistentBeliefsController < handle
 					u = k_t;
 				else	
 
-					w_vec = cbc.history_to_w_vec();
+					w_vec = cbc.history_to_w_vec()
 
 					%Obtain the correct feedback matrices
 					K_t = cbc.K_set{gain_idx}([n_u*t+1:n_u*(t+1)],[1:n_w*t]);
@@ -259,9 +264,9 @@ classdef ConsistentBeliefsController < handle
 
 			KnowledgeSequences = cbc.KnowledgeSequences;
 			u_hist = cbc.u_hist;
-			b_hist = cbc.b_hist;
+			b_hist = cbc.b_hist
 
-			eb0 = cbc.history_to_external_behavior();
+			eb0 = cbc.history_to_external_behavior()
 			t = size(u_hist,2);
             
 			num_sequences = size(KnowledgeSequences,2);
@@ -287,11 +292,25 @@ classdef ConsistentBeliefsController < handle
 				if temp_cs.contains(eb0)
 					matching_indices = [matching_indices; knowl_seq_index];
 				end
-			end
+            end
 
+            if length(matching_indices) == 0
+                disp('There was an issue identifying the external behavior!')
+                disp(['eb0 = ' num2str(eb0')])
+                if t > 0
+                    disp(['cbc.b_hist ='])
+                    for tau = 0:length(cbc.b_hist)-1
+                        disp(cbc.b_hist(tau+1))
+                    end
+                end
+            end
+            
 			%Search through all matching indices for the one with maximum cardinality.
-			detected_index = matching_indices(1)
-			detected_prefix = KnowledgeSequences([1:t+1],detected_index)
+			detected_index = matching_indices(1);
+			detected_prefix = KnowledgeSequences([1:t+1],detected_index);
+            
+            detected_prefix(end)
+            matching_indices
 
 			for mi_index = 2:length(matching_indices)
 				mi = matching_indices(mi_index);
@@ -347,6 +366,8 @@ classdef ConsistentBeliefsController < handle
 			%Constants
 			% T = size(obj.L,2);
 
+            sig
+            
 			%Generate Random Variables
 			x0 = sample_once_from( System.X0 );
 
@@ -360,8 +381,9 @@ classdef ConsistentBeliefsController < handle
 
 					w = [ w , sample_once_from(W_si) ];
 				end
-			end
-
+            end
+            w
+            
 			v = [];
 			for symbol_index = 1:length(sig)
 				temp_symbol = sig(symbol_index);
@@ -608,6 +630,33 @@ classdef ConsistentBeliefsController < handle
 				for t = 0 : T
 					run_data_x_norm{run_ind}(t+1,:) = norm( run_data_x{run_ind}(:,t+1) , Inf );
 				end
+			end
+
+		end
+
+		function plotConsistencySets( cbc )
+			%Description:
+			%	Plots the consistency sets in a single figure.
+
+			%% Constants %%
+
+			[ T , num_sequences ] = size(cbc.ConsistencySets);
+			System = cbc.System;
+
+			[ n_x , n_u , n_y , n_w , n_v ] = System.Dimensions();
+
+			%% Algorithm %%
+
+			% Plotting each of the slices for each time t
+			for sequence_index = 1:num_sequences
+				figure;
+				title(['Consistency Sets for Sequence #' num2str(sequence_index) '/' num2str(num_sequences) ])
+				for t = 0:T-1
+					subplot(1,T,t+1)
+					plot(cbc.ConsistencySets{t+1,sequence_index}.ToPolyhedron().projection(n_x*t+[1:n_x]))
+					title(['t=' num2str(t) ])
+				end
+				
 			end
 
 		end

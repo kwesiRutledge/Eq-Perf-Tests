@@ -244,11 +244,11 @@ classdef ExternalBehaviorSet < handle
 
 			% Algorithm
 
-			A_in = [ ibs_in.A ; ibs_in.Ae ; -ibs_in.Ae];
-			b_in = [ ibs_in.b ; ibs_in.be ; ibs_in.be ];
+			A_in = [ ibs_in.A ; ibs_in.Ae ; -ibs_in.Ae ];
+			b_in = [ ibs_in.b ; ibs_in.be ; -ibs_in.be ];
 
-			A_circum = [ ibs_circum.A ; ibs_circum.Ae ; -ibs_circum.Ae];
-			b_circum = [ ibs_circum.b ; ibs_circum.be ; ibs_circum.be ];
+			A_circum = [ ibs_circum.A ; ibs_circum.Ae ; -ibs_circum.Ae ];
+			b_circum = [ ibs_circum.b ; ibs_circum.be ; -ibs_circum.be ];
 
 			[variables_out, constraints_out] = cg.create_sadraddini_AH_inclusion_constr( ...
 													zeros(Dim,1) , ibs_in.SelectExternalBehavior() , 	A_in , b_in , ...
@@ -314,9 +314,13 @@ function [ lcsas , KnowledgeSequence , cs_settings ] = input_processing_External
 				varargin_idx = varargin_idx + 2;
 			case 'OpenLoopOrClosedLoop'
 				cs_settings.OpenLoopOrClosedLoop = varargin{varargin_idx+1};
-				cs_settings.K = varargin{varargin_idx+2};
-				cs_settings.k = varargin{varargin_idx+3};
-				varargin_idx = varargin_idx + 4;
+				if strcmp(cs_settings.OpenLoopOrClosedLoop,'Closed')
+					cs_settings.K = varargin{varargin_idx+2};
+					cs_settings.k = varargin{varargin_idx+3};
+					varargin_idx = varargin_idx + 4;
+				else
+					varargin_idx = varargin_idx + 2;
+				end
 			otherwise
 				error(['Unexpected additional input:' varargin{varargin_idx}])
 		end

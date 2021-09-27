@@ -9,13 +9,15 @@ addpath(genpath('../../functions/'))
 %% Constants %%
 
 TimeHorizon = 4;
-[ lcsas0 , TimeHorizon , Pu , Pw , x0 , Px0 , P_target ] = get_similar_rotation_lcsas('TimeHorizon',TimeHorizon);
+[ lcsas0 , TimeHorizon , Pu , Pw , x0 , Px0 , P_target ] = get_similar_rotation_lcsas('TimeHorizon',TimeHorizon,'eta_u',10);
 
 %% Synthesis %%
 
 [ toy2_controller , info ] = lcsas0.FindConsistentBeliefController( P_target , 'SearchStrategy' , 'AscendingCardinality' , ...
 																				'DoOptimizationPruningWhere' , 'DuringSearch', ...
-																				'GurobiNodeLimit',10^4);
+																				'GurobiNodeLimit' , 3*10^5 , ...
+																				'RemoveBilinearityInInputConstraints', true , ...
+																				'RemoveBilinearityInReachabilityConstraints', true );
 
 %% Visualizing %%
 
@@ -28,7 +30,7 @@ plot(lcsas0.X0)
 plot(P_target)
 
 for simulation_index = 1:15
-	[ x_0_t, u_0_tm1 , y_0_t , sig ] = toy2_controller.simulate_1run()
+	[ x_0_t, u_0_tm1 , y_0_t , sig ] = toy2_controller.simulate_1run();
 
 	% for t = 0:TimeHorizon
 	% 	x_t = x_0_t(:,t+1);

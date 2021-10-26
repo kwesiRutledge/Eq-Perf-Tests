@@ -12,6 +12,10 @@ classdef ExternalBehaviorSet < handle
 		t;
 		KnowledgeSequence;
 
+		% % Disturbance Feedback Control Gains
+		% K;
+		% k;
+
 		% Parent Set
 		ParentInternalBehaviorSet;
 
@@ -253,6 +257,61 @@ classdef ExternalBehaviorSet < handle
 			[variables_out, constraints_out] = cg.create_sadraddini_AH_inclusion_constr( ...
 													zeros(Dim,1) , ibs_in.SelectExternalBehavior() , 	A_in , b_in , ...
 													zeros(Dim,1) , ibs_circum.SelectExternalBehavior() , A_circum , b_circum );
+
+		end
+
+		function [ variables_out , constraints_out ] = CreateLinearizedContainmentConstraint( ebs_in , ebs_circum )
+			%Description:
+			%	Creates a containment constraint between the two external behavior sets ebs_in (the in-body, or the 
+			%	set that we hope to contain) and ebs_circum (the circumbody, or the set that we hope contains the other).
+
+			% Constants
+			% =========
+
+			cg = constr_gen(0); %Create constraint generator.
+
+			Dim = ebs_in.Dim;
+			t = ebs_in.t;
+			System = ebs_in.System;
+
+			x0 = System.X0.V';
+			L0 = System.L;
+			ibs_in = ebs_in.ParentInternalBehaviorSet;
+			ibs_circum = ebs_circum.ParentInternalBehaviorSet;
+
+			[ n_x , n_u , n_y , n_w , n_v ] = System.Dimensions();
+
+			% Create mpc matrices for each word in the language L
+			Hc = {}; Sc = {}; Jc = {}; fc = {}; Cc = {}; Bwc = {}; Cvc = {};
+			for word_ind = 1:L0.cardinality()
+				[Hc{word_ind},Sc{word_ind},Cc{word_ind},Jc{word_ind},fc{word_ind},Bwc{word_ind},Cvc{word_ind}] = System.get_mpc_matrices('word',L0.words{word_ind}(1:t));
+			end
+
+			if size(System.X0.V,1) > 1
+				error(['The LCSAS given to CreateLinearizedContainmentConstraint() does not have a single initial condition. It has a set! This is outside of function''s scope!'])
+			end
+
+			% Algorithm
+			% =========
+
+			ibs_in_prime = InternalBehaviorSet( System , ebs_in.KnowledgeSequence );
+ 			ibs_circum = InternalBehaviorSet( System , ebs_circum.KnowledgeSequence );
+
+ 			tau = ibs_circum.t;
+ 			SelectWMatrix1 = ibs_circum.SelectW();
+ 			SelectExternalBehaviorMatrix = [ 	( Hc{1}*Bwc{1} + Sc{1} * ibs_in.K([1:n_u*t],[1:n_w*t]) ) * ibs_circum.SelectW() ;
+ 												ibs_in.K([1:n_u*t],[1:n_w*t]) * ibs_circum.SelectW() ];
+
+
+ 			P_circum = ebs_circum.ToPolyhedron();
+
+
+ 			A = [ P_circum.A ; P_circum.Ae ; -P_circum.Ae ] * SelectExternalBehaviorMatrix ;
+ 			b = [ P_circum.b ; P_circum.be ; -P_circum.be ] - [ P_circum.A ; P_circum.Ae ; -P_circum.Ae ] * [ Sc{1} * ibs_in.k([1:n_u*t]) + Hc{1}*fc{1} + Jc{1} * System.X0.V' ; ibs_in.k([1:n_u*t]) ];
+
+
+ 			[ variables_out , constraints_out ] = cg.get_H_polyt_inclusion_constr( [ ibs_in_prime.A ; ibs_in_prime.Ae ; -ibs_in_prime.Ae ] , [ ibs_in_prime.b ; ibs_in_prime.be ; -ibs_in_prime.be ] ,...
+ 																						   A , b );
 
 		end
 

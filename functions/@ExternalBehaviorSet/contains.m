@@ -52,10 +52,16 @@ function [tf] = contains(ebs,external_behavior)
 			u_tau = external_behavior(n_x*(ebs.t+1)+[tau*n_u+1:(tau+1)*n_u]);
 
 			for hypothesis_index = 1:first_hypotheses.cardinality()
-				hypothesis = first_hypotheses.words{hypothesis_index};
-				hypothesisDynamicsAtTau = System.Dyn( hypothesis(tau+1) );
 
-				w_tau = hypothesisDynamicsAtTau.find_w_that_completes( x_tau , u_tau , x_taup1 );
+				if ebs.KnowledgeSequence(tau+2).contains( first_hypotheses.words{hypothesis_index} )
+					hypothesis = first_hypotheses.words{hypothesis_index};
+					hypothesisDynamicsAtTau = System.Dyn( hypothesis(tau+1) );
+
+					w_tau = hypothesisDynamicsAtTau.find_w_that_completes( x_tau , u_tau , x_taup1 );
+				else
+					w_tau = zeros(n_w,1);
+				end
+
 				w_hypothesis{hypothesis_index} = [ w_hypothesis{hypothesis_index} ; w_tau ];
 			end
 
@@ -67,7 +73,6 @@ function [tf] = contains(ebs,external_behavior)
 			internal_behavior = [ internal_behavior ; w_hypothesis{hypothesis_index} ];
 		end
 		internal_behavior = [internal_behavior;x0];
-
 		
 		tf = ibsAsPolyhedron.contains(internal_behavior);
 

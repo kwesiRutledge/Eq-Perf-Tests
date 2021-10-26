@@ -128,27 +128,138 @@ classdef InternalBehaviorSet < handle
 			Ae = []; be = [];
 			if t == 0
 				%The consistency set for time 0 is just the initial condition set.
-				A = lcsas.X0.A;
-				b = lcsas.X0.b;
-
-				Ae = lcsas.X0.Ae;
-				be = lcsas.X0.be;
+				A = X0.A;   b = X0.b;
+				Ae = X0.Ae; be = X0.be;
 			else
-			    for tau = 1:t
-					L_tau = KnowledgeSequence(tau+1);
+			    	
+				L0 = KnowledgeSequence(1);
+				System = lcsas;
 
-					%Create a Part of the A Matrix for Each word in L_tau
-					[A_projected,b_projected,Ae_projected,be_projected] = ibs.CreatePolytopeMatricesAtTime(tau,L_tau,ibs_settings);
-					%Extend all projected matrices so that they can fit in A,b,Ae,be
-					[ tempA , tempb , tempAe , tempbe ] = ibs.AdjustIBSMatricesFor( tau , L_tau , ...
-																					A_projected , b_projected , Ae_projected , be_projected );
+				% X0 Stuff
+				P_x0_L = 1;
+				for word_index = 1:L0.cardinality()
+					%Initial Condition Set for Each Word in L
+					P_x0_L = P_x0_L * System.X0;
+				end
 
-					A = [ A ; tempA ];
-					b = [ b ; tempb ];
-					Ae = [ Ae ; tempAe ];
-					be = [ be ; tempbe ]; 
+				% Create large disturbance set from Cartesian products
+				P_wT = 1;
+				for word_idx = 1:L0.cardinality()
+					for symb_idx = 1:t
+						P_wT = P_wT * System.Dyn( L0.words{word_idx}(symb_idx) ).P_w;
+					end
+			    end
+			    
+			    % Created Disturbance Sets
+			    P_uT = 1;
+			    for t_idx = 1:t
+			        P_uT = P_uT * System.U;
+			    end
+
+			    % Create mpc matrices for each word in the language L
+				Hc = {}; Sc = {}; Jc = {}; fc = {}; Cc = {}; Bwc = {}; Cvc = {};
+				for word_ind = 1:L0.cardinality()
+					[Hc{word_ind},Sc{word_ind},Cc{word_ind},Jc{word_ind},fc{word_ind},Bwc{word_ind},Cvc{word_ind}] = System.get_mpc_matrices('word',L0.words{word_ind}(1:t));
+				end
+
+				H_block = []; S_block = []; J_block = []; f_block = [];
+				I_blockx = []; I_blockx2 = [];  I_blocky = [];
+				C_block = []; Cv_block = [];
+				for word_ind = 1:L0.cardinality()
+					H_block(end+[1:size(Hc{word_ind},1)],end+[1:size(Bwc{word_ind},2)]) = Hc{word_ind}*Bwc{word_ind};
+					S_block(end+[1:size(Sc{word_ind},1)],[1:size(Sc{word_ind},2)]) = Sc{word_ind};
+					%J_block(end+[1:size(Jc{word_ind},1)],[1:size(Jc{word_ind},2)]) = Jc{word_ind};
+					f_block(end+[1:size(Hc{word_ind}*fc{word_ind},1)],1) = Hc{word_ind}*fc{word_ind};
+
+					I_blockx(end+[1:n_x*(t+1)],[1:n_x*(t+1)]) = eye(n_x*(t+1));
+					I_blocky(end+[1:n_y*(t+1)],[1:n_y*(t+1)]) = eye(n_y*(t+1));
+
+				end
+
+				%%%%%%%%%%%%%%%%%%%%%%%%%%%
+				%% Constructing the Sets %%
+				%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+				switch ibs_settings.fb_type
+				case 'state'
+				    
+				    %Create disturbance Polyhedron
+					P_eta = P_uT * P_wT * System.X0;
+
+					% Create the
+					for word_ind = 1:L0.cardinality()
+						J_block(end+[1:size(Jc{word_ind},1)],[1:size(Jc{word_ind},2)]) = Jc{word_ind};
+					end
+
+					% Edit the Block Matrices based on the Knowledge Sequences
+					for k = 1:t
+						L_k = KnowledgeSequence(k+1);
+						for word_index = 1:L0.cardinality()
+							%Determine if the word L0.words{word_index} is in the current element of the language sequence
+							temp_word = L0.words{word_index};
+
+							if ~L_k.contains(temp_word)
+								%If this word is not at this time index, then mask the I, S, H, J and f block matrices
+								I_blockx((word_index-1)*(n_x*(t+1)) + n_x*k + [1:n_x],:) = 0;
+								H_block((word_index-1)*(n_x*(t+1)) + n_x*k + [1:n_x],:) = 0;
+								S_block((word_index-1)*(n_x*(t+1)) + n_x*k+[1:n_x],:) = 0;
+								J_block((word_index-1)*(n_x*(t+1)) + n_x*k+[1:n_x],:) = 0;
+								f_block((word_index-1)*(n_x*(t+1)) + n_x*k+[1:n_x],1) = 0;
+
+								%Also remove all elements that try to use the disturbance at time k
+								H_block(:,n_w*t*(word_index-1)+n_w*(k-1) + [1:n_w] ) = 0;
+
+							end
+						end
+					end
+
+					%Create the set of feasible (x,u,w,x0) tuples
+					A = [zeros(size(P_eta.A,1),n_x*(t+1)),P_eta.A];
+					b = P_eta.b;
+
+					Ae = [-I_blockx, S_block, H_block, J_block];
+					be = -f_block;
+
+				case 'output'
+
+					error('This part of InternalBehaviorSet() has not been tested.')
+
+					%Also introduce the measurement disturbance into the equation
+					P_vT = 1; 
+					for word_idx = 1:L_t.cardinality()
+						for symb_idx = 1:t+1
+							P_vT = P_vT * System.Dyn( L_t.words{word_idx}(symb_idx) ).P_v;
+						end
+			    	end
+
+			    	% Introduce Sets
+			    	for word_ind = 1:L_t.cardinality()
+			    		J_block(end+[1:size(Jc{word_ind},1)],end+[1:size(Jc{word_ind},2)]) = Jc{word_ind};
+
+			    		C_block(end+[1:n_y*(t+1)],end+[1:n_x*(t+1)]) = [Cc{word_ind} ; zeros(n_y,n_x*t), System.Dyn( L_t.words{word_ind}(t+1) ).C ];
+						Cv_block(end+[1:n_y*(t+1)],end+[1:n_v*(t+1)]) = [Cvc{word_ind},zeros(size(Cvc{word_ind},1),n_v);zeros(n_y,size(Cvc{word_ind},2)), System.Dyn( L_t.words{word_ind}(t+1) ).C_v ];
+						I_blockx2(end+[1:n_x*(t+1)],end+[1:n_x*(t+1)]) = eye(n_x*(t+1));
+					end
+
+			    	P_eta = P_uT * P_wT * P_vT * P_x0_L;
+
+			    	%Create the set of feasible (x,u,w,x0) tuples
+			    	A = [zeros(size(P_eta.A,1),n_y*(t+1)),P_eta.A,zeros(size(P_eta.A,1),L_t.cardinality()*n_x*(t+1))];
+			    	b = P_eta.b;
+
+			    	Ae = [	zeros(size(S_block,1),size(I_blocky,2)),S_block, H_block, zeros(size(S_block,1),size(Cv_block,2)), J_block, -I_blockx2; ...
+			    			I_blocky, zeros(size(I_blocky,1),size(S_block,2)+size(H_block,2)), -Cv_block , zeros(size(I_blocky,1),size(J_block,2)) , -C_block ];
+			    	be = [-f_block;zeros(size(I_blocky,1),1)];
+
+			    	% ib_at_t = Polyhedron(	'A',[zeros(size(P_eta.A,1),n_y*(t+1)),P_eta.A,zeros(size(P_eta.A,1),length(L.words)*n_x*(t+1))],'b',P_eta.b, ...
+			    	% 						'Ae',[zeros(size(S_block,1),size(I_blocky,2)),S_block, H_block, zeros(size(S_block,1),size(Cv_block,2)), J_block, -I_blockx2; ...
+			    	% 							  I_blocky, zeros(size(I_blocky,1),size(S_block,2)+size(H_block,2)), -Cv_block , zeros(size(I_blocky,1),size(J_block,2)) , -C_block ], ...
+			    	% 						'be', [-f_block;zeros(size(I_blocky,1),1)] );
+			    otherwise
+			    	error(['Unexpected fb_type :' fb_type ])
 
 			    end
+
 			end
 
 		    ibs.A = A;
@@ -567,32 +678,32 @@ classdef InternalBehaviorSet < handle
 
 		end
 
-		function [ selectionMatrices ] = R_T( ibs )
-			%Description:
-			%	Finds the matrix which selects the elements of a vector in the InternalBehaviorSet
-			%	which correspond to the disturbances.
-			%
-			%Outputs
-			%	selectionMatrices - A cell array containing n_w*t x ibs.Dim matrices.
+		% function [ selectionMatrices ] = R_T( ibs )
+		% 	%Description:
+		% 	%	Finds the matrix which selects the elements of a vector in the InternalBehaviorSet
+		% 	%	which correspond to the disturbances.
+		% 	%
+		% 	%Outputs
+		% 	%	selectionMatrices - A cell array containing n_w*t x ibs.Dim matrices.
 
-			%% Constants
-			lcsas = ibs.System;
-			t = ibs.t;
-			[ n_x , n_u , n_y , n_w , n_v ] = lcsas.Dimensions();
-			FinalLang = ibs.KnowledgeSequence(end);
+		% 	%% Constants
+		% 	lcsas = ibs.System;
+		% 	t = ibs.t;
+		% 	[ n_x , n_u , n_y , n_w , n_v ] = lcsas.Dimensions();
+		% 	FinalLang = ibs.KnowledgeSequence(end);
 
-			%% Algorithm
-			for word_idx = 1:FinalLang.cardinality()
-				selectionMatrices{word_idx} = [ ...
-					zeros(n_w*t, ibs.Dim - (FinalLang.cardinality() - word_idx + 1)*n_w*t - n_x*FinalLang.cardinality() ) , ...
-					eye( n_w*t ) , ... 
-					zeros(n_w*t, (FinalLang.cardinality() - word_idx) + n_x*FinalLang.cardinality() )  ...
-					];
-			end
+		% 	%% Algorithm
+		% 	for word_idx = 1:FinalLang.cardinality()
+		% 		selectionMatrices{word_idx} = [ ...
+		% 			zeros(n_w*t, ibs.Dim - (FinalLang.cardinality() - word_idx + 1)*n_w*t - n_x*FinalLang.cardinality() ) , ...
+		% 			eye( n_w*t ) , ... 
+		% 			zeros(n_w*t, (FinalLang.cardinality() - word_idx) + n_x*FinalLang.cardinality() )  ...
+		% 			];
+		% 	end
 
-		end
+		% end
 
-		function [ selectionMatrix ] = SelectExternalBehavior( ibs )
+		function [ selectionMatrix ] =  SelectExternalBehavior( ibs )
 			%Description:
 			%	Creates the matrix selectionMatrix that would retrieve the elements of a vector i in ibs such that 
 			%	selectionMatrix * i  is the external behavior corresponding to i.

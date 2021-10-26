@@ -28,7 +28,6 @@ function [ A_cl , b_cl , Ae_cl , be_cl ] = GetClosedLoopMatrices( ibs )
 	KnowledgeSequence = ibs.KnowledgeSequence;
 
 	[ n_x , n_u , n_y , n_w , n_v ] = System.Dimensions();
-	[ S_w , S_u , ~ , J , f_bar ] = System.get_mpc_matrices('All Words');
 
 	last_L = KnowledgeSequence(end);
 	lL_card = last_L.cardinality();
@@ -42,11 +41,6 @@ function [ A_cl , b_cl , Ae_cl , be_cl ] = GetClosedLoopMatrices( ibs )
 	SelectWMatrix1 = ibs.SelectW();
 
 	%% Algorithm %%
-
-	nonK_prefactor = []; K_prefactor = [];
-	h_independent_factor = []; h_dependent_factor = [];
-
-	H_cl = []; h_cl = [];
 
 	Ae_p = [zeros(n_u*t,n_x*(t+1)),-eye(n_u*t),zeros(n_u*t,ibs.Dim-n_x*(t+1)-(n_u)*t)] + ...
 			K([1:n_u*t],[1:n_w*t]) * SelectWMatrix1;

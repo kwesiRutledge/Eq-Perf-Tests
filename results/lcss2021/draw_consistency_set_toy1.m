@@ -44,7 +44,7 @@ IBSCollectionAsPolyhedra = {};
 for sequence_index = 1:num_beliefs
 	temp_knowl_sequence = KnowledgeSequences(:,sequence_index);
 
-	IBSCollectionOL{sequence_index} = InternalBehaviorSet( lcsas0,temp_knowl_sequence, ...
+	IBSCollectionOL{sequence_index} = InternalBehaviorSet( lcsas0, temp_knowl_sequence, ...
 														'fb_type','state');
 	IBSCollection{sequence_index} = InternalBehaviorSet( lcsas0,temp_knowl_sequence, ...
 														'fb_type','state', ...
@@ -79,8 +79,8 @@ for t = [TimeHorizon-1:-1:1]
 	for path_index = pathIndiciesToVisualize
 
 		% Plot The Polyhedron For Word 1
-		hs(end+1) = plot( IBSCollectionOLAsPolyhedra{path_index}.projection(n_x*t+[1:n_x]), ...
-			'color',colorArray{path_index});
+		hs(end+1) = plot( 	IBSCollectionOLAsPolyhedra{path_index}.projection(n_x*t+[1:n_x]), ...
+							'color',colorArray{path_index} );
 
 	end
 
@@ -128,6 +128,8 @@ pathIndiciesToVisualize = [1,2];
 
 colorArray = {'cyan','magenta','cyan','green'};
 CLColorArray = {'blue','lightgreen','blue','lightgreen'};
+
+L = lcsas0.L;
 
 PwT = 1;
 for t = 1:TimeHorizon
@@ -186,7 +188,7 @@ for t = [TimeHorizon:-1:1]
 				'color',colorArray{path_index});
 		else
 			plot( x{path_index}.projection(n_x*t+[1:n_x]), ...
-				'color',colorArray{path_index});
+				'color',colorArray{path_index} );
 		end
 
 	end
@@ -201,3 +203,72 @@ legend(hs,'System 1','System 2','Target')
 
 saveas(gcf,['images/toy1_zero_input_complete_at_time_' num2str(t)],'epsc')
 saveas(gcf,['images/toy1_zero_input_complete_at_time_' num2str(t)],'png')
+
+for path_index = pathIndiciesToVisualize
+
+	hs = [];
+
+	figure;
+	hold on;
+
+	scatter(x0(1),x0(2)); %Plot x0
+
+	for t = [TimeHorizon:-1:1]
+
+		% Plot The Polyhedron For Word 1
+		if length(hs) < 1
+			hs(end+1) = plot( x{path_index}.projection(n_x*t+[1:n_x]), ...
+				'color',colorArray{path_index});
+		else
+			plot( x{path_index}.projection(n_x*t+[1:n_x]), ...
+				'color',colorArray{path_index} );
+		end
+
+	end
+
+	%plot target
+	hs(end+1) = plot(P_target,'color','yellow','alpha',0.5);
+
+	axis(primaryAxis)
+	legend(hs,['System ' num2str(path_index) ],'Target')
+
+	saveas(gcf,['images/toy1_zero_input_mode' num2str(path_index) '_complete_at_time_' num2str(t)],'epsc')
+	saveas(gcf,['images/toy1_zero_input_mode' num2str(path_index) '_complete_at_time_' num2str(t)],'png')
+
+end
+
+%% Create this as one plot
+
+figure
+for path_index = pathIndiciesToVisualize
+
+	hs = [];
+
+	subplot(2,1,path_index)
+	hold on;
+
+	scatter(x0(1),x0(2)); %Plot x0
+
+	for t = [TimeHorizon:-1:1]
+
+		% Plot The Polyhedron For Word 1
+		if length(hs) < 1
+			hs(end+1) = plot( x{path_index}.projection(n_x*t+[1:n_x]), ...
+				'color',colorArray{path_index});
+		else
+			plot( x{path_index}.projection(n_x*t+[1:n_x]), ...
+				'color',colorArray{path_index} );
+		end
+
+	end
+
+	%plot target
+	hs(end+1) = plot(P_target,'color','yellow','alpha',0.5);
+
+	axis(primaryAxis)
+	legend(hs,['System ' num2str(path_index) ],'Target')
+
+end
+
+saveas(gcf,['images/toy1_zero_input_v2_complete_at_time_' num2str(t)],'epsc')
+saveas(gcf,['images/toy1_zero_input_v2_complete_at_time_' num2str(t)],'png')

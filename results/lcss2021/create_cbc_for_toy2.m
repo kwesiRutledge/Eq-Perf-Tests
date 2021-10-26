@@ -9,15 +9,16 @@ addpath(genpath('../../functions/'))
 %% Constants %%
 
 TimeHorizon = 4;
-[ lcsas0 , TimeHorizon , Pu , Pw , x0 , Px0 , P_target ] = get_similar_rotation_lcsas('TimeHorizon',TimeHorizon,'eta_u',10);
+[ lcsas0 , TimeHorizon , Pu , Pw , x0 , Px0 , P_target ] = get_similar_rotation_lcsas('TimeHorizon',TimeHorizon,'eta_u',4);
 
 %% Synthesis %%
 
 [ toy2_controller , info ] = lcsas0.FindConsistentBeliefController( P_target , 'SearchStrategy' , 'AscendingCardinality' , ...
 																				'DoOptimizationPruningWhere' , 'DuringSearch', ...
-																				'GurobiNodeLimit' , 3*10^5 , ...
+																				'GurobiNodeLimit' , 2*10^5 , ...
 																				'RemoveBilinearityInInputConstraints', true , ...
-																				'RemoveBilinearityInReachabilityConstraints', true );
+																				'RemoveBilinearityInReachabilityConstraints', true , ...
+																				'LinearizeBilinearContainment', true );
 
 %% Visualizing %%
 
@@ -43,7 +44,7 @@ for simulation_index = 1:15
 	results.SimulationData = [ results.SimulationData ; struct('x_0_t',x_0_t,'u_0_tm1',u_0_tm1) ];
 
 end
-axis([-0.5,12.5,-0.5,8.5])
+axis([-0.5,12.5,-6,6.5])
 
 saveas(gcf,'images/toy2_runs','epsc')
 saveas(gcf,'images/toy2_runs','png')

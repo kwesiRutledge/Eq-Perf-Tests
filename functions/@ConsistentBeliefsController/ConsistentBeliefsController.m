@@ -153,8 +153,7 @@ classdef ConsistentBeliefsController < handle
 			System = cbc.System;
 
 			t = size(cbc.u_hist,2);
-
-			%most_recent_hypotheses = cbc.b_hist(end);
+			% most_recent_hypotheses = cbc.b_hist(end);
 
 			%% Algorithm %%
 
@@ -238,7 +237,7 @@ classdef ConsistentBeliefsController < handle
 					u = k_t;
 				else	
 
-					w_vec = cbc.history_to_w_vec()
+					w_vec = cbc.history_to_w_vec();
 
 					%Obtain the correct feedback matrices
 					K_t = cbc.K_set{gain_idx}([n_u*t+1:n_u*(t+1)],[1:n_w*t]);
@@ -264,9 +263,9 @@ classdef ConsistentBeliefsController < handle
 
 			KnowledgeSequences = cbc.KnowledgeSequences;
 			u_hist = cbc.u_hist;
-			b_hist = cbc.b_hist
+			b_hist = cbc.b_hist;
 
-			eb0 = cbc.history_to_external_behavior()
+			eb0 = cbc.history_to_external_behavior();
 			t = size(u_hist,2);
             
 			num_sequences = size(KnowledgeSequences,2);
@@ -308,9 +307,6 @@ classdef ConsistentBeliefsController < handle
 			%Search through all matching indices for the one with maximum cardinality.
 			detected_index = matching_indices(1);
 			detected_prefix = KnowledgeSequences([1:t+1],detected_index);
-            
-            detected_prefix(end)
-            matching_indices
 
 			for mi_index = 2:length(matching_indices)
 				mi = matching_indices(mi_index);
@@ -365,8 +361,6 @@ classdef ConsistentBeliefsController < handle
             
 			%Constants
 			% T = size(obj.L,2);
-
-            sig
             
 			%Generate Random Variables
 			x0 = sample_once_from( System.X0 );
@@ -382,7 +376,6 @@ classdef ConsistentBeliefsController < handle
 					w = [ w , sample_once_from(W_si) ];
 				end
             end
-            w
             
 			v = [];
 			for symbol_index = 1:length(sig)
@@ -657,6 +650,158 @@ classdef ConsistentBeliefsController < handle
 					title(['t=' num2str(t) ])
 				end
 				
+			end
+
+		end
+
+		function [ plotHandles , R ] = plotReachableSets( varargin )
+			%Description:
+			%	Tries to plot each of the reachable sets of the controller.
+			%Usage:
+			%	cbc.plotReachableSets()
+			%	cbc.plotReachableSets('PlotTarget',true,'TargetSet',X_T)
+
+			%% Constants %%
+
+			cbc = varargin{1};
+
+			[ T , num_sequences ] = size(cbc.ConsistencySets);
+			System = cbc.System;
+			ConsistencySets = cbc.ConsistencySets;
+
+			[ n_x , n_u , n_y , n_w , n_v ] = System.Dimensions();
+			L = System.L;
+
+			x0 = System.X0.V';
+
+			%% Input Processing %%
+
+			pRS_settings = struct(	'PlotOnCurrentFigure',false, ...
+									'PlotTarget',false, ...
+									'TargetSet',[], ...
+									'TargetColor', 'yellow' , ...
+									'TargetAlpha', 0.5 );
+
+			tempColorArray = {};
+			for sequence_index = 1:num_sequences
+				tempColorArray{sequence_index} = 'cyan';
+			end
+			pRS_settings.ReachableSetColors = tempColorArray;
+
+			if nargin > 1
+				argument_index = 2;
+				while nargin >= argument_index
+					switch varargin{argument_index}
+					case 'ReachableSetColors'
+						pRS_settings.ReachableSetColors = varargin{argument_index+1};
+
+						if length(pRS_settings.ReachableSetColors) ~= num_sequences
+							error(['Expected for there to be enough colors in ReachableSetColors for each sequence in cbc.KnowledgeSequences. There are ' num2str(length(ReachableSetColors)) 'colors and ' num2str(num_sequences) 'sequences.'  ])
+						end
+
+						argument_index = argument_index + 2;
+					case 'PlotTarget'
+						pRS_settings.PlotTarget = varargin{argument_index+1};
+						argument_index = argument_index + 2;
+					case 'TargetSet'
+						pRS_settings.TargetSet = varargin{argument_index+1};
+						argument_index = argument_index + 2;
+					otherwise
+						error(['Unexpected input to plotReachableSets: ' varargin{argument_index} ])
+					end
+				end
+			end
+
+			%% Algorithm %%
+
+			% Create Word Dependent Disturbance sets
+
+			WT_i = {};
+			for sequence_index = [1:num_sequences]
+				% Collect Consistency Sets
+				temp_sequence = cbc.KnowledgeSequences(:,sequence_index);
+				ibs_ts = InternalBehaviorSet(System,temp_sequence,'OpenLoopOrClosedLoop','Closed',cbc.K_set{sequence_index},cbc.k_set{sequence_index});
+				WT_i_part = ibs_ts.SelectW()*ibs_ts.ToPolyhedron();
+
+				% Append an Extra W term to the end of WT_i_part.
+				L_Tm1 = temp_sequence(end);
+				word1 = L_Tm1.words{1};
+				[~,word1_index] = L.contains(word1);
+
+				WT_i{sequence_index} = WT_i_part * System.Dyn(word1_index).P_w;
+
+			end
+
+			% Create Reachable Sets Using Affine Expressions
+			R = {};
+
+			for sequence_index = [1:num_sequences]
+				temp_sequence = cbc.KnowledgeSequences(:,sequence_index);
+				L_Tm1 = temp_sequence(end);
+
+				[S_w_i,S_u_i,~,J_i,f_bar_i] = get_mpc_matrices(System,'word',L_Tm1.words{1});
+
+				K = cbc.K_set{sequence_index}; k = cbc.k_set{sequence_index};
+				K_trimmed = K([1:n_u*T],[1:n_w*T]);
+				k_trimmed = k([1:n_u*T],1);
+
+
+				S_w_trimmed = S_w_i([1:n_x*(T+1)],[1:n_w*T]);
+				S_u_trimmed = S_u_i([1:n_x*(T+1)],[1:n_u*T]);
+				J_trimmed = J_i([1:n_x*(T+1)],:);
+				f_bar_prime = S_w_trimmed*f_bar_i([1:n_w*T]);
+
+				R{sequence_index} = ( S_w_trimmed + S_u_trimmed * K_trimmed)*WT_i{sequence_index} + S_u_trimmed*k_trimmed + J_trimmed * x0 + f_bar_prime ;
+			end
+
+			% ========
+			% Plotting
+			% ========
+
+			plotHandles = {};
+
+			for sequence_index = 1:num_sequences
+
+				pH_i = [];
+
+				figure;
+				hold on;
+
+				% Plot with target if asked
+				if pRS_settings.PlotTarget
+
+					if isempty(pRS_settings.TargetSet)
+						error(['Target set was not provided to the function plotReachableSets.'])
+					end
+
+					pH_i = plot(pRS_settings.TargetSet, 'color', pRS_settings.TargetColor , 'alpha' , pRS_settings.TargetAlpha);
+
+				end
+
+				pH_i(end+1) = scatter(x0(1),x0(2));
+
+				for t = 1:T
+					% Plot The Polyhedron For Word 1
+					if length(plotHandles) < 3
+						pH_i(end+1) = plot( R{sequence_index}.projection(n_x*t+[1:n_x]), ...
+							'color',pRS_settings.ReachableSetColors{sequence_index});
+					else
+						plot( R{sequence_index}.projection(n_x*t+[1:n_x]), ...
+							'color',pRS_settings.ReachableSetColors{sequence_index} );
+					end
+				end
+
+				title(['Reachable Sets for Mode Sequence #' num2str(sequence_index) ])
+
+				%Create legend
+				if pRS_settings.PlotTarget
+					legend(pH_i,'$$\mathcal{X}_T$$','$$x_0$$',['$$R(\mathbf{m}^{(' num2str(sequence_index)' ')})$$'],'Interpreter','latex');
+				else
+					legend(pH_i,'$$x_0$$',['$$R(\mathbf{m}^{(' num2str(sequence_index)' ')})'],'Interpreter','latex');
+				end
+
+				plotHandles{sequence_index} = pH_i;
+
 			end
 
 		end

@@ -239,6 +239,101 @@ classdef LCSAS
 				disp('Nothing was given to check.')
 			end
 
+		end
+
+		function n_modes = NumberOfModes(lcsas)
+			%Description:
+			%	Identifies the number of modes in the lcsas, by investigating each word in the language.
+
+			%% Constants
+			L = lcsas.L;
+
+			%% Algorithm
+			n_modes = -1;
+			for word_index = 1:L.cardinality()
+				%Find the maximum in each word.
+				temp_word = L.words{word_index};
+
+				max_mode_in_tw = max(temp_word);
+
+				if max_mode_in_tw > n_modes 
+					n_modes = max_mode_in_tw;
+				end
+			end
+
+		end
+
+		function W_T = ToWSequence(lcsas,temp_word)
+			%Description:
+			%
+
+			%% Constants
+			TimeHorizon = length(temp_word); 
+
+			%% Algorithm
+			W_T = 1;
+			for t = 0:TimeHorizon-1
+				q_t = temp_word(t+1);
+				W_T = W_T * lcsas.Dyn(q_t).P_w;
+			end
+
+		end
+
+		function PlotAllReachableSets(varargin)
+			%Description:
+			%	This function tries to plot all reachable sets for the LCSAS.
+
+			%% Input Processing
+			lcsas = varargin{1};
+			lcsas.check('U','X0')
+
+			%% Constants
+			X0 = lcsas.X0;
+			U  = lcsas.U;
+
+			L = lcsas.L;
+			T = length(L.words{1});
+
+			[ n_x , n_u , n_y , n_w , n_v ] = lcsas.Dimensions();
+
+			U_T = 1;
+			for t = 0:T-1
+				U_T = U_T * U;
+			end
+
+			%% Algorithm
+			R_0_T = {};
+			for word_index = 1:L.cardinality()
+				% get mpc matrices for target_word
+				target_word = L.words{word_index};
+				TimeHorizon = length(target_word);
+				[S_w_i,S_u_i,~,J_i,f_bar_i,B_w_block,~] = lcsas.get_mpc_matrices('word',target_word);
+
+				% Create Reachable Set
+				W_T = lcsas.ToWSequence(target_word);
+
+				R_0_T{word_index} = S_w_i*B_w_block * W_T + S_u_i * U_T + J_i * X0 + S_w_i*f_bar_i;
+			end
+
+			% Plot
+			for word_index = 1:L.cardinality()
+				% get mpc matrices for target_word
+				target_word = L.words{word_index};
+				TimeHorizon = length(target_word);
+
+				figure;
+				for t = 0:TimeHorizon
+					subplot(1,TimeHorizon+1,t+1)
+					if t == 0
+						plot(X0)
+					else
+						plot(R_0_T{word_index}.projection(n_x*t+[1:n_x]))
+					end
+
+				end
+
+			end
+
 
 
 		end

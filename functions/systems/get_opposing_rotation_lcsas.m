@@ -73,7 +73,7 @@ function [ TimeHorizon_out , x0 , eta_w , eta_u , X_Target ] = handle_similar_ro
 	TimeHorizon_out = 4;
 	x0 = [-1;0];
 	eta_w = 0.25;
-	eta_u = 10*eta_w;
+	eta_u = 2*eta_w;
 
 
 	%%%%%%%%%%%%%%%%%%%%

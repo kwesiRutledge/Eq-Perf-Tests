@@ -8,8 +8,8 @@ addpath(genpath('../../functions/'))
 
 %% Constants %%
 
-TimeHorizon = 8;
-[ lcsas0 , x0 , TimeHorizon , P_target ] = get_differently_loaded_drone_lcsas('TimeHorizon',TimeHorizon);
+TimeHorizon = 5;
+[ lcsas0 , x0 , TimeHorizon , P_target ] = get_differently_loaded_drone_lcsas('TimeHorizon',TimeHorizon,'m1',0.030,'m2',0.040);
 
 %% Synthesis %%
 
@@ -45,7 +45,7 @@ for simulation_index = 1:10
 	results.SimulationData = [ results.SimulationData ; struct('x_0_t',x_0_t,'u_0_tm1',u_0_tm1) ];
 
 end
-axis([-0.5,12.5,-6,6.5])
+axis([-0.5,12.5,-5.5,5.5])
 
 saveas(gcf,'images/drone_runs','epsc')
 saveas(gcf,'images/drone_runs','png')

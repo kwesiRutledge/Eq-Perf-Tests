@@ -8,12 +8,16 @@ addpath(genpath('../../functions/'))
 
 %% Constants %%
 
-TimeHorizon = 4;
-[ lcsas0 , TimeHorizon , Pu , Pw , x0 , Px0 , P_target ] = get_similar_rotation_lcsas('TimeHorizon',TimeHorizon,'eta_u',4);
+% TimeHorizon = 4;
+% eta_u = 4;
+TimeHorizon = 6;
+eta_u = 2;
+
+[ lcsas0 , TimeHorizon , Pu , Pw , x0 , Px0 , P_target ] = get_similar_rotation_lcsas('TimeHorizon',TimeHorizon,'eta_u',eta_u);
 
 %% Synthesis %%
 
-[ toy2_controller , info ] = lcsas0.FindConsistentBeliefController( P_target , 'SearchStrategy' , 'AscendingCardinality' , ...
+[ toy2_controller , info ] = lcsas0.FindConsistentBeliefController( P_target , 'SearchStrategy' , 'DescendingCardinality' , ...
 																				'DoOptimizationPruningWhere' , 'DuringSearch', ...
 																				'GurobiNodeLimit' , 2*10^5 , ...
 																				'RemoveBilinearityInInputConstraints', true , ...
@@ -23,6 +27,7 @@ TimeHorizon = 4;
 %% Visualizing %%
 
 results.SimulationData = [];
+extreme_vector = zeros(1,4);
 
 figure;
 
@@ -39,12 +44,18 @@ for simulation_index = 1:15
 	% end
 	plot(x_0_t(1,:),x_0_t(2,:))
 	
+	%Update extreme_vector
+	extreme_vector(1) = min([x_0_t(1,:),extreme_vector(1)]); % minimum of all first state
+	extreme_vector(2) = max([x_0_t(1,:),extreme_vector(2)]); % maximum of all first state
+	extreme_vector(3) = min([x_0_t(2,:),extreme_vector(3)]); % minimum of all second state
+	extreme_vector(4) = max([x_0_t(2,:),extreme_vector(4)]); % maximum of all second state
+
 
 	%Save data
 	results.SimulationData = [ results.SimulationData ; struct('x_0_t',x_0_t,'u_0_tm1',u_0_tm1) ];
 
 end
-axis([-0.5,12.5,-6,6.5])
+axis( extreme_vector + [-0.5,0.5,-0.5,0.5])
 
 saveas(gcf,'images/toy2_runs','epsc')
 saveas(gcf,'images/toy2_runs','png')

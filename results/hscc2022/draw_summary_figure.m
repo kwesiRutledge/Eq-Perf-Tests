@@ -111,8 +111,9 @@ xR = S_w_trimmed * PwT + S_u_trimmed * PuT + J_trimmed * Px0 + f_bar_prime ;
 x = {x1,x2};
 
 hs = [];
+fs = 15;
 
-figure;
+figure('DefaultAxesFontSize',fs);
 hold on;
 
 scatter(x0(1),x0(2)); %Plot x0
@@ -142,6 +143,9 @@ for t = [TimeHorizon:-1:1]
 	end
 
 end
+
+xlabel('$x_1$','Interpreter','latex')
+ylabel('$x_2$','Interpreter','latex')
 
 %axis(secondaryAxis)
 legend(hs,'Target','Reachable Set','$$\mathcal{C}(\mathbf{m}^{(1)})$$','$$\mathcal{C}(\mathbf{m}^{(2)})$$','Interpreter','latex')

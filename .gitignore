@@ -18,3 +18,6 @@ functions/@constr_gen/.ipynb_checkpoints/
 
 # Gurobi Log File
 gurobi.log
+
+# Text files which store results/logs for penbmi
+*.txt

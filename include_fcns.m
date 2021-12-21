@@ -60,7 +60,7 @@ if strcmp(getenv('USER'),'kwesirutledge') %Suggests the laptop is in use
                 end
             case 'tbxmanager'
                 try
-                    addpath(genpath(['../' 'mpt3_manager/toolboxes/']) )
+                    addpath(genpath(['../toolboxes/' 'mpt3_manager/toolboxes/']) )
                     Polyhedron();
                 catch
                     error('tbxmanager was not added to path.')

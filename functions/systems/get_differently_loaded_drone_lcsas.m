@@ -75,7 +75,7 @@ function [ dt , m1 , m2 , TimeHorizon , x0 , X_target , U ] = ip_get_differently
 		'm2' , 1.5 , ... %kilograms
 		'TimeHorizon' , 8 , ...
 		'x0' , [ 1 ; 0 ] , ...
-		'X_target' , Polyhedron('lb',1.5,'ub',4) * Polyhedron('lb',-10,'ub',10) , ...
+		'X_target' , Polyhedron('lb',1.5,'ub',3.5) * Polyhedron('lb',-3,'ub',3) , ...
 		'eta_u' , 1.5*10*3 ); %N
 
 	%%%%%%%%%%%%%%%%
@@ -100,6 +100,9 @@ function [ dt , m1 , m2 , TimeHorizon , x0 , X_target , U ] = ip_get_differently
 					error('Input X_target must be a Polyhedron object.')
 				end
 				argin_index = argin_index + 2;
+            case 'm1'
+                drone_settings.m1 = varargin{argin_index+1};
+                argin_index = argin_index + 2;
 			case 'm2'
 				drone_settings.m2 = varargin{argin_index+1};
 				argin_index = argin_index + 2;

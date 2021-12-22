@@ -1,7 +1,7 @@
 function [ quad_lcsas ] = get_lin_quadrotor_dyn(varargin)
 %Description:
 	%	Creates the dynamics for a quadrotor helicopter modeled after the Ascending Technologies' ResearchPilot.
-	%	System should be a 10 dimensional.
+	%	System should be 10 dimensional.
 	%
 	%
 	%Example Usage:

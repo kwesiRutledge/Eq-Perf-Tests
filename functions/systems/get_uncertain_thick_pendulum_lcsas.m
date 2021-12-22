@@ -34,14 +34,14 @@ function [ lcsas_out , P_u , Pw1 , eta_v , x0 , P_target ] = get_uncertain_thick
 	%%%%%%%%%%%%%%%
 
 	% For normal itp, create linearized A,B matrices
-	[A,B] = itp0.LinearizedDiscreteDynamicsAbout(itp0.x,0,dt);
-	ad1 = Aff_Dyn(A,B,zeros(n_x,1),eye(n_y,n_x),Pw1,Pv);
+	[A,B,K] = itp0.LinearizedDiscreteDynamicsAbout(itp0.x,0,dt);
+	ad1 = Aff_Dyn(A,B,K,eye(n_y,n_x),Pw1,Pv);
 
 	% For changed CoM, consider the controller.
 	itp.CoMx_rel = -0.25;
-	[A,B] = itp0.LinearizedDiscreteDynamicsAbout(itp0.x,0,dt);
+	[A,B,K] = itp0.LinearizedDiscreteDynamicsAbout(itp0.x,0,dt);
 
-	ad2 = Aff_Dyn(A,B,zeros(n_x,1),eye(n_y,n_x),Pw1,Pv);
+	ad2 = Aff_Dyn(A,B,K,eye(n_y,n_x),Pw1,Pv);
 
 	lcsas_out = LCSAS( [ad1,ad2] , Language(1*ones(1,TimeHorizon),2*ones(1,TimeHorizon)) , 'X0' , P_x0, 'U' , P_u );
 

@@ -11,7 +11,7 @@ addpath(genpath('../../functions/'))
 % TimeHorizon = 4;
 % eta_u = 4;
 TimeHorizon = 6;
-eta_u = 2;
+eta_u = 1.5;
 
 [ lcsas0 , TimeHorizon , Pu , Pw , x0 , Px0 , P_target ] = get_similar_rotation_lcsas('TimeHorizon',TimeHorizon,'eta_u',eta_u);
 

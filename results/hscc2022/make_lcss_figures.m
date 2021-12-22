@@ -6,7 +6,7 @@
 %% Choosing Figures to Create %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-figures_to_create = {'G'}
+figures_to_create = {'H'}
 
 %Figure Options:
 %   A = Draw Consistency Sets (overlapping) for the opposing rotation system
@@ -16,6 +16,7 @@ figures_to_create = {'G'}
 %   E = Creates figure showing the performance of the Differently Loaded Drone Performance
 %   F = Creates alternative plot for similar rotation system.
 %   G = Draws consistency sets for a specific instant in time for opposing rotation.
+%   H = Draws a single sequence of states and labels the hypothesis on each one.
 
 
 %% Iterate through elements of figures_to_create
@@ -183,11 +184,54 @@ for figure_index = 1:length(figures_to_create)
             draw_consistency_set_example3
         case 'H'
             %Plot a sequence of states
-            load('data/toy2_data_21Dec2021-1028')
+            load('data/toy2_data_21Dec2021-1607')
 
             % Simulate the system ONCE
             [ x_0_t, u_0_tm1 , y_0_t , sig ] = toy2_controller.simulate_1run();
             
+            extreme_vector = [ min([x_0_t(1,:),P_target.V(:,1)']) , max([x_0_t(1,:),P_target.V(:,1)']) , min([x_0_t(2,:),P_target.V(:,2)']) , max([x_0_t(2,:),P_target.V(:,2)']) ];
+            marker_size = 72; %Default is 36
+
+            figure;
+            hold on;
+            plot(P_target)
+            plot(x_0_t(1,:),x_0_t(2,:), 'LineWidth', 2.0)
+            % for t = 0:TimeHorizon
+            %     % Label each point with their time
+            %     text(x_0_t(1,t+1),x_0_t(2,t+1) - 0.2,['$$\uparrow t = ' num2str(t) '$$'] , 'Interpreter' , 'latex' )
+            % end
+
+            for t = 0:TimeHorizon-1
+                % Label each point with their time
+                %text(x_0_t(1,t+1),x_0_t(2,t+1) - 0.2,['$$\uparrow t = ' num2str(t) '$$'] , 'Interpreter' , 'latex' )
+
+
+                %Label each point with the hypothesis
+                mu_t = toy2_controller.b_hist(t+1);
+                mu_string = ['$$\mu_{' num2str(t) '} = \{' ];
+                for mu_index = 1:mu_t.cardinality()
+                    word_i = mu_t.words{mu_index};
+
+                    %mu_string = [ mu_string '\mathbf{m}^{(' num2str(word_i(1)) ')}' ];
+                    mu_string = [ mu_string num2str(word_i(1)) ];
+
+                    % Add comma if this is not the last word_i in mu_t
+                    if mu_index ~= mu_t.cardinality()
+                        mu_string = [ mu_string ',' ];
+                    end
+                end
+                %Finish latex string
+                mu_string = [ mu_string ' \}$$' ];
+
+                text(x_0_t(1,t+1),x_0_t(2,t+1) - 0.2 , mu_string , 'Interpreter' , 'latex' )
+            end
+            
+            %plot(x_0_t(1,:),x_0_t(2,:))
+
+            axis(extreme_vector + [ -0.5 , 0.5 , -0.5 , 0.5 ])
+
+            saveas(gcf,'images/toy2_detection_diagram','epsc')
+            saveas(gcf,'images/toy2_detection_diagram','png')
 
 
         end

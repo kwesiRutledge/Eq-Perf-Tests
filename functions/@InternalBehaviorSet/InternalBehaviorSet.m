@@ -202,9 +202,9 @@ classdef InternalBehaviorSet < handle
 								%If this word is not at this time index, then mask the I, S, H, J and f block matrices
 								I_blockx((word_index-1)*(n_x*(t+1)) + n_x*k + [1:n_x],:) = 0;
 								H_block((word_index-1)*(n_x*(t+1)) + n_x*k + [1:n_x],:) = 0;
-								S_block((word_index-1)*(n_x*(t+1)) + n_x*k+[1:n_x],:) = 0;
-								J_block((word_index-1)*(n_x*(t+1)) + n_x*k+[1:n_x],:) = 0;
-								f_block((word_index-1)*(n_x*(t+1)) + n_x*k+[1:n_x],1) = 0;
+								S_block((word_index-1)*(n_x*(t+1)) + n_x*k + [1:n_x],:) = 0;
+								J_block((word_index-1)*(n_x*(t+1)) + n_x*k + [1:n_x],:) = 0;
+								f_block((word_index-1)*(n_x*(t+1)) + n_x*k + [1:n_x],1) = 0;
 
 								%Also remove all elements that try to use the disturbance at time k
 								H_block(:,n_w*t*(word_index-1)+n_w*(k-1) + [1:n_w] ) = 0;
@@ -268,6 +268,10 @@ classdef InternalBehaviorSet < handle
 		    ibs.be = be;
 		    ibs.Dim = size(A,2);
 		    
+            if size(ibs.A,2) ~= size(ibs.Ae,2)
+                error(['IBS suggested dimension suggested from A is ' num2str(size(ibs.A,2)) ' but the suggested dimension from Ae is ' num2str(size(ibs.Ae,2)) ])
+            end
+
 		    % If this is a closed loop set, then use the gain to close the loop!
 		    if strcmp(ibs_settings.OpenLoopOrClosedLoop,'Closed') && (t > 0)
 		    	[tempA,tempb,tempAe,tempbe] = ibs.GetClosedLoopMatrices();

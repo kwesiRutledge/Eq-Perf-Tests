@@ -123,7 +123,7 @@ hs(end+1) =  plot(P_target, 'color','yellow','Alpha',0.5);
 
 % Plot total reachable set
 hs(end+1) = plot(xR.projection(n_x*TimeHorizon+[1:n_x]), ...
-			'color','cyan','Alpha',0.15);
+			'color','ghostwhite','Alpha',0.15);
 
 for t = [TimeHorizon:-1:1]
 

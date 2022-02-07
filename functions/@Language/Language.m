@@ -26,7 +26,7 @@ classdef Language
 	%	- find_a_word_with_pref
 	%	- find_all_words_with_pref
 	%	- set_minus
-	%	- create_unchecked_belief_sequences_of_length
+	%	- create_belief_sequences_of_length
 	%
 	%Member Variables:
 	%	words 	- A cell array of numeric arrays.

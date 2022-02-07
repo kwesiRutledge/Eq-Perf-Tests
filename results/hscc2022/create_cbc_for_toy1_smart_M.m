@@ -1,4 +1,4 @@
-%create_cbc_for_toy1.m
+%create_cbc_for_toy1_smart_M.m
 %Description:
 %	
 
@@ -13,7 +13,7 @@ TimeHorizon = 4;
 
 %% Synthesis %%
 
-[ toy1_controller , info ] = lcsas0.FindAdaptiveControllerWithMStar( P_target );
+[ toy1_controller , info ] = lcsas0.FindConsistentBeliefController( P_target );
 
 %% Visualizing %%
 

@@ -234,7 +234,6 @@ classdef InvertedThickPendulum
 
             % Discretize using MATLAB's built-in tools
             csys1 = ss(Ac,Bc,eye(n),0);
-
             dsys1 = c2d(csys1,dt);
 
             csys2 = ss(Ac,Kc,eye(n),0);

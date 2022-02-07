@@ -94,8 +94,6 @@ classdef ConsistentBeliefsController < handle
 
 			for t = 0:TimeHorizon-1
 				for ks_index = 1:num_sequences
-                    t
-                    ks_index
 					ConsistencySets{t+1,ks_index} = ExternalBehaviorSet( cbc.System , cbc.KnowledgeSequences([1:t+1],ks_index), ...
                                                                         'OpenLoopOrClosedLoop','Closed',cbc.K_set{ks_index}, cbc.k_set{ks_index} );
 				end
@@ -539,7 +537,7 @@ classdef ConsistentBeliefsController < handle
 			%	would like.
 			%
 			%Usage:
-			%	x_tensor = simulate_n_runs( obj , ad , M1 , num_runs , in_sig )
+			%	x_tensor = simulate_n_runs( obj , M1 , num_runs , in_sig )
 			%
 			%Inputs:
 			%	
@@ -552,6 +550,8 @@ classdef ConsistentBeliefsController < handle
 
 			%++++++++++++++++
 			%Input Processing
+
+			error('This function has not been rewritten for LCSAS.')
 
 			if nargin < 4
 				error('Not enough inputs.')

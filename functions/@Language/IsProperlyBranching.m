@@ -19,6 +19,7 @@ function [tf] = IsProperlyBranching( SetOfPaths , L )
 			branchDetected = temp_path(t).cardinality() > temp_path(t+1).cardinality();
 
 			if branchDetected
+				LangAt_t = temp_path(t);
 				PathsWithSharedPrefix = SetOfPaths.FindPathsWithPrefix( temp_path([1:t]) );
 
 				if isempty(PathsWithSharedPrefix)
@@ -26,15 +27,15 @@ function [tf] = IsProperlyBranching( SetOfPaths , L )
 				end
 
 				%Validate that at the branching time, there is another path which can be used to make up L.
-				LangsAt_t = PathsWithSharedPrefix(t+1,:);
-                switch length(LangsAt_t)
+				LangsAt_tp1 = PathsWithSharedPrefix(t+1,:);
+                switch length(LangsAt_tp1)
                     case 1
-                        if LangsAt_t ~= L
+                        if LangsAt_tp1 ~= L
                             tf = false;
                             return;
                         end
                     otherwise
-                        if (LangsAt_t(1).union(LangsAt_t([2:end]))) ~= L
+                        if (LangsAt_tp1(1).union(LangsAt_tp1([2:end]))) ~= LangAt_t
                             tf = false;
                             return
                         end

@@ -63,7 +63,7 @@ function [A,b,Ae,be] = CreatePolytopeMatricesAtTime(ibs,t,L_t,ibs_settings)
 	C_block = []; Cv_block = [];
 	for word_ind = 1:length(L_t.words)
 		H_block(end+[1:size(Hc{word_ind},1)],end+[1:size(Bwc{word_ind},2)]) = Hc{word_ind}*Bwc{word_ind};
-		S_block(end+[1:size(Sc{word_ind},1)],[1:size(Sc{word_ind},2)]) = Sc{word_ind};
+		S_block(end+[1:size(Sc{word_ind},1)],end+[1:size(Sc{word_ind},2)]) = Sc{word_ind};
 		%J_block(end+[1:size(Jc{word_ind},1)],[1:size(Jc{word_ind},2)]) = Jc{word_ind};
 		f_block(end+[1:size(Hc{word_ind}*fc{word_ind},1)],1) = Hc{word_ind}*fc{word_ind};
 
@@ -97,22 +97,9 @@ function [A,b,Ae,be] = CreatePolytopeMatricesAtTime(ibs,t,L_t,ibs_settings)
 		% ib_at_t = Polyhedron(	'A',[zeros(size(P_eta.A,1),n_x*(t+1)),P_eta.A],'b',P_eta.b, ...
 		% 						'Ae',[-I_blockx, S_block, H_block, J_block],'be',-f_block );
 
-		% Add Equality Constraints Between Words in Internal Behavior Sets
-		% for word_ind = 2:L_t.cardinality()
-		% 	Ltc = L_t.cardinality();
-		%
-		% 	%matching_x_block = [ eye(n_x*(t+1)) , zeros( n_x*(t+1) , (-2+word_ind)*n_x*(t+1) ) , -eye(n_x*(t+1)) , zeros(n_x*(t+1) , (Ltc-word_ind)*n_x*(t+1) ) ];
-		%   matching_x0_block = [ eye(n_x) , zeros(n_x,(-2+word_ind)*n_x ) , -eye(n_x) , zeros(n_x , (Ltc-word_ind)*n_x ) ];
-		%
-		% 	Ae = [	Ae ;
-		% 			zeros(n_x,n_x*(t+1)) , zeros(n_x,size(S_block,2)) , zeros(n_x,size(H_block,2)) , matching_x0_block  ];
-
-		% 	be = [ be ; zeros(n_x,1) ];
-		% end
-
 	case 'output'
 
-		%error('This part of CreatePolytopeMatricesAtTime() has not been tested.')
+		error('This part of CreatePolytopeMatricesAtTime() has not been tested.')
 
 		%Also introduce the measurement disturbance into the equation
 		P_vT = 1; 
@@ -145,6 +132,7 @@ function [A,b,Ae,be] = CreatePolytopeMatricesAtTime(ibs,t,L_t,ibs_settings)
     	% 						'Ae',[zeros(size(S_block,1),size(I_blocky,2)),S_block, H_block, zeros(size(S_block,1),size(Cv_block,2)), J_block, -I_blockx2; ...
     	% 							  I_blocky, zeros(size(I_blocky,1),size(S_block,2)+size(H_block,2)), -Cv_block , zeros(size(I_blocky,1),size(J_block,2)) , -C_block ], ...
     	% 						'be', [-f_block;zeros(size(I_blocky,1),1)] );
+
     otherwise
     	error(['Unexpected fb_type :' fb_type ])
 

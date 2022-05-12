@@ -717,10 +717,18 @@ classdef ConsistentBeliefsController < handle
 			% Create Word Dependent Disturbance sets
 
 			WT_i = {};
+			ibs_is_empty = false(1,num_sequences);
 			for sequence_index = [1:num_sequences]
 				% Collect Consistency Sets
 				temp_sequence = cbc.KnowledgeSequences(:,sequence_index);
 				ibs_ts = InternalBehaviorSet(System,temp_sequence,'OpenLoopOrClosedLoop','Closed',cbc.K_set{sequence_index},cbc.k_set{sequence_index});
+				ibs_ts.ToPolyhedron(); %Create Polyhedron from constraints.
+				if ibs_ts.AsPolyhedron.isEmptySet
+					ibs_is_empty(sequence_index) = true;
+					WT_i{sequence_index} = [];
+					continue;
+				end
+
 				WT_i_part = ibs_ts.SelectW()*ibs_ts.ToPolyhedron();
 
 				% Append an Extra W term to the end of WT_i_part.
@@ -736,6 +744,12 @@ classdef ConsistentBeliefsController < handle
 			R = {};
 
 			for sequence_index = [1:num_sequences]
+				%Only create R for the nonempty ibs
+				if ibs_is_empty(sequence_index)
+					R{sequence_index} = [];
+					continue;
+				end
+
 				temp_sequence = cbc.KnowledgeSequences(:,sequence_index);
 				L_Tm1 = temp_sequence(end);
 
@@ -761,6 +775,10 @@ classdef ConsistentBeliefsController < handle
 			plotHandles = {};
 
 			for sequence_index = 1:num_sequences
+				% Only plot the sequence_index
+				if ibs_is_empty(sequence_index)
+					continue;
+				end
 
 				pH_i = [];
 

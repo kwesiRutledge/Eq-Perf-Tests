@@ -57,7 +57,7 @@ RColors = {'cyan','magenta'};
 figure;
 
 for sequence_index = 1:num_sequences
-	sp = subplot(num_sequences,1,sequence_index)
+	sp = subplot(num_sequences,1,sequence_index);
 	hold on;
 
 	pH_i = [];

@@ -1,4 +1,4 @@
-%draw_consistency_set_example1.m
+%draw_consistency_set_drone_example.m
 %Description:
 %	Based on observer_comparison94.m
 
@@ -9,71 +9,20 @@
 
 %% Constants
 
-twoDRotation = @(theta) [ cos(theta), -sin(theta) ; sin(theta), cos(theta) ];
-dim_x = 2;
+TimeHorizon = 5; %x0 = [1;0]; X_target = Polyhedron('lb',[3],'ub',[9]) * Polyhedron('lb',-10,'ub',10);
+[ lcsas0 , x0 , TimeHorizon , P_target ] = get_differently_loaded_drone_lcsas(	'TimeHorizon',TimeHorizon, ...
+																				'm1',1.0,'m2',1.5 );
 
-r1 = 10;
-r2 = 11;
-
-A1 = twoDRotation(pi/12);
-A2 = twoDRotation(pi/12);
-
-B1 = eye(dim_x);
-B2 = eye(dim_x);
-
-K1 = -A1*[ 0 ; r1 ]+[0;r1];
-K2 = -A2*[ 0 ; r2 ]+[0;r2];
-
-eta_w = 0.5;
-Pw = Polyhedron('lb',-eta_w*ones(1,dim_x),'ub',eta_w*ones(1,dim_x));
-Pv = Pw; %We won't use it.
-
-TimeHorizon = 4;
-
-% Create PwT;
-PwT = {};
-for t = 1:TimeHorizon
-	PwT{t} = 1;
-	for tau = 1:t
-		PwT{t} = PwT{t} * Pw;
-	end
-end
-
-% Create PuT
-eta_u = 0.5*eta_w;
-Pu = Polyhedron(...
-	'lb',-eta_u*ones(1,dim_x), ...
-	'ub', eta_u*ones(1,dim_x));
-PuT = {};
-for t = 1:TimeHorizon
-	PuT{t} = 1;
-	for tau = 1:t
-		PuT{t} = PuT{t} * Pu;
-	end
-end
-
-% Create XT
-X_Target = Polyhedron('lb',-eta_w*TimeHorizon*ones(1,dim_x), 'ub', eta_w*TimeHorizon*ones(1,dim_x) ) + [9.5;5];
+axes_lims = [-0.5 11 -3 11 ];
 
 % Defaults
 if ~exist('save_gifs')
 	save_gifs = true;
 end
 
-%%%%%%%%%%%%%%%%%%
-%% Create LCSAS %%
-%%%%%%%%%%%%%%%%%%
-
-x0 = [0;0];
-
-ad1 = Aff_Dyn( A1 , B1 , K1 , eye(dim_x) , Pw , Pv );
-ad2 = Aff_Dyn( A2 , B2 , K2 , eye(dim_x) , Pw , Pv );
-
-lcsas0 = LCSAS( [ad1,ad2], Language(1*ones(1,TimeHorizon),2*ones(1,TimeHorizon)) , ...
-				'X0' , Polyhedron('lb',x0','ub',x0') , ...
-				'U'  , Pu  );
-
 results.Parameters.LCSAS = lcsas0;
+
+[ dim_x , dim_u , dim_y , dim_w , dim_v ] = lcsas0.Dimensions();
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Create Reachable Sets using EBS %%
@@ -88,6 +37,8 @@ for word_index = 1:lcsas0.L.cardinality()
 	ConsistencySets{word_index} = ExternalBehaviorSet(lcsas0,temp_knowl_seq,'fb_type','state');
 	CSAsPolyhedron{word_index} = ConsistencySets{word_index}.ToPolyhedron();
 end
+
+time_reversed = fliplr([1:TimeHorizon-1]);
 
 figure;
 hold on;
@@ -105,12 +56,73 @@ for t = 1:TimeHorizon-1
 
 end
 
-axis([-0.5 11 -0.5 6.5 ])
+axis(axes_lims)
 
 xlabel('$(x_k)_1$','Interpreter','latex','FontSize',20)
 ylabel('$(x_k)_2$','Interpreter','latex','FontSize',20)
 
 saveas(gcf,'images/similarRotationSystemComparison1','epsc')
+
+%% Draw GIF %%
+%%%%%%%%%%%%%%
+eta_w = 0.25;
+Pw = lcsas0.Dyn(1).P_w;
+
+% Create PwT;
+PwT = {};
+for t = 1:TimeHorizon
+	PwT{t} = 1;
+	for tau = 1:t
+		PwT{t} = PwT{t} * Pw;
+	end
+end
+
+% Create PuT
+eta_u = 2*eta_w;
+Pu = Polyhedron(...
+	'lb',-eta_u*ones(1,dim_u), ...
+	'ub', eta_u*ones(1,dim_u));
+
+PuT = {};
+for t = 1:TimeHorizon
+	PuT{t} = 1;
+	for tau = 1:t
+		PuT{t} = PuT{t} * Pu;
+	end
+end
+
+for t = 1:TimeHorizon
+	%Plot The Polyhedron.
+    word1_prefix = lcsas0.L.words{1}(1:t);
+	[Sw,Su,~,J,~] = lcsas0.get_mpc_matrices('word',word1_prefix);
+	Pxt{1,t} = Sw * PwT{t} + Su * PuT{t} + J * x0;
+	plot( ...
+		Pxt{1,t}.projection([size(Sw,1)-dim_x+1:size(Sw,1)]), ...
+		'color','salmon' ...
+		)
+
+	% Plot The Polyhedron For Word 2
+	word2_prefix = lcsas0.L.words{2}(1:t);
+	[Sw,Su,~,J,~] = lcsas0.get_mpc_matrices('word',word2_prefix);
+	Pxt{2,t} = Sw * PwT{t} + Su * PuT{t} + J * x0;
+	plot( ...
+		Pxt{2,t}.projection([size(Sw,1)-dim_x+1:size(Sw,1)]), ...
+		'color','cyan')
+
+end
+
+% Save GIF for each mode
+mode_colors = {'magenta','cyan'};
+for mode_index = 1:lcsas0.n_modes
+	saveToSimpleGIF( ...
+		TimeHorizon , {Pxt{mode_index,:}}, x0 , X_Target , ...
+		['images/droneSystem_Mode' num2str(mode_index) '_ReachableSet.gif'] , ...
+		temp_axis , ...
+		mode_colors{mode_index} , ...
+		['Mode ' num2str(mode_index) ' Reachable Set'] )
+end
+
+return
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Compare Closed Loop Consistency Sets %%
@@ -154,7 +166,7 @@ for t = 1:TimeHorizon-1
 
 end
 
-axis([-0.5 11 -0.5 6.5 ])
+axis(axes_lims)
 
 xlabel('$(x_k)_1$','Interpreter','latex')
 ylabel('$(x_k)_2$','Interpreter','latex')
@@ -198,8 +210,8 @@ function saveToSimpleGIF( TimeHorizonIn , PolyX_History, x0 , X_Target , gifFile
 	for t = 0:TimeHorizonIn
 
 	    % Draw plot for current PolyX_History
-	    hold on;
 	    plot(X_Target,'Color','White') %Plot Target Set
+	    hold on;
 	    if t == 0
 	    	scatter(x0(1),x0(2))
 	    else
@@ -207,9 +219,13 @@ function saveToSimpleGIF( TimeHorizonIn , PolyX_History, x0 , X_Target , gifFile
 	    end
 	    hold off;
 
+	    legend('Target','$\mathcal{R}(\sigma)$', ...
+    			'Interpreter','latex')
+
 	    title(titleIn)
-	    xlabel('$x_1$','Interpreter','latex')
-	    ylabel('$x_2$','Interpreter','latex')
+	    xlabel('$(x_k)_1$','Interpreter','latex','FontSize',20)
+		ylabel('$(x_k)_2$','Interpreter','latex','FontSize',20)
+
 		grid on
 		axis(axis_limits)
 

@@ -54,10 +54,21 @@ RColors = {'cyan','magenta'};
 
 [ n_x , n_u , n_y , n_w , n_v ] = lcsas0.Dimensions();
 
-figure;
-
+ibs_empty_flags = false(1,num_sequences);
 for sequence_index = 1:num_sequences
-	sp = subplot(num_sequences,1,sequence_index)
+	ibs_empty_flags(sequence_index) = toy1_controller.ConsistencySets{end,sequence_index}.ToPolyhedron().isEmptySet;
+end
+
+plot_index = 1;
+figure;
+for sequence_index = 1:num_sequences
+	% Skip a sequence that has an empty Consistency Set
+	if ibs_empty_flags(sequence_index)
+		continue;
+	end
+
+	sp = subplot(sum(~ibs_empty_flags),1,plot_index);
+
 	hold on;
 
 	pH_i = [];
@@ -86,6 +97,9 @@ for sequence_index = 1:num_sequences
 
 	%Create title
 	%title(['Reachable Sets for Mode Sequence #' num2str(sequence_index) ])
+
+	% Increment
+	plot_index = plot_index + 1;
 end
 
 saveas(gcf,'images/toy1_reachable_sets','epsc')

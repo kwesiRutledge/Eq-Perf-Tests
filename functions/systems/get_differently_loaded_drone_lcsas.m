@@ -76,7 +76,7 @@ function [ dt , m1 , m2 , TimeHorizon , x0 , X_target , U ] = ip_get_differently
 		'TimeHorizon' , 8 , ...
 		'x0' , [ 1 ; 0 ] , ...
 		'X_target' , Polyhedron('lb',1.5,'ub',3.5) * Polyhedron('lb',-3,'ub',3) , ...
-		'eta_u' , 1.5*10*3 ); %N
+		'eta_u' , 1.5*10*3    ); %N
 
 	%%%%%%%%%%%%%%%%
 	%% Processing %%
@@ -106,6 +106,9 @@ function [ dt , m1 , m2 , TimeHorizon , x0 , X_target , U ] = ip_get_differently
 			case 'm2'
 				drone_settings.m2 = varargin{argin_index+1};
 				argin_index = argin_index + 2;
+			case 'eta_u'
+				drone_settings.eta_u = varargin{argin_index+1};
+				argin_index = argin_index + 2;
 			otherwise
 				error(['Unexpected input to get_differently_loaded_drone_lcsas(): ' varargin{argin_index} ])
 		end
@@ -122,6 +125,6 @@ function [ dt , m1 , m2 , TimeHorizon , x0 , X_target , U ] = ip_get_differently
 	TimeHorizon = drone_settings.TimeHorizon;
 	x0 = drone_settings.x0;
 	X_target = drone_settings.X_target;
-	U = Polyhedron('lb',-drone_settings.eta_u,'ub',drone_settings.eta_u);
+	U = Polyhedron('lb',0,'ub',drone_settings.eta_u);
 
 end

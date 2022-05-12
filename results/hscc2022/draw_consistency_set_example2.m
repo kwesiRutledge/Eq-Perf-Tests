@@ -59,6 +59,8 @@ for t = 1:TimeHorizon-1
 end
 
 % axis([-0.5 11 -0.5 6.5 ])
+xlabel('$(x_k)_1$','Interpreter','latex')
+ylabel('$(x_k)_2$','Interpreter','latex')
 
 saveas(gcf,'images/similarRotationSystemCLImage','epsc')
 
@@ -104,6 +106,9 @@ for path_index = pathIndiciesToVisualize
 			'color','blue' )
 
 		legend('$\mathcal{C}_{S}(p)$','$\mathcal{C}_{S}^{(cl)}(p)$','Interpreter','latex')
+
+		xlabel('$(x_k)_1$','Interpreter','latex')
+		ylabel('$(x_k)_2$','Interpreter','latex')
 
 		saveas(gcf,['images/example2_olVScl_at_time_' num2str(t)],'epsc')
 		saveas(gcf,['images/example2_olVScl_at_time_' num2str(t)],'png')

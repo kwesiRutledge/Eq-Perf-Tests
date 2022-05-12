@@ -6,7 +6,7 @@
 %% Choosing Figures to Create %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-figures_to_create = {'H'}
+figures_to_create = {'I'}
 
 %Figure Options:
 %   A = Draw Consistency Sets (overlapping) for the opposing rotation system
@@ -233,6 +233,9 @@ for figure_index = 1:length(figures_to_create)
             saveas(gcf,'images/toy2_detection_diagram','epsc')
             saveas(gcf,'images/toy2_detection_diagram','png')
 
+
+        case 'I'
+            draw_consistency_set_drone_example
 
         end
             

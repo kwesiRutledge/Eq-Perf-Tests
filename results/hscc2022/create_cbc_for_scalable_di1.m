@@ -10,7 +10,11 @@ addpath(genpath('../../functions/'))
 
 TimeHorizon = 5;
 
-us_dim = 0;
+if exist('n_uc')
+	us_dim = n_uc;
+else
+	us_dim = 0;
+end
 
 target_lb = [ -62 , -10 , -65 , -10 , -65 , -10 , -ones(1,us_dim)*10^(4) ];
 target_ub = [ -50 , 10 , -50 , 10 , -45 , 10 , ones(1,us_dim)*10^(4) ];
@@ -25,16 +29,11 @@ eta_u = 10;
 
 %% Synthesis %%
 
-[ scalable_controller , info ] = lcsas0.FindAdaptiveControllerWithMStar( P_target , ...
-																	'SearchStrategy' , 'DescendingCardinality', ...
-																	'DoOptimizationPruningWhere' , 'DuringSearch' , ...
-																	'RemoveBilinearityInInputConstraints', true , ...
-																	'RemoveBilinearityInReachabilityConstraints', true , ...
-																	'LinearizeBilinearContainment', true )
+[ scalable_controller , info ] = lcsas0.FindAdaptiveControllerWithMStar( P_target );
 
 %% Visualizing %%
 
-successfullySolved = (info.About(end).problem == 0);
+successfullySolved = (info.Optimization.problem == 0);
 if successfullySolved
 
 	results.SimulationData = [];

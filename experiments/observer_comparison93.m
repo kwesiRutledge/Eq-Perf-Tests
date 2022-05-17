@@ -90,12 +90,15 @@ function [results] = observer_comparison93(varargin)
     legend('$x_0$','Mode 1','Mode 2', '', '' , 'Target', ...
     	'Interpreter','latex')
 
+    xlabel('$(x_k)_1$','Interpreter','latex')
+	ylabel('$(x_k)_2$','Interpreter','latex')
+
     % Save GIF for each mode
     mode_colors = {'magenta','cyan'};
     for mode_index = 1:lcsas0.n_modes
     	saveToSimpleGIF( ...
     		TimeHorizon , {Pxt{mode_index,:}}, x0 , X_Target , ...
-    		['results/lcss2021/images/pureRotationSystem_Mode' num2str(mode_index) '_ReachableSet.gif'] , ...
+    		['results/hscc2022/images/pureRotationSystem_Mode' num2str(mode_index) '_ReachableSet.gif'] , ...
     		temp_axis , ...
     		mode_colors{mode_index} , ...
     		['Mode ' num2str(mode_index) ' Reachable Set'] )
@@ -139,11 +142,14 @@ function [results] = observer_comparison93(varargin)
     legend('$x_0$','Mode 1','Mode 2', '', '' , 'Target', ...
     	'Interpreter','latex')
 
+    xlabel('$(x_k)_1$','Interpreter','latex')
+	ylabel('$(x_k)_2$','Interpreter','latex')
+
     % Save to Gifs
     for mode_index = 1:lcsas0.n_modes
     	saveToSimpleGIF( ...
     		TimeHorizon , {Pxt2{mode_index,:}}, x0 , X_Target , ...
-    		['results/lcss2021/images/pureRotationSystem_Mode' num2str(mode_index) '_ZeroInputSet.gif'] , ...
+    		['results/hscc2022/images/pureRotationSystem_Mode' num2str(mode_index) '_ZeroInputSet.gif'] , ...
     		temp_axis , ...
     		mode_colors{mode_index} , ...
     		['Mode ' num2str(mode_index) ' Zero-Input Reachable Set'] )
@@ -197,12 +203,15 @@ function [results] = observer_comparison93(varargin)
     title('Nice Input Reachable Sets for Each Mode')
     legend('$x_0$','Mode 1','Mode 2', '', '' , 'Target', ...
     	'Interpreter','latex')
+    
+    xlabel('$(x_k)_1$','Interpreter','latex')
+	ylabel('$(x_k)_2$','Interpreter','latex')
 
     % Save to Gifs
     for mode_index = 1:lcsas0.n_modes
     	saveToSimpleGIF( ...
     		TimeHorizon , {Pxt3{mode_index,:}}, x0 , X_Target , ...
-    		['results/lcss2021/images/pureRotationSystem_Mode' num2str(mode_index) '_NiceInputSet.gif'] , ...
+    		['results/hscc2022/images/pureRotationSystem_Mode' num2str(mode_index) '_NiceInputSet.gif'] , ...
     		temp_axis , ...
     		mode_colors{mode_index} , ...
     		['Mode ' num2str(mode_index) ' Nice-Input Reachable Set'] )
@@ -238,8 +247,8 @@ function saveToSimpleGIF( TimeHorizonIn , PolyX_History, x0 , X_Target , gifFile
 	for t = 0:TimeHorizonIn
 
 	    % Draw plot for current PolyX_History
-	    hold on;
 	    plot(X_Target,'Color','White') %Plot Target Set
+	    hold on;
 	    if t == 0
 	    	scatter(x0(1),x0(2))
 	    else
@@ -247,7 +256,13 @@ function saveToSimpleGIF( TimeHorizonIn , PolyX_History, x0 , X_Target , gifFile
 	    end
 	    hold off;
 
+	    legend('Target','$\mathcal{R}(\sigma)$', ...
+    			'Interpreter','latex')
+
 	    title(titleIn)
+	    xlabel('$(x_k)_1$','Interpreter','latex','FontSize',20)
+		ylabel('$(x_k)_2$','Interpreter','latex','FontSize',20)
+
 		grid on
 		axis(axis_limits)
 

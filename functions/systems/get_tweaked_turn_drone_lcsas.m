@@ -13,7 +13,7 @@ function [ lcsas , x0 , TimeHorizon , X_target ] = get_tweaked_turn_drone_lcsas(
 	%% Input Processing %%
 	%%%%%%%%%%%%%%%%%%%%%%
 
-	[ dt , theta1 , theta2 , TimeHorizon , x0 , X_target , U ] = ip_get_tweaked_turn_drone_lcsas(varargin{:});
+	[ dt , theta1 , theta2 , TimeHorizon , x0 , X_target , U , eta_w ] = ip_get_tweaked_turn_drone_lcsas(varargin{:});
 
 	n_x = 2;
 	n_u = 2;
@@ -31,7 +31,6 @@ function [ lcsas , x0 , TimeHorizon , X_target ] = get_tweaked_turn_drone_lcsas(
 	B1 = RotationMatrix(theta1) * dt * eye(n_x);
 	f1 = zeros(n_x,1);
 
-	eta_w = 0.1;
 	W1 = Polyhedron('lb',-eta_w*ones(1,n_w),'ub',eta_w*ones(1,n_w));
 
 	ad1 = Aff_Dyn(	A1 , B1 , f1 , zeros(1,n_x), ...
@@ -65,7 +64,7 @@ function [ lcsas , x0 , TimeHorizon , X_target ] = get_tweaked_turn_drone_lcsas(
 
 end
 
-function [ dt , theta1 , theta2 , TimeHorizon , x0 , X_target , U ] = ip_get_tweaked_turn_drone_lcsas(varargin)
+function [ dt , theta1 , theta2 , TimeHorizon , x0 , X_target , U , eta_w ] = ip_get_tweaked_turn_drone_lcsas(varargin)
 	%Description:
 	%	Process the inputs
 
@@ -80,7 +79,8 @@ function [ dt , theta1 , theta2 , TimeHorizon , x0 , X_target , U ] = ip_get_twe
 		'TimeHorizon' , 10 , ...
 		'x0' , [ 0 ; 0 ] , ...
 		'X_target' , Polyhedron('lb',1.0,'ub',3.0) * Polyhedron('lb',1.0,'ub',3.0) , ...
-		'eta_u' , 3    ); %m/s
+		'eta_u' , 3  , ... %m/s
+		'eta_w' , 0.1 ); %
 
 	%%%%%%%%%%%%%%%%
 	%% Processing %%
@@ -113,6 +113,9 @@ function [ dt , theta1 , theta2 , TimeHorizon , x0 , X_target , U ] = ip_get_twe
 			case 'eta_u'
 				drone_settings.eta_u = varargin{argin_index+1};
 				argin_index = argin_index + 2;
+			case 'eta_w'
+				drone_settings.eta_w = varargin{argin_index+1};
+				argin_index = argin_index + 2;
 			otherwise
 				error(['Unexpected input to get_differently_loaded_drone_lcsas(): ' varargin{argin_index} ])
 		end
@@ -130,5 +133,6 @@ function [ dt , theta1 , theta2 , TimeHorizon , x0 , X_target , U ] = ip_get_twe
 	x0 = drone_settings.x0;
 	X_target = drone_settings.X_target;
 	U = Polyhedron('lb',-drone_settings.eta_u*ones(1,2),'ub',drone_settings.eta_u*ones(1,2));
+	eta_w = drone_settings.eta_w;
 
 end

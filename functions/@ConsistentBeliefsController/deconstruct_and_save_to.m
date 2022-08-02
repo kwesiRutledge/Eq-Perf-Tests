@@ -2,7 +2,8 @@ function deconstruct_and_save_to(cbc, filenameIn)
 	%deconstruct_and_save_to
 	%Description:
 	%	Save each of the elements of the ConsistentBeliefController to the directory given as filenameIn.
-	%
+	%Usage:
+	%	cbc.deconstruct_and_save_to('dissertation_vid1.mat')
 
 	%% Constants
 	System = cbc.System;
@@ -18,8 +19,6 @@ function deconstruct_and_save_to(cbc, filenameIn)
 	if ~exist('filenameIn')
 		filenameIn = ['deconstructed_controller_' date_converted '.mat'];
 	end
-
-
 
 	%% Algorithm
 

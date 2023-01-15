@@ -1,4 +1,4 @@
-function [ constraint , new_variable ] = CreateEmptyConstraint(ibs)
+function [ constraint , new_variable ] = CreateEmptyConstraint(ibs,eps0)
 	%Description:
 	%	Creates a YALMIP constraint that is satisfied when the InternalBehaviorSet ibs
 	%	is Empty.
@@ -10,7 +10,9 @@ function [ constraint , new_variable ] = CreateEmptyConstraint(ibs)
 	b = ibs.b;
 	be = ibs.be;
 
-	eps0 = 10^(-4);
+	if eps0 == []
+		eps0 = 0; % 10^(-4);
+	end
 
 	%% Create Constraints in YALMIP using Farkas Lemma
 	H = [ A ; Ae ; -Ae ];

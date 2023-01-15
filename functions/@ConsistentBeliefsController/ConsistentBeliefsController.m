@@ -311,7 +311,7 @@ classdef ConsistentBeliefsController < handle
 				temp_prefix = KnowledgeSequences([1:t+1],mi);
 				if temp_prefix >= detected_prefix
 					detected_prefix = temp_prefix;
-					detected_index = mi;
+					detected_index = mi
 				end
 			end
 

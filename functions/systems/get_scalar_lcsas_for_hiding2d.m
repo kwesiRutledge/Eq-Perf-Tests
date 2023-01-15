@@ -1,4 +1,4 @@
-function [ lcsas , x0 , TimeHorizon , X_target ] = get_scalar_lcsas_for_hiding(varargin)
+function [ lcsas , x0 , TimeHorizon , X_target ] = get_scalar_lcsas_for_hiding2d(varargin)
 	%get_scalar_lcsas_for_hiding.m
 	%Description:
 	%	Creates the LCSAS representation of a scalar system and its reachability task.
@@ -15,9 +15,9 @@ function [ lcsas , x0 , TimeHorizon , X_target ] = get_scalar_lcsas_for_hiding(v
 
 	[ B1 , B2 , TimeHorizon , x0 , X_target , U , W ] = ip_get_tweaked_turn_drone_lcsas(varargin{:});
 
-	n_x = 1;
-	n_u = 1;
-	n_w = 1;
+	n_x = 2;
+	n_u = 2;
+	n_w = 2;
 
 	RotationMatrix = @(theta_in) [ cos(theta_in), - sin(theta_in) ; sin(theta_in) , cos(theta_in) ];
 
@@ -31,7 +31,7 @@ function [ lcsas , x0 , TimeHorizon , X_target ] = get_scalar_lcsas_for_hiding(v
 
 	ad1 = Aff_Dyn(	A1 , B1 , f1 , zeros(1,n_x), ...
 					W1 , W1 , ...
-					1 , zeros(1,1) );
+					eye(n_w) , zeros(1,1) );
 
 	%%%%%%%%%%%%%%%%%%%
 	%% Create Mode 1 %%
@@ -41,7 +41,7 @@ function [ lcsas , x0 , TimeHorizon , X_target ] = get_scalar_lcsas_for_hiding(v
 
 	ad2 = Aff_Dyn(	A2 , B2 , f2 , zeros(1,n_x), ...
 					W2 , W2 , ...
-					1 , zeros(1,1) );
+					eye(n_w) , zeros(1,1) );
 
 	%%%%%%%%%%%%%%%%%%
 	%% Create LCSAS %%
@@ -64,17 +64,17 @@ function [ B1 , B2 , TimeHorizon , x0 , X_target , U , W ] = ip_get_tweaked_turn
 	%%%%%%%%%%%%%%
 
 	system_settings = struct( ...
-		'b1' , 1 , ...
-		'b2' , -1 , ... 
+		'b1' , eye(2) , ...
+		'b2' , -eye(2) , ... 
 		'TimeHorizon' , 2 , ...
-		'x0' , 0 , ...
-		'X_target' , Polyhedron('lb',1.5,'ub',2.5) , ...
+		'x0' , [0;0] , ...
+		'X_target' , Polyhedron('lb',[1.5,1.5],'ub',[2.5,2.5]) , ...
 		'eta_u' , 0.1  , ... %m/s
-		'W' , Polyhedron('lb',0.8,'ub',1.2 ) );
+		'W' , Polyhedron('lb',[0.8,0.8],'ub',[1.2,1.2] ) );
 
-	n_x = 1;
-	n_u = 1;
-	n_w = 1;
+	n_x = 2;
+	n_u = 2;
+	n_w = 2;
 
 	%%%%%%%%%%%%%%%%
 	%% Processing %%

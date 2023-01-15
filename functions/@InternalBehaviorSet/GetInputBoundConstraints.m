@@ -112,51 +112,43 @@ function [ constraints , dual_vars ] = GetRelaxedInputBoundConstraints(ibs)
 	end
 	U_T = U_Tm1 * U;
 
-	%Use first word in Last Language (of Knowledge Sequence) to Help Create H
-	word1 = LastLang.words{1};
-	lastSymbol1 = word1(end);
-
-	[~,word1_index] = L.contains(word1);
-
-	W_final = System.Dyn(lastSymbol1).P_w;
-
-	% Create the Set Which Will Represent The Possible Sequence of Disturbances
-
-	H = [ A ; Ae ; -Ae];
-	H = [ H , zeros(size(H,1),n_w) ; zeros(size(W_final.A,1),ibs.Dim) , W_final.A ];
-
-	h = [ b ; be ; -be ; W_final.b];
-
-	if ~isempty(W_final.Ae)
-		H = [ H ; zeros(size(W_final.Ae,1),ibs.Dim) , W_final.Ae ; zeros(size(W_final.Ae,1),ibs.Dim) , -W_final.Ae];
-		h = [ h ; W_final.be ; -W_final.be ];
-	end
-
-	% Create Input Set Matrices
-
-	% Create Containment Based on Full Length Disturbances from H
-	selectW1 = ibs.SelectW();
-
-	selectWAll = [ 	selectW1, zeros(n_w*(T-1),n_w) ; 
-					[ zeros(n_w,ibs.Dim) , eye(n_w) ] ];
-
-	% Create Contraints
-
 	constraints = [];
-	% dual_vars = {};
+	dual_vars = {};
+	for word_index = 1: LastLang.cardinality()
 
-	% [ dual_vars{1} , temp_constraints ] = cg.get_H_polyt_inclusion_constr( ...
-	% 	[ A ; Ae ; -Ae ] , [ b ; be ; -be ] , ...
-	% 	U_Tm1.A * [ zeros(n_u*(T-1),n_x*T) , eye(n_u*(T-1)) , zeros(n_u*(T-1),ibs.Dim-n_x*T-n_u*(T-1)) ] , U_Tm1.b ...
-	% );
-	% constraints = constraints + temp_constraints;
+		%Use first word in Last Language (of Knowledge Sequence) to Help Create H
+		word1 = LastLang.words{1};
+		lastSymbol1 = word1(end);
 
-	% [ dual_vars{2} , temp_constraints ] = cg.get_H_polyt_inclusion_constr( H , h , U.A*ibs.K(end-[1:n_u],:)*selectWAll , U.b - U.A*ibs.k(end-[1:n_u]) );
-	% constraints = constraints + temp_constraints;
+		[~,word1_index] = L.contains(word1);
 
-	[ dual_vars , constraints ] = cg.get_H_polyt_inclusion_constr( H , h , U_T.A*ibs.K*selectWAll , U_T.b - U_T.A*ibs.k );
+		W_final = System.Dyn(lastSymbol1).P_w;
 
+		% Create the Set Which Will Represent The Possible Sequence of Disturbances
 
+		H = [ A ; Ae ; -Ae];
+		H = [ H , zeros(size(H,1),n_w) ; zeros(size(W_final.A,1),ibs.Dim) , W_final.A ];
+
+		h = [ b ; be ; -be ; W_final.b];
+
+		if ~isempty(W_final.Ae)
+			H = [ H ; zeros(size(W_final.Ae,1),ibs.Dim) , W_final.Ae ; zeros(size(W_final.Ae,1),ibs.Dim) , -W_final.Ae];
+			h = [ h ; W_final.be ; -W_final.be ];
+		end
+
+		% Create Input Set Matrices
+
+		% Create Containment Based on Full Length Disturbances from H
+		selectW1 = ibs.SelectW();
+
+		selectWAll = [ 	selectW1, zeros(n_w*(T-1),n_w) ; 
+						[ zeros(n_w,ibs.Dim) , eye(n_w) ] ];
+
+		% Create Contraints
+
+		[ dual_vars , constraints ] = cg.get_H_polyt_inclusion_constr( H , h , U_T.A*ibs.K*selectWAll , U_T.b - U_T.A*ibs.k );
+
+	end
 
 end
 
@@ -192,47 +184,46 @@ function [ constraints , dual_vars ] = GetCompleteInputBoundConstraints(ibs)
 	for tau = 1:T-1
 		U_Tm1 = U_Tm1 * U;
 	end
+	U_T = U_Tm1 * U;
 
 	%Use first word in Last Language (of Knowledge Sequence) to Help Create H
-	word1 = LastLang.words{1};
-	lastSymbol1 = word1(end);
-
-	[~,word1_index] = L.contains(word1);
-
-	W_final = System.Dyn(lastSymbol1).P_w;
-
-	% Create the Set Which Will Represent The Possible Sequence of Disturbances
-
-	H = [ A ; Ae ; -Ae];
-	H = [ H , zeros(size(H,1),n_w) ; zeros(size(W_final.A,1),ibs.Dim) , W_final.A ];
-
-	h = [ b ; be ; -be ; W_final.b];
-
-	if ~isempty(W_final.Ae)
-		H = [ H ; zeros(size(W_final.Ae,1),ibs.Dim) , W_final.Ae ; zeros(size(W_final.Ae,1),ibs.Dim) , -W_final.Ae];
-		h = [ h ; W_final.be ; -W_final.be ];
-	end
-
-	% Create Input Set Matrices
-
-	% Create Containment Based on Full Length Disturbances from H
-	selectW1 = ibs.SelectW();
-
-	selectWAll = [ 	selectW1, zeros(n_w*(T-1),n_w) ; 
-					[ zeros(n_w,ibs.Dim) , eye(n_w) ] ];
-
-	% Create Contraints
-
 	constraints = [];
 	dual_vars = {};
+	for word_index = 1: LastLang.cardinality()
+		word1 = LastLang.words{word_index};
+		lastSymbol1 = word1(end);
 
-	[ dual_vars{1} , temp_constraints ] = cg.get_H_polyt_inclusion_constr( ...
-		[ A ; Ae ; -Ae ] , [ b ; be ; -be ] , ...
-		U_Tm1.A * [ zeros(n_u*(T-1),n_x*T) , eye(n_u*(T-1)) , zeros(n_u*(T-1),ibs.Dim-n_x*T-n_u*(T-1)) ] , U_Tm1.b ...
-	);
-	constraints = constraints + temp_constraints;
+		[ ~ , word1_index ] = L.contains(word1);
+		W_final = System.Dyn(lastSymbol1).P_w;
 
-	[ dual_vars{2} , temp_constraints ] = cg.get_H_polyt_inclusion_constr( H , h , U.A*ibs.K(end-[1:n_u],:)*selectWAll , U.b - U.A*ibs.k(end-[1:n_u]) );
-	constraints = constraints + temp_constraints;
+		% Create the Set Which Will Represent The Possible Sequence of Disturbances
+
+		H = [ A ; Ae ; -Ae];
+		H = [ H , zeros(size(H,1),n_w) ; zeros(size(W_final.A,1),ibs.Dim) , W_final.A ];
+
+		h = [ b ; be ; -be ; W_final.b];
+
+		if ~isempty(W_final.Ae)
+			H = [ H ; zeros(size(W_final.Ae,1),ibs.Dim) , W_final.Ae ; zeros(size(W_final.Ae,1),ibs.Dim) , -W_final.Ae];
+			h = [ h ; W_final.be ; -W_final.be ];
+		end
+
+		% Create Input Set Matrices
+
+		% Create Containment Based on Full Length Disturbances from H
+		selectW1 = ibs.SelectW();
+
+		selectWAll = [ 	selectW1, zeros(n_w*(T-1),n_w) ; 
+						[ zeros(n_w,ibs.Dim) , eye(n_w) ] ];
+
+		% Create Contraints
+		[ dual_vars{1+2*(word_index-1)} , temp_constraints ] = cg.get_H_polyt_inclusion_constr( ...
+			H , h , U_T.A * ibs.K * selectWAll , U_T.b - U_T.A * ibs.k ...
+		);
+		constraints = constraints + temp_constraints;
+
+		% [ dual_vars{2+2*(word_index-1)} , temp_constraints ] = cg.get_H_polyt_inclusion_constr( H , h , U.A*ibs.K(end-[1:n_u],:)*selectWAll , U.b - U.A*ibs.k(end-[1:n_u]) );
+		% constraints = constraints + temp_constraints;
+	end
 
 end

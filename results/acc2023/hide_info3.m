@@ -15,7 +15,7 @@ addpath(genpath('../../functions/'))
 
 %% Constants %%
 
-[ lcsas0 , x0 , TimeHorizon , P_target ] = get_scalar_lcsas_for_hiding('eta_u',0.1);
+[ lcsas0 , x0 , TimeHorizon , P_target ] = get_scalar_lcsas_for_hiding2d('eta_u',0.1);
 
 % P_Targets = [ P_target , P_target - [0.7;0] ];
 
@@ -41,9 +41,9 @@ if strcmp(info.Message,'Solved!')
 	figure;
 
 	hold on;
-	target_plot = plot(Polyhedron('lb',TimeHorizon-0.25,'ub',TimeHorizon+0.25)*P_target,'color','red','alpha',0.5);
+	target_plot = plot(P_target,'color','red','alpha',0.5);
 % 	plot(P_targets(2),'color','magenta','alpha',0.5)
-    ic_plot = scatter(0,lcsas0.X0.V(1),x0_markersize,'black','filled');
+    ic_plot = scatter(lcsas0.X0.V(1),lcsas0.X0.V(2),x0_markersize,'black','filled');
 
 	for simulation_index = 1:10
 		[ x_0_t, u_0_tm1 , y_0_t , sig ] = scalar_system_controller.simulate_1run();
@@ -52,7 +52,7 @@ if strcmp(info.Message,'Solved!')
 		% 	x_t = x_0_t(:,t+1);
 		% 	scatter(x_t(1),x_t(2))
 		% end
-		plot([0:length(x_0_t)-1],x_0_t,'LineWidth',trajectory_lw)
+		plot(x_0_t(1,:),x_0_t(2,:),'LineWidth',trajectory_lw)
 		
 
 		%Save data
@@ -63,8 +63,8 @@ if strcmp(info.Message,'Solved!')
 	axis([-0.5,2.5,-0.5,3.0])
     xticks([0 1 2])
 
-    xlabel('$k$','Interpreter','latex','FontSize',axis_fs)
-	ylabel('$x_k$','Interpreter','latex','FontSize',axis_fs)
+    xlabel('$p^{(x)}$','Interpreter','latex','FontSize',axis_fs)
+	ylabel('$p^{(y)}$','Interpreter','latex','FontSize',axis_fs)
 
     legend( ...
         [target_plot,ic_plot],'$$X_{T}$$','$$x_0$$', ...
@@ -73,12 +73,12 @@ if strcmp(info.Message,'Solved!')
         'Location','southeast' ...
         )
 
-	saveas(gcf,'images/kltl-scalar_runs-hidden_info','epsc')
-	saveas(gcf,'images/kltl-scalar_runs-hidden_info','png')
+	saveas(gcf,'images/kltl-scalar_runs-hidden_info2','epsc')
+	saveas(gcf,'images/kltl-scalar_runs-hidden_info2','png')
     
 
 	%Save controller data somewhere.
-	scalar_system_controller.deconstruct_and_save_to(['data/scalar_controller_data_' date_string '.mat'])
+	scalar_system_controller.deconstruct_and_save_to(['data/scalar_controller2_data_' date_string '.mat'])
 
 else
 	disp('The drone controller was not successfully created.')

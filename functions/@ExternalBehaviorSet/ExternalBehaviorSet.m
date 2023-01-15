@@ -284,7 +284,7 @@ classdef ExternalBehaviorSet < handle
 			% Create mpc matrices for each word in the language L
 			Hc = {}; Sc = {}; Jc = {}; fc = {}; Cc = {}; Bwc = {}; Cvc = {};
 			for word_ind = 1:L0.cardinality()
-				[Hc{word_ind},Sc{word_ind},Cc{word_ind},Jc{word_ind},fc{word_ind},Bwc{word_ind},Cvc{word_ind}] = System.get_mpc_matrices('word',L0.words{word_ind}(1:t));
+				[Hc{word_ind},Sc{word_ind},Cc{word_ind},Jc{word_ind},fc{word_ind},Bwc{word_ind},Cvc{word_ind}] = System.get_mpc_matrices('word',L0.words{word_ind}(1:t+1));
 			end
 
 			if size(System.X0.V,1) > 1

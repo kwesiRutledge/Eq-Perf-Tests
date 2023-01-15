@@ -95,6 +95,7 @@ function [ controller , synthesis_info ] = FindAdaptiveControllerWithMStar( vara
 
 	for knowl_seq_index = 1:num_knowl_sequences
 		knowl_seq = MStar(:,knowl_seq_index);
+
 		% Create Constraints
 	 	ibs_ksi = InternalBehaviorSet(lcsas,knowl_seq, ...
 			'OpenLoopOrClosedLoop','Closed',K{knowl_seq_index},k{knowl_seq_index});

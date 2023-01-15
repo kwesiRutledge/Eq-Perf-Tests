@@ -95,20 +95,16 @@ function [ controller , synthesis_info ] = FindAdaptiveController_AlwaysHidenInf
 	end
 
 	for m_index = 1:num_unchecked
-
-        %Skip all gains except the one for M_target
-        % if m_index ~= num_unchecked
-        %     continue;
-        % end
+		disp(['working through input constraints: i = ' num2str(m_index)])
 
 		m = M_unchecked(:,m_index);
+
 		% Create Constraints
-	 	ibs_m = InternalBehaviorSet(lcsas,m, ...
+	 	ibs_ksi = InternalBehaviorSet(lcsas,m, ...
 			'OpenLoopOrClosedLoop','Closed',K{m_index},k{m_index});
+		[ temp_constraints , input_bound_dual_vars{end+1} ] = ibs_ksi.GetInputBoundConstraints('Use A_cl or A_ol?',strengthen_flag_inputs);
 
-	 	[ temp_constraints , input_bound_dual_vars{end+1} ] = ibs_m.GetInputBoundConstraints('Use A_cl or A_ol?',strengthen_flag_inputs);
-
-	 	input_bounds_constraints = input_bounds_constraints + temp_constraints;
+		input_bounds_constraints = input_bounds_constraints + temp_constraints;
 	end
 
 	% Matching Behavior Constraints
@@ -128,7 +124,10 @@ function [ controller , synthesis_info ] = FindAdaptiveController_AlwaysHidenInf
         
         R_mc_prime = ExternalBehaviorSet( lcsas , m_c );
 
+
         if R_mc_prime.ToPolyhedron().isEmptySet()
+			disp('Skipping empty set')
+			disp(['m_c_index = ' num2str(m_c_index)])
             continue;
         end
 
@@ -137,33 +136,47 @@ function [ controller , synthesis_info ] = FindAdaptiveController_AlwaysHidenInf
 			
             % Skip any combination where m == m_c
             if m_c == m
+				disp('Skipping m_c == m')
                 continue
             end
 
 			if m_c <= m
-				%When there is a covering sequence to consider, let's enforce this containment property.
-		 		R_mc = ExternalBehaviorSet( lcsas , m_c , ...
-		 						'OpenLoopOrClosedLoop','Closed',K{m_index}, k{m_index} );
 
-		 		% ebs_circum = ExternalBehaviorSet( lcsas , feasible_knowl_seq , ...
-		 		% 				'OpenLoopOrClosedLoop','Closed', K{fks_index}, k{fks_index} );
-		 		R_m = ExternalBehaviorSet( lcsas , m );
+				%Iterate through all length of the m
+
+				for t = 1:TimeHorizon-1
+
+					%When there is a covering sequence to consider, let's enforce this containment property.
+			 		R_mc = ExternalBehaviorSet( lcsas , m_c([1:t+1]) , ...
+			 						'OpenLoopOrClosedLoop','Closed',K{m_c_index}, k{m_c_index} );
+
+			 		% ebs_circum = ExternalBehaviorSet( lcsas , feasible_knowl_seq , ...
+			 		% 				'OpenLoopOrClosedLoop','Closed', K{fks_index}, k{fks_index} );
+			 		R_m = ExternalBehaviorSet( lcsas , m([1:t+1]) );
+
+			 		disp('R_mc.t')
+			 		R_mc.t
+
+			 		temp_constraints = [];
+			 		if settings.LinearizeBilinearContainment
+			 			[ temp_dummy_w2{end+1} , temp_constraints ] = CreateLinearizedContainmentConstraint( R_mc , R_m );
+			 		else
+			 			[ temp_dummy_w2{end+1} , temp_constraints ] = CreateContainmentConstraint( R_mc , R_m );
+			 		end
 
 
-		 		temp_constraints = [];
-		 		if settings.LinearizeBilinearContainment
-		 			[ temp_dummy_w2{end+1} , temp_constraints ] = CreateLinearizedContainmentConstraint( R_mc , R_m );
-		 		else
-		 			[ temp_dummy_w2{end+1} , temp_constraints ] = CreateContainmentConstraint( R_mc , R_m );
-		 		end
+			 		infeasible_belief_constraints = infeasible_belief_constraints + temp_constraints;
 
+			 	end
 
-		 		infeasible_belief_constraints = infeasible_belief_constraints + temp_constraints;
 		 	else
-		 		ibs_mc = InternalBehaviorSet( lcsas , m_c , ...
-			  					'OpenLoopOrClosedLoop','Closed',K{m_index},k{m_index} );
-		 		[ temp_constraints , temp_dummy_y2{end+1} ] = ibs_mc.CreateEmptyConstraint();
-		 		infeasible_belief_constraints = infeasible_belief_constraints + temp_constraints;
+		 		for t = 1:TimeHorizon-1
+			 		ibs_mc = InternalBehaviorSet( lcsas , m_c([1:t+1]) , ...
+				  					'OpenLoopOrClosedLoop','Closed',K{m_index},k{m_index} );
+			 		[ temp_constraints , temp_dummy_y2{end+1} ] = ibs_mc.CreateEmptyConstraint();
+			 		infeasible_belief_constraints = infeasible_belief_constraints + temp_constraints;
+
+			 	end
 		 	end
 
 		 		
@@ -199,7 +212,7 @@ function [ controller , synthesis_info ] = FindAdaptiveController_AlwaysHidenInf
 		% Create Constraints
 		ibs_ksi = InternalBehaviorSet( lcsas , m , ...
 										'OpenLoopOrClosedLoop','Closed', K{m_index}, k{m_index});
-		X_Target
+		
 		[ temp_constraints , reachability_dual_vars{end+1} ] = ibs_ksi.GetReachabilityConstraints( X_Target , 'Use A_cl or A_ol?' , strengthen_flag_reachability );
 
 		guaranteed_reachability_constraint = guaranteed_reachability_constraint + temp_constraints;
@@ -225,6 +238,30 @@ function [ controller , synthesis_info ] = FindAdaptiveController_AlwaysHidenInf
 	synthesis_info.Timing.ForMStar = toc(subset_index_start_time);
 
 	controller = [];
+
+	for K_index = 1:length(K)
+		disp(['K{' num2str(K_index) '} = ' ])
+		disp(value(K{K_index}));
+		disp(['k{' num2str(K_index) '} = ' ])
+		disp(value(k{K_index}));
+
+		% Determine if ibs_m1 is empty/nonempty
+		m = M_unchecked([1:1],K_index);
+		ibs_m = InternalBehaviorSet( lcsas , m , ...
+										'OpenLoopOrClosedLoop','Closed', value(K{K_index}), value(k{K_index}));
+		disp(['m_' num2str(K_index) ' has empty ibs at t=1? ' num2str( ibs_m.IsEmpty() ) ])
+
+		% Determine if ibs_m2 is empty/nonempty
+		m = M_unchecked([1:2],K_index);
+		ibs_m = InternalBehaviorSet( lcsas , m , ...
+										'OpenLoopOrClosedLoop','Closed', value(K{K_index}), value(k{K_index}));
+		disp(['m_' num2str(K_index) ' has empty ibs at t=2? ' num2str( ibs_m.IsEmpty() ) ])
+
+		ibs_mstar = InternalBehaviorSet( lcsas , M_unchecked(:,3) , ...
+										'OpenLoopOrClosedLoop','Closed', value(K{3}), value(k{3}));
+		disp(['containment w.r.t. true m: ' num2str( ibs_m.ToPolyhedron() <= ibs_mstar.ToPolyhedron() ) ])
+
+	end
 
 	if optim0.problem == 0
 		%% Create Controller

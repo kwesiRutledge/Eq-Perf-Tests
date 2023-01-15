@@ -14,19 +14,9 @@ function [l_diag_constr] = create_lower_diagonal_constraint_on_gains( lcsas , Ga
 	%% Input Processing %%
 	%%%%%%%%%%%%%%%%%%%%%%
 
-	% if ~isa(lcsas,'LCSAS')
-	% 	error('The second input must be a LCSAS object.')
-	% end
-
 	%%%%%%%%%%%%%%%
 	%% Constants %%
 	%%%%%%%%%%%%%%%
-
-	% n = size(lcsas.Dyn(1).A,1);
-	% m = size(lcsas.Dyn(1).B,2);
-	% p = size(lcsas.Dyn(1).C,1);
-	% wd = size(lcsas.Dyn(1).B_w,2); %Assume that the size of the disturbance doesn't change for any of the included dynamics
-	% vd = size(lcsas.Dyn(1).C_v,2);
 
 	[ n_x , n_u , n_y , n_w , n_v ] = lcsas.Dimensions();
 	T = length(lcsas.L.words{1});

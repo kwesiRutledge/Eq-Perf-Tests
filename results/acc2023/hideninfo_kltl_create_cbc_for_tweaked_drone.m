@@ -55,11 +55,6 @@ if strcmp(info.Message,'Solved!')
 
 	for simulation_index = 1:10
 		[ x_0_t, u_0_tm1 , y_0_t , sig ] = drone_controller.simulate_1run();
-
-		% for t = 0:TimeHorizon
-		% 	x_t = x_0_t(:,t+1);
-		% 	scatter(x_t(1),x_t(2))
-		% end
 		plot(x_0_t(1,:),x_0_t(2,:))
 		
 

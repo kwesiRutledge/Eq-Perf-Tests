@@ -104,9 +104,9 @@ function [ B1 , B2 , TimeHorizon , x0 , X_target , U , W ] = ip_get_tweaked_turn
 			case 'eta_u'
 				system_settings.eta_u = varargin{argin_index+1};
 				argin_index = argin_index + 2;
-			case 'eta_w'
-				system_settings.eta_w = varargin{argin_index+1};
-				argin_index = argin_index + 2;
+            case 'W'
+                system_settings.W = varargin{argin_index+1};
+                argin_index = argin_index + 2;
 			otherwise
 				error(['Unexpected input to get_differently_loaded_drone_lcsas(): ' varargin{argin_index} ])
 		end

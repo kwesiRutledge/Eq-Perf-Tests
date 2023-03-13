@@ -1,6 +1,9 @@
-%get_cbc_for_tweaked_drone.m
+%learn_then_adapt1.m
 %Description:
-%	Defines a 
+%	Finds a controller for the single integrator drone system that
+%	automatically satisfies the learn then adapt formula.
+%   Once the true mode of the system is learned, the drone moves to a
+%   specific region of the state space (one region for each mode of th
 
 %% Add Libraries %%
 

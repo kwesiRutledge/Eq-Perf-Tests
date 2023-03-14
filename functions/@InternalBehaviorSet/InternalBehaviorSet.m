@@ -62,6 +62,8 @@ classdef InternalBehaviorSet < handle
 			%										{ [x0] | }
 			%										{ [x]  | }
 			%
+			%		where x = [x_0' ; x_1'; .. ; x_{t-1}'; x_{t}']'
+			%
 			%Inputs:
 			%	lcsas 		- An array of Aff_Dyn() objects. Hopefully the dimensions are all appropriately checked so that
 			%				  the state is the proper size in all Aff_Dyn(). Inputs as well, etc.

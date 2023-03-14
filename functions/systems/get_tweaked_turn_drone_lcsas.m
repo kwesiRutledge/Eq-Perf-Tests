@@ -46,7 +46,7 @@ function [ lcsas , x0 , TimeHorizon , X_target ] = get_tweaked_turn_drone_lcsas(
 	f2 = zeros(n_x,1);
 
 	% eta_w = 0.5;
-	W2 = Polyhedron('lb',-eta_w*ones(1,n_w),'ub',eta_w*ones(1,n_w));
+	W2 = W1;
 
 	ad2 = Aff_Dyn(	A2 , B2 , f2 , zeros(1,n_x), ...
 					W2 , W2 , ...

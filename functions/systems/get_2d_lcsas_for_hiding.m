@@ -1,4 +1,4 @@
-function [ lcsas , x0 , TimeHorizon , X_target ] = get_scalar_lcsas_for_hiding2d(varargin)
+function [ lcsas , x0 , TimeHorizon , X_target ] = get_2d_lcsas_for_hiding(varargin)
 	%get_scalar_lcsas_for_hiding.m
 	%Description:
 	%	Creates the LCSAS representation of a scalar system and its reachability task.

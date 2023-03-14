@@ -10,20 +10,27 @@ addpath(genpath('../../functions/'))
 
 rng("default")
 
-TimeHorizon = 9; 
+TimeHorizon = 5; 
 x0 = [0;0];
-eta_u = 0.5;
+eta_u = 0.4;
 eta_w = 0.1;
+dt = 1.0;
 X_Target = Polyhedron('lb',[1.2,1.0],'ub',[1.8,1.4]);
 
-[ lcsas0 , x0 , TimeHorizon , P_target ] = get_tweaked_turn_drone_lcsas('TimeHorizon',TimeHorizon, 'x0',x0, ...
-																		 'eta_u', eta_u, 'X_target', X_Target, ...
-                                                                         'eta_w', eta_w);
+[ lcsas0 , x0 , TimeHorizon , P_target ] = get_tweaked_turn_drone_lcsas( ...
+    'TimeHorizon',TimeHorizon, 'eta_u', eta_u, ...
+    'theta2', pi/16, 'dt', dt, ...
+    'X_target', X_Target, ...
+    'eta_w', eta_w);
+
 P_Targets = [ P_target , P_target - [0.7;0] ];
 
 %% Synthesis %%
 
-[ drone_controller , info ] = lcsas0.FindAdaptiveControllerWithMStar_2Goals( P_Targets );
+[ drone_controller , info ] = lcsas0.FindAdaptiveControllerWithMStar_2Goals( ...
+	P_Targets, ...
+	'RemoveBilinearityInReachabilityConstraints', false, ...
+	'RemoveBilinearityInReachabilityConstraints', false);
 
 if strcmp(info.Message,'Solved!')
 
@@ -69,11 +76,13 @@ if strcmp(info.Message,'Solved!')
 		results.SimulationData = [ results.SimulationData ; struct('x_0_t',x_0_t,'u_0_tm1',u_0_tm1) ];
 
 	end
-	axis([-0.5,1.8,-0.5,1.4])
+	axis([-0.2,1.8,-0.2,1.5])
 	xlabel('$p_x$','Interpreter','latex','FontSize',axis_fs)
 	ylabel('$p_y$','Interpreter','latex','FontSize',axis_fs)
 
-	legend('','$X_{T}^{(1)}$','$X_{T}^{(2)}$','Interpreter','latex','FontSize',20)
+	legend('','$X_{T}^{(1)}$','$X_{T}^{(2)}$', ...
+        'Interpreter','latex','FontSize',20, ...
+        'Location','southeast')
 
 	saveas(gcf,'images/drone_learn_then_adapt_runs','epsc')
 	saveas(gcf,'images/drone_learn_then_adapt_runs','png')
@@ -81,4 +90,4 @@ else
 	disp('The drone controller was not successfully created.')
 end
 
-save(['data/drone_turning_data_' datestr(now,'ddmmmyyyy-HHMM') '.mat' ])
+save(['data/learn_then_adapt_data_' datestr(now,'ddmmmyyyy-HHMM') '.mat' ])
